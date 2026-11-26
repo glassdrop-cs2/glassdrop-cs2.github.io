@@ -362,3 +362,6 @@ do $$ declare f text; begin
   end loop;
 end $$;
 grant execute on function nick_free(text) to anon, authenticated;
+-- read-only access for the site (writes happen only inside the functions above)
+grant usage on schema public to anon, authenticated;
+grant select on skins, cases, case_items, profiles, inventory, drops, battles, battle_players, battle_drops, leaderboard to anon, authenticated;
