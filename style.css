@@ -988,3 +988,43 @@ svg.gi { width: 1.2em; height: 1.2em; flex: none; display: inline-block; vertica
 .steam-head .stat { display: flex; flex-direction: column; gap: 3px; }
 .steam-head .stat span { font-size: 12px; }
 .steam-head .stat b { font-size: 22px; }
+
+/* ===== golden rare-item icon ===== */
+.item.gold-card .img svg.gi { width: 92px; height: 92px; filter: drop-shadow(0 0 18px rgba(255,200,80,.55)); animation: rareFloat 4s ease-in-out infinite; }
+@keyframes rareFloat { 50% { transform: translateY(-4px) rotate(-3deg); } }
+.rc.gold b svg.gi { width: 76px; height: 76px; filter: drop-shadow(0 0 14px rgba(255,200,80,.7)); }
+.rolls.multi .rc.gold b svg.gi, .roll.bt-roll .rc.gold b svg.gi, .mt .rc.gold b svg.gi { width: 54px; height: 54px; }
+.section-head h2 svg.gi { width: 1.15em; height: 1.15em; vertical-align: -.2em; }
+.seg button svg.gi { width: 20px; height: 20px; vertical-align: -.3em; }
+
+/* ===== mass opening (x10 / x20 / x50) ===== */
+.rolls.mass { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; padding: 12px; border-radius: 24px; background: rgba(0,0,0,.28); border: 1px solid var(--stroke); }
+.mt { --rc: rgba(255,255,255,.2); position: relative; aspect-ratio: 1 / 1.05; border-radius: 16px; overflow: hidden; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.06); animation: rollIn .5s var(--spring) both; animation-delay: calc(var(--i) * 12ms); }
+.mt .mt-in, .mt .rc { width: 100%; height: 100%; }
+.mt .rc { margin: 0; border-radius: 0; padding: 6px; }
+.mt .rc img { width: 100%; height: 70%; object-fit: contain; }
+.mt .rc span { font-size: 10px; }
+.mt:not(.done) .mt-in { opacity: .45; filter: blur(1.5px) saturate(.5); }
+.mt.done { border-color: color-mix(in srgb, var(--rc) 55%, transparent); animation: mtPop .45s var(--spring); }
+.mt.done .rc { background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--rc) 30%, transparent), transparent 70%); }
+.mt.hot { box-shadow: 0 0 0 2px var(--rc), 0 0 26px -2px var(--rc); }
+@keyframes mtPop { 0% { transform: scale(.8) rotateY(90deg); } 100% { transform: none; } }
+.win-grid.mini { gap: 8px; max-height: 56vh; overflow-y: auto; padding: 4px; }
+.win-card.mini { width: 128px; padding: 10px 8px; border-radius: 18px; }
+.win-card.mini .rays { display: none; }
+.win-card.mini .glow { width: 90px; height: 90px; margin: -45px 0 0 -45px; filter: blur(30px); }
+.win-card.mini img { height: 64px; animation: none; }
+.win-card.mini .wpn { font-size: 10px; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.win-card.mini .pat { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.win-card.mini .info { display: none; }
+.win-card.mini .pr { font-size: 14px; margin-top: 4px; }
+.win-card.mini .mini-acts { margin-top: 6px; }
+.win-card.mini .mini-acts .btn { height: 26px; padding: 0 10px; font-size: 11px; }
+@media (max-width: 560px) {
+  .rolls.mass { grid-template-columns: repeat(auto-fill, minmax(66px, 1fr)); gap: 6px; padding: 8px; }
+  .mt .rc span { display: none; }
+  .win-card.mini { width: calc(33.3% - 6px); }
+  .open-bar .seg { overflow-x: auto; max-width: 100%; }
+}
+.case-stage[hidden] { display: none; }
+.badge.knife svg.gi { width: 1.25em; height: 1.25em; vertical-align: -.25em; margin-right: 2px; }

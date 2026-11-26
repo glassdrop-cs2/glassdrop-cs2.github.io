@@ -57,6 +57,7 @@ const GI_SPRITE = `<svg width="0" height="0" style="position:absolute" aria-hidd
 <linearGradient id="gd-red" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff9e8f"/><stop offset=".5" stop-color="#ff453a"/><stop offset="1" stop-color="#b3161b"/></linearGradient>
 <linearGradient id="gd-dark" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3d3546"/><stop offset="1" stop-color="#141118"/></linearGradient>
 <linearGradient id="gd-fire" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd23f"/><stop offset=".5" stop-color="#ff7a1a"/><stop offset="1" stop-color="#e0302a"/></linearGradient>
+<radialGradient id="gd-rareglow"><stop offset="0" stop-color="#ffd36a" stop-opacity=".55"/><stop offset=".6" stop-color="#e4ae39" stop-opacity=".18"/><stop offset="1" stop-color="#e4ae39" stop-opacity="0"/></radialGradient>
 <linearGradient id="gd-steamb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1e4f8f"/><stop offset="1" stop-color="#0b1a2e"/></linearGradient>
 <linearGradient id="gd-holo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7ad7ff"/><stop offset=".35" stop-color="#b79bff"/><stop offset=".7" stop-color="#ff8ad8"/><stop offset="1" stop-color="#ffe08a"/></linearGradient>
 </defs>
@@ -164,6 +165,25 @@ const GI_SPRITE = `<svg width="0" height="0" style="position:absolute" aria-hidd
   <circle cx="25" cy="25" r="5" fill="url(#gd-red)" stroke="#1b1020" stroke-width="1.4"/>
   <path d="M23.2 23.2l3.6 3.6M26.8 23.2l-3.6 3.6" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
 </symbol>
+<symbol id="gi-rareknife" viewBox="0 0 32 32">
+  <circle cx="16" cy="16" r="13" fill="url(#gd-rareglow)"/>
+  <path d="M12.2 18.6L24.6 5.2c1.3-1.2 3.2-.6 2.7 1.3-.3 1.1-1 2-1.8 2.9L14.9 21.2z" fill="url(#gd-gold)" stroke="#7a4f00" stroke-width=".6" stroke-linejoin="round"/>
+  <path d="M14.2 18.4l11.2-11.9" stroke="#fff6cf" stroke-width=".9" stroke-linecap="round" opacity=".85"/>
+  <path d="M9.4 16.6l6.8 6.8" stroke="url(#gd-gold)" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M11.6 21.2l-6 6" stroke="#b07a14" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M10.4 22.4l-4 4" stroke="#ffe39a" stroke-width="1" stroke-dasharray="1.2 1.2" stroke-linecap="round"/>
+  <circle cx="4.9" cy="27.9" r="1.7" fill="url(#gd-gold)" stroke="#7a4f00" stroke-width=".5"/>
+  <path d="M7 6.5l.6 1.5 1.5.6-1.5.6-.6 1.5-.6-1.5-1.5-.6 1.5-.6zM26 20l.5 1.2 1.2.5-1.2.5-.5 1.2-.5-1.2-1.2-.5 1.2-.5z" fill="#fff3c4"/>
+</symbol>
+<symbol id="gi-rareglove" viewBox="0 0 32 32">
+  <circle cx="16" cy="16" r="13" fill="url(#gd-rareglow)"/>
+  <path d="M10.6 25.5V16.8l-2.8-3c-.9-1-.8-2.3.1-3 .9-.7 2-.5 2.8.3l1.9 2V7.6c0-1 .7-1.7 1.6-1.7s1.6.7 1.6 1.7v5.2V5.8c0-1 .7-1.7 1.6-1.7s1.6.7 1.6 1.7v7V6.9c0-1 .7-1.7 1.6-1.7s1.6.7 1.6 1.7v6.4V9.4c0-.9.7-1.6 1.5-1.6s1.5.7 1.5 1.6v8.4c0 3.3-1.2 5.8-3.6 7.7z" fill="url(#gd-gold)" stroke="#7a4f00" stroke-width=".6" stroke-linejoin="round"/>
+  <path d="M13.8 12.8v3.6M17 12.8v3.6M20.2 13.3v3.1" stroke="#8a5a00" stroke-width=".7" stroke-linecap="round" opacity=".7"/>
+  <rect x="9.8" y="24.6" width="12.8" height="4.4" rx="1.4" fill="#b07a14" stroke="#7a4f00" stroke-width=".5"/>
+  <path d="M11 26.8h10.4" stroke="#ffe39a" stroke-width=".8" stroke-dasharray="1.3 1.1"/>
+  <path d="M12.6 8.4c.3-.9 1-1.3 1.6-1.2" stroke="#fff6cf" stroke-width=".8" stroke-linecap="round" fill="none"/>
+  <path d="M26.5 4.5l.6 1.5 1.5.6-1.5.6-.6 1.5-.6-1.5-1.5-.6 1.5-.6zM5 21l.5 1.2 1.2.5-1.2.5-.5 1.2-.5-1.2-1.2-.5 1.2-.5z" fill="#fff3c4"/>
+</symbol>
 <symbol id="gi-potion" viewBox="0 0 32 32">
   <rect x="12.2" y="2.5" width="7.6" height="4" rx="1.4" fill="#a0673a"/>
   <path d="M13 6.5h6v5.2c4.6 1.6 7.8 5.8 7.8 10.6A10.8 10.8 0 0 1 5.2 22.3c0-4.8 3.2-9 7.8-10.6z" fill="#cfe8ff" fill-opacity=".28" stroke="#e9f4ff" stroke-opacity=".75" stroke-width="1.1"/>
@@ -196,7 +216,7 @@ const gi = (n, cls = '') => `<svg class="gi ${cls}" viewBox="0 0 32 32" aria-hid
 
 /* ================= rarity / wear ================= */
 const TIERS = ['consumer', 'industrial', 'milspec', 'restricted', 'classified', 'covert', 'rare'];
-const TIER_RU = { consumer: 'Ширпотреб', industrial: 'Промышленное', milspec: 'Армейское', restricted: 'Запрещённое', classified: 'Засекреченное', covert: 'Тайное', contraband: 'Контрабанда', rare: '★ Редкий особый' };
+const TIER_RU = { consumer: 'Ширпотреб', industrial: 'Промышленное', milspec: 'Армейское', restricted: 'Запрещённое', classified: 'Засекреченное', covert: 'Тайное', contraband: 'Контрабанда', rare: 'Редкий особый' };
 const TIER_COL = { consumer: '#b0c3d9', industrial: '#5e98d9', milspec: '#4b69ff', restricted: '#8847ff', classified: '#d32ce6', covert: '#eb4b4b', contraband: '#e4ae39', rare: '#e4ae39' };
 const WEARS = [
   ['FN', 'Factory New', 'Прямо с завода', 0, .07],
@@ -216,6 +236,10 @@ const SK = window.SKINS.map((a, i) => {
   return { i, name, weapon, pat, r, cat, mn, mx, st: !!st, img: im, base, px, star, vanilla: star && mn == null, tier: star ? 'rare' : r };
 });
 const colOf = s => s.star ? TIER_COL.rare : TIER_COL[s.r];
+// mystery icon for a case's rare pool: gloves only -> golden glove, otherwise golden knife
+const rareIco = c => gi(c && c.pools && c.pools.rare && c.pools.rare.length && c.pools.rare.every(s => s.cat === 'glove') ? 'rareglove' : 'rareknife');
+// cheap cases can be opened in bigger batches (mirrors max_open() on the server)
+const maxOpen = price => price <= 1 ? 50 : price <= 3 ? 20 : price <= 10 ? 10 : 5;
 const tierOf = s => s.star ? 'rare' : s.r === 'contraband' ? 'covert' : s.r;
 const wpnLabel = s => (s.star ? '★ ' : '') + s.weapon;
 function fullName(it) {
@@ -740,7 +764,7 @@ const priceHTML = c => c.old ? `<s>${money(c.old)}</s>${money(c.price)}` : money
 function caseCard(c, i) {
   const badge = c.grp === 'halloween' ? `<span class="badge hw">${gi('pumpkin')} Хэллоуин</span>`
     : c.grp === 'bf' ? `<span class="badge bf">−${saleOf(c)}% Black Friday</span>`
-    : c.reveal ? '<span class="badge knife">100% ★</span>'
+    : c.reveal ? `<span class="badge knife">${gi('rareknife')} 100%</span>`
     : c.kind === 'custom' ? '<span class="badge custom">Авторский</span>' : (c.idx < 3 ? '<span class="badge new">New</span>' : '');
   return `<div class="case-card glass-flat ${c.grp ? 'grp-' + c.grp : ''}" style="--i:${i};--glow:${c.glow}" data-go="#/case/${c.id}">${badge}<div class="art">${caseArt(c)}</div><h3>${esc(c.name)}</h3><div class="meta">${c.kind === 'custom' ? esc(c.desc) : c.count + ' предметов · ' + (c.d || '').slice(0, 4)}</div><span class="price-chip ${c.old ? 'sale' : ''}">${priceHTML(c)}</span></div>`;
 }
@@ -937,6 +961,7 @@ function viewCase(id) {
   const items = order.filter(t => t !== 'rare' && c.odds[t]).flatMap(t => c.pools[t].slice().sort((a, b) => evSkin(b) - evSkin(a)).map(s => ({ s, t })));
   const rare = c.odds.rare ? c.pools.rare.slice().sort((a, b) => evSkin(b) - evSkin(a)) : [];
   const card = (s, t, i) => itemCard({ s: s.i, p: evSkin(s) }, { i, chance: pct(c.odds[t] / c.pools[t].length), priceText: '≈ ' + money(evSkin(s)), wearText: '' });
+  if (C.n > maxOpen(c.price)) C.n = 1;
   main.innerHTML = `
   <section class="case-top glass edge">
     <div class="head">
@@ -948,7 +973,7 @@ function viewCase(id) {
     <div class="case-stage" id="stage" style="--glow:${c.glow}"><div class="halo"></div>${caseArt(c, '512fx384f')}</div>
     <div class="rolls" id="rolls" hidden></div>
     <div class="open-bar">
-      ${seg('n', [1, 2, 3, 4, 5].map(n => [String(n), '×' + n]), String(C.n))}
+      ${seg('n', [1, 2, 3, 4, 5, 10, 20, 50].filter(n => n <= maxOpen(c.price)).map(n => [String(n), '×' + n]), String(C.n))}
       <button class="btn primary big" id="openBtn" data-act="open"></button>
       <button class="btn green big" id="freeBtn" data-act="free" hidden></button>
       <label class="toggle" data-act="fast"><span class="switch ${SET.fast ? 'on' : ''}" id="fastSw"></span>Быстро</label>
@@ -961,10 +986,10 @@ function viewCase(id) {
     <div class="grow"></div><span class="ev-note">Средний возврат ≈ ${Math.round(c.ev / c.price * 100)}% от цены кейса</span>
   </div>
   <div class="grid-items stagger">
-    ${rare.length ? `<div class="item gold-card" style="--i:0" data-act="toRare"><span class="chance">${pct(c.odds.rare)}</span><div class="img">★</div><div class="wpn">Редкий особый предмет</div><div class="pat">${c.pools.rare.some(s => s.cat === 'glove') && c.pools.rare.some(s => s.cat === 'knife') ? 'Ножи и перчатки' : c.pools.rare.some(s => s.cat === 'glove') ? 'Перчатки' : 'Ножи'}</div><div class="row"><span class="pr">${rare.length} вариантов</span></div></div>` : ''}
+    ${rare.length ? `<div class="item gold-card" style="--i:0" data-act="toRare"><span class="chance">${pct(c.odds.rare)}</span><div class="img">${rareIco(c)}</div><div class="wpn">Редкий особый предмет</div><div class="pat">${c.pools.rare.some(s => s.cat === 'glove') && c.pools.rare.some(s => s.cat === 'knife') ? 'Ножи и перчатки' : c.pools.rare.some(s => s.cat === 'glove') ? 'Перчатки' : 'Ножи'}</div><div class="row"><span class="pr">${rare.length} вариантов</span></div></div>` : ''}
     ${items.map(({ s, t }, i) => card(s, t, i + 1)).join('')}
   </div>
-  ${rare.length ? `<div class="section-head" id="rareHead"><h2 style="color:var(--gold)">★ Редкие предметы</h2><span class="sub">${pct(c.odds.rare)} на весь список</span></div>
+  ${rare.length ? `<div class="section-head" id="rareHead"><h2 style="color:var(--gold)">${rareIco(c)} Редкие предметы</h2><span class="sub">${pct(c.odds.rare)} на весь список</span></div>
   <div class="grid-items">${rare.map(s => card(s, 'rare', 0)).join('')}</div>` : ''}`;
   const drawBtn = () => {
     const b = $('#openBtn'); if (b) b.innerHTML = `Открыть ${C.n > 1 ? C.n + ' шт. ' : ''}за ${money(r2(c.price * C.n))}`;
@@ -1002,7 +1027,7 @@ function fakeRoll(c) {
 }
 function rcHTML(d, c) {
   const s = SK[d.s];
-  if (s.star && !(c && c.reveal)) return `<div class="rc gold"><b>★</b><span>Редкий предмет</span></div>`;
+  if (s.star && !(c && c.reveal)) return `<div class="rc gold"><b>${rareIco(c)}</b><span>Редкий предмет</span></div>`;
   return `<div class="rc" style="--rc:${colOf(s)}"><img src="${img(s.img, '200fx200f')}" alt=""><span>${esc(s.pat)}</span></div>`;
 }
 const shake = el => el && el.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(-8px)' }, { transform: 'translateX(8px)' }, { transform: 'translateX(-4px)' }, { transform: 'translateX(0)' }], { duration: 380 });
@@ -1030,9 +1055,13 @@ async function openCase(c, n, free) {
   if (token !== viewToken) { busy = false; announce(its); return; }
   stage.hidden = true;
   rolls.hidden = false;
-  rolls.classList.toggle('multi', n > 1);
-  rolls.innerHTML = its.map(() => `<div class="roll"><div class="strip"></div><div class="marker"></div></div>`).join('');
-  await Promise.all(its.map((d, k) => spin($$('.roll', rolls)[k], c, d, k)));
+  rolls.classList.toggle('multi', n > 1 && n <= 5);
+  rolls.classList.toggle('mass', n > 5);
+  if (n > 5) await massReveal(rolls, c, its);
+  else {
+    rolls.innerHTML = its.map(() => `<div class="roll"><div class="strip"></div><div class="marker"></div></div>`).join('');
+    await Promise.all(its.map((d, k) => spin($$('.roll', rolls)[k], c, d, k)));
+  }
   busy = false;
   if (!ONLINE) its.forEach(pushTicker);
   if (token !== viewToken) { announce(its); return; }
@@ -1045,6 +1074,23 @@ function announce(its) {
   notify({ title: fullName(best), sub: its.length > 1 ? `и ещё ${its.length - 1} — в инвентаре` : 'Добавлено в инвентарь', icon: thumbIco(best.s), amt: money(best.p), tall: true });
 }
 
+// 10-50 at once: every tile shuffles through the case for a moment and lands on its drop
+function massReveal(box, c, its) {
+  box.innerHTML = its.map((d, i) => `<div class="mt" style="--i:${i}"><div class="mt-in">${rcHTML(fakeRoll(c), c)}</div></div>`).join('');
+  const tiles = $$('.mt', box), total = SET.fast ? 900 : 2600, gap = total / its.length;
+  const shuffle = setInterval(() => tiles.forEach(t => { if (!t.classList.contains('done')) $('.mt-in', t).innerHTML = rcHTML(fakeRoll(c), c); }), 90);
+  return new Promise(res => {
+    its.forEach((d, i) => setTimeout(() => {
+      const t = tiles[i], s = SK[d.s];
+      t.classList.add('done');
+      t.style.setProperty('--rc', colOf(s));
+      $('.mt-in', t).innerHTML = `<div class="rc win" style="--rc:${colOf(s)}"><img src="${img(s.img, '200fx200f')}" alt=""><span>${esc(s.pat)}</span></div>`;
+      if (s.star || TIERS.indexOf(d.tier) >= TIERS.indexOf('classified')) t.classList.add('hot');
+      if (i % 2 === 0) SFX.tick();
+      if (i === its.length - 1) { clearInterval(shuffle); setTimeout(res, 450); }
+    }, 350 + i * gap));
+  });
+}
 function spin(roll, c, drop, k, durOverride) {
   return new Promise(res => {
     const N = 62, WIN = 52;
@@ -1078,9 +1124,9 @@ function spin(roll, c, drop, k, durOverride) {
   });
 }
 
-function winCardHTML(it, i, single) {
+function winCardHTML(it, i, single, mini) {
   const s = SK[it.s], w = wearOf(it.f);
-  return `<div class="win-card ${single ? 'single' : ''}" style="--rc:${colOf(s)};--i:${i}" data-u="${it.u}">
+  return `<div class="win-card ${single ? 'single' : ''} ${mini ? 'mini' : ''}" style="--rc:${colOf(s)};--i:${Math.min(i, 20)}" data-u="${it.u}">
     <div class="rays"></div><div class="glow"></div>
     <img src="${img(s.img, '360fx360f')}" alt="">
     <div class="wpn">${esc(wpnLabel(s))}</div>
@@ -1103,7 +1149,8 @@ function showWin(c, its, n) {
   openSheet(`
     <h2>${its.length > 1 ? 'Ваши дропы' : 'Вам выпало!'}</h2>
     <div class="subtitle">${esc(c.name)}</div>
-    <div class="win-grid">${its.map((it, i) => winCardHTML(it, i, its.length === 1)).join('')}</div>
+    ${its.length > 5 ? `<div class="subtitle">${its.length} предметов · лучший: <b>${esc(fullName(its.reduce((a, b) => b.p > a.p ? b : a)))}</b></div>` : ''}
+    <div class="win-grid ${its.length > 5 ? 'mini' : ''}">${(its.length > 5 ? its.slice().sort((a, b) => b.p - a.p) : its).map((it, i) => winCardHTML(it, i, its.length === 1, its.length > 5)).join('')}</div>
     <div class="total-line">Стоимость дропа: <b id="winTotal">${money(total())}</b> · кейсы: ${money(r2(c.price * n))}</div>
     <div class="acts">
       <button class="btn green" data-sact="sellAll">Продать всё</button>
@@ -1220,7 +1267,7 @@ function giftSheet(it, onChange) {
 
 /* ================= INVENTORY ================= */
 const I = { f: 'all', q: '', sort: 'new', select: false, sel: new Set(), limit: 120 };
-const INV_FILTERS = [['all', 'Все'], ['rare', '★'], ['covert', 'Тайные'], ['classified', 'Засекр.'], ['restricted', 'Запрещ.'], ['milspec', 'Армейские'], ['low', 'Прочие']];
+const INV_FILTERS = [['all', 'Все'], ['rare', gi('rareknife')], ['covert', 'Тайные'], ['classified', 'Засекр.'], ['restricted', 'Запрещ.'], ['milspec', 'Армейские'], ['low', 'Прочие']];
 function invList() {
   const q = I.q.trim().toLowerCase();
   let l = S.inv.filter(it => {
@@ -2433,7 +2480,8 @@ async function startOnline() {
   // feed
   const { data: feed } = await sb.from('drops').select('*').order('id', { ascending: false }).limit(24);
   FEED = (feed || []).map(fromFeed);
-  sb.channel('feed').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'drops' }, ({ new: row }) => {
+  const burst = {};
+  const onDrop = row => {
     const h = fromFeed(row);
     FEED.unshift(h); FEED = FEED.slice(0, 40);
     pushTicker(h);
@@ -2447,6 +2495,15 @@ async function startOnline() {
     const s = SK[h.s];
     if (h.src === 'battle') notify({ title: `${h.nick} выиграл баттл`, sub: `Банк ${money(h.p)}`, icon: gi('swords'), color: 'rgba(255,214,10,.3)' });
     else if (s.star || h.p >= 25) { SFX.ping(); notify({ title: `${h.nick} выбил${h.src === 'upgrade' ? ' апгрейдом' : ''}`, sub: fullName(h), icon: thumbIco(h.s), amt: money(h.p), tall: true, ms: 4000 }); }
+  };
+  sb.channel('feed').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'drops' }, ({ new: row }) => {
+    if (row.source !== 'case') return onDrop(row);
+    const k = row.user_id;
+    (burst[k] = burst[k] || []).push(row);
+    if (burst[k].length === 1) setTimeout(() => {
+      const g = burst[k]; delete burst[k];
+      (g.length > 5 ? g.sort((a, b) => b.price - a.price).slice(0, 3).reverse() : g).forEach(onDrop);
+    }, 500);
   }).subscribe();
   sb.auth.onAuthStateChange((ev) => { if (ev === 'SIGNED_OUT') location.reload(); });
   startStats();
