@@ -1135,7 +1135,7 @@ function winCardHTML(it, i, single, mini) {
     <div class="pat">${esc(s.pat)}</div>
     <div class="info">${it.st ? '<span class="tag st">StatTrak™</span>' : ''}${w ? `<span class="tag">${w[2]}</span><span class="tag">${it.f.toFixed(5)}</span>` : `<span class="tag">${{ sticker: 'Наклейка', graffiti: 'Граффити' }[s.cat] || 'Без износа'}</span>`}</div>
     <div class="pr">${money(it.p)}</div>
-    <div class="mini-acts"><button class="btn sm" data-sact="sellOne" data-u="${it.u}">Продать</button></div>
+    <div class="mini-acts"><button class="btn sm" data-sact="sellOne" data-u="${it.u}">Продать</button>${single ? '' : `<button class="btn sm keep" data-sact="keep" data-u="${it.u}">В инвентарь</button>`}</div>
   </div>`;
 }
 async function sellWithFx(uids, label) {
@@ -1148,6 +1148,16 @@ async function sellWithFx(uids, label) {
 }
 function showWin(c, its, n) {
   const total = () => r2(its.filter(it => S.inv.some(x => x.u === it.u)).reduce((a, it) => a + it.p, 0));
+  // items marked "to inventory" are skipped by the big sell button
+  const kept = new Set();
+  const unsold = () => its.filter(it => S.inv.some(x => x.u === it.u));
+  const toSell = () => unsold().filter(it => !kept.has(it.u));
+  const drawSellAll = () => {
+    const b = document.querySelector('.scrim [data-sact="sellAll"]'); if (!b) return;
+    const l = toSell(), sum = r2(l.reduce((a, it) => a + it.p, 0));
+    b.textContent = kept.size ? (l.length ? `Продать остальное (${l.length}) · ${money(sum)}` : 'Всё оставлено') : 'Продать всё';
+    b.disabled = kept.size > 0 && !l.length;
+  };
   openSheet(`
     <h2>${its.length > 1 ? 'Ваши дропы' : 'Вам выпало!'}</h2>
     <div class="subtitle">${esc(c.name)}</div>
@@ -1157,20 +1167,32 @@ function showWin(c, its, n) {
     <div class="acts">
       <button class="btn green" data-sact="sellAll">Продать всё</button>
       <button class="btn primary" data-sact="again">Ещё раз · ${money(r2(c.price * n))}</button>
-      <button class="btn" data-sact="close">В инвентарь</button>
+      <button class="btn" data-sact="close">${its.length > 1 ? 'Оставить всё' : 'В инвентарь'}</button>
     </div>`, {
     acts: {
       async sellOne(b) {
         b.disabled = true;
         const sum = await sellWithFx([+b.dataset.u]);
         if (!sum) { b.disabled = false; return; }
-        b.closest('.win-card').classList.add('sold'); b.textContent = 'Продано';
-        $('#winTotal').textContent = money(total());
+        const card = b.closest('.win-card'); card.classList.add('sold'); b.textContent = 'Продано';
+        const k = $('[data-sact="keep"]', card); if (k) k.remove();
+        $('#winTotal').textContent = money(total()); drawSellAll();
+      },
+      keep(b) {
+        const u = +b.dataset.u, card = b.closest('.win-card');
+        if (kept.has(u)) kept.delete(u); else kept.add(u);
+        const on = kept.has(u);
+        card.classList.toggle('kept', on);
+        b.classList.toggle('on', on);
+        b.innerHTML = on ? `${ICON.check} В инвентаре` : 'В инвентарь';
+        const sell = $('[data-sact="sellOne"]', card); if (sell) sell.hidden = on;
+        SFX.click(); drawSellAll();
       },
       async sellAll(b, close) {
-        const left = its.filter(it => S.inv.some(x => x.u === it.u)).map(i => i.u);
-        if (left.length) await sellWithFx(left, 'Продано всё');
+        const left = toSell().map(i => i.u);
+        if (left.length) await sellWithFx(left, kept.size ? 'Продано остальное' : 'Продано всё');
         close();
+        if (kept.size) notify({ title: `${kept.size} предм. оставлено в инвентаре`, icon: ICON.check, color: 'rgba(10,132,255,.3)' });
       },
       again(b, close) { close(); setTimeout(() => openCase(c, n), 250); },
     },
