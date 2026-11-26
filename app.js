@@ -38,6 +38,7 @@ const ICON = {
   x: svg('<path d="M18 6 6 18M6 6l12 12"/>', 2.5),
   check: svg('<path d="m5 12 5 5 9-10"/>', 3.5),
   gift: svg('<rect x="3" y="8" width="18" height="13" rx="2"/><path d="M12 8v13M3 12h18M12 8S10.5 3 7.5 3a2.5 2.5 0 0 0 0 5M12 8s1.5-5 4.5-5a2.5 2.5 0 0 1 0 5"/>'),
+  quest: svg('<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>'),
   bot: svg('<rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V4M9 13h.01M15 13h.01M9 17h6"/>'),
 };
 
@@ -88,7 +89,7 @@ function priceOf(s, f, st) {
 function evSkin(s) {
   if (s._ev != null) return s._ev;
   let wp = null;
-  if (!s.vanilla) {
+  if (s.mn != null) {
     wp = {};
     for (const [p, a, b] of UBK) {
       const lo = s.mn + (s.mx - s.mn) * a, hi = s.mn + (s.mx - s.mn) * b;
@@ -100,7 +101,7 @@ function evSkin(s) {
   return (s._ev = s.st ? .9 * one(false) + .1 * one(true) : one(false));
 }
 function rollFloat(s) {
-  if (s.vanilla) return null;
+  if (s.mn == null) return null;
   let x = crand(), b = UBK[4];
   for (const k of UBK) { if ((x -= k[0]) < 0) { b = k; break; } }
   return +(s.mn + (s.mx - s.mn) * (b[1] + (b[2] - b[1]) * crand())).toFixed(9);
@@ -125,7 +126,7 @@ const ERR = {
   NO_FUNDS: 'Недостаточно средств', NICK_TAKEN: 'Этот ник уже занят', BAD_NICK: 'Ник: 3–16 символов — буквы, цифры, пробел, _ . -',
   NOT_OPEN: 'Баттл уже начался или отменён', FULL: 'Мест уже нет', ALREADY_IN: 'Ты уже в этом баттле', NO_USER: 'Игрок с таким ником не найден',
   SELF: 'Нельзя подарить самому себе', NOT_OWNER: 'Этот предмет уже не твой', TARGET_TOO_CHEAP: 'Цель должна быть дороже ставки',
-  NOT_CREATOR: 'Это может только создатель баттла', 'Invalid login credentials': 'Неверный ник или пароль', NO_PROFILE: 'Профиль не найден',
+  NOT_CREATOR: 'Это может только создатель баттла', QUEST_NOT_DONE: 'Квест ещё не выполнен', 'Invalid login credentials': 'Неверный ник или пароль', NO_PROFILE: 'Профиль не найден',
   'Anonymous sign-ins are disabled': 'Гостевой вход выключен на сервере', 'Password should be at least': 'Пароль — минимум 6 символов',
   'already registered': 'Этот ник уже зарегистрирован', 'Failed to fetch': 'Нет связи с сервером',
 };
@@ -133,6 +134,8 @@ function errText(e) {
   const m = String((e && e.message) || e);
   const cd = m.match(/COOLDOWN:(\d+)/);
   if (cd) return `Бонус будет через ${cd[1]} c`;
+  const dd = m.match(/DAILY_DONE:(\d+)/);
+  if (dd) return `Ежедневный бонус уже забран — следующий через ${hms(+dd[1] * 1000)}`;
   for (const k in ERR) if (m.includes(k)) return ERR[k];
   return m;
 }
@@ -162,7 +165,7 @@ function nickEmail(nick) {
 const KEY = 'glassdrop.v1', SKEY = 'glassdrop.settings';
 const BONUS_CD = 120e3, BONUS_AMT = 15;
 const freshStats = () => ({ opened: 0, spent: 0, sold: 0, upW: 0, upL: 0, bw: 0, bl: 0, best: null });
-const fresh = () => ({ bal: 100, inv: [], hist: [], uid: 1, lastBonus: 0, bonusN: 0, stats: freshStats() });
+const fresh = () => ({ bal: 100, inv: [], hist: [], uid: 1, lastBonus: 0, bonusN: 0, xp: 0, quests: {}, dailyLast: null, dailyStreak: 0, pumpkins: [], pumpkinDone: false, stats: freshStats() });
 const bonusAmt = n => n % 100 === 0 ? 1000 : n % 10 === 0 ? 100 : BONUS_AMT;
 let SET = { sound: true, fast: false };
 try { SET = Object.assign(SET, JSON.parse(localStorage.getItem(SKEY) || '{}')); } catch {}
@@ -180,8 +183,10 @@ function applyProfile(p) {
   S.bal = +p.balance;
   S.lastBonus = p.last_bonus ? Date.parse(p.last_bonus) : 0;
   S.bonusN = p.bonus_n || 0;
+  S.xp = p.xp || 0; S.quests = p.quests || {}; S.dailyLast = p.daily_last; S.dailyStreak = p.daily_streak || 0; S.pumpkinDone = !!p.pumpkin_done;
   S.stats = { opened: p.opened, spent: +p.spent, sold: +p.sold, upW: p.up_w, upL: p.up_l, bw: p.battles_w, bl: p.battles_l, best: p.best_skin != null ? { s: p.best_skin, f: p.best_float, st: p.best_st, p: +p.best_price } : null };
   if (ME) ME.nick = p.nickname;
+  if (typeof lvlEl !== 'undefined') drawLevel();
 }
 async function refreshProfile() {
   const { data, error } = await sb.from('profiles').select('*').eq('id', ME.id).single();
@@ -258,6 +263,43 @@ const API = {
     } else S.stats.upL++;
     save();
     return { win, chance: ch, item: got, balance: S.bal };
+  },
+  async claimQuest(type) {
+    if (ONLINE) {
+      const r = await rpc('claim_quest', { p_type: type });
+      S.xp += r.xp; S.quests = { ...S.quests, [type]: r.tier };
+      return { balance: +r.balance, money: +r.money, xp: r.xp };
+    }
+    const tier = S.quests[type] || 0, d = questDef(type, tier);
+    if (QUESTS[type].cur() < d.target) throw new Error('QUEST_NOT_DONE');
+    S.quests[type] = tier + 1; S.xp += d.xp; S.bal = r2(S.bal + d.money); save();
+    return { balance: S.bal, money: d.money, xp: d.xp };
+  },
+  async daily() {
+    if (ONLINE) {
+      const r = await rpc('claim_daily');
+      S.dailyLast = r.day; S.dailyStreak = r.streak; S.xp += r.xp;
+      return { balance: +r.balance, amount: +r.amount, streak: r.streak };
+    }
+    const t = utcDay(0);
+    if (S.dailyLast === t) throw new Error('DAILY_DONE:' + Math.ceil(msToUtcMidnight() / 1000));
+    S.dailyStreak = S.dailyLast === utcDay(-1) ? S.dailyStreak + 1 : 1;
+    S.dailyLast = t; S.xp += 25;
+    const amount = dailyAmount(S.dailyStreak);
+    S.bal = r2(S.bal + amount); save();
+    return { balance: S.bal, amount, streak: S.dailyStreak };
+  },
+  async pumpkin(id) {
+    if (ONLINE) {
+      const r = await rpc('find_pumpkin', { p_id: id });
+      S.pumpkins = r.list; if (r.reward) { S.pumpkinDone = true; S.xp += 500; }
+      return { found: r.found, reward: +r.reward, balance: +r.balance };
+    }
+    if (!S.pumpkins.includes(id)) S.pumpkins.push(id);
+    let reward = 0;
+    if (S.pumpkins.length >= PK_TOTAL && !S.pumpkinDone) { reward = 1000; S.pumpkinDone = true; S.xp += 500; S.bal = r2(S.bal + 1000); }
+    save();
+    return { found: S.pumpkins.length, reward, balance: S.bal };
   },
   async gift(u, nick) {
     const r = await rpc('gift_item', { p_id: u, p_to: nick });
@@ -419,8 +461,8 @@ window.addEventListener('resize', () => layoutPills());
 function segSelect(sg, v) { $$('button', sg).forEach(b => b.classList.toggle('on', b.dataset.v === v)); placePill(sg, false); }
 
 const NAV = ONLINE
-  ? [['', 'Кейсы', ICON.cases], ['battles', 'Баттлы', ICON.swords], ['inventory', 'Инвентарь', ICON.inv], ['upgrade', 'Апгрейд', ICON.up], ['top', 'Топ', ICON.trophy], ['profile', 'Профиль', ICON.user]]
-  : [['', 'Кейсы', ICON.cases], ['inventory', 'Инвентарь', ICON.inv], ['upgrade', 'Апгрейд', ICON.up], ['profile', 'Профиль', ICON.user]];
+  ? [['', 'Кейсы', ICON.cases], ['battles', 'Баттлы', ICON.swords], ['inventory', 'Инвентарь', ICON.inv], ['upgrade', 'Апгрейд', ICON.up], ['quests', 'Квесты', ICON.quest], ['top', 'Топ', ICON.trophy], ['profile', 'Профиль', ICON.user]]
+  : [['', 'Кейсы', ICON.cases], ['inventory', 'Инвентарь', ICON.inv], ['upgrade', 'Апгрейд', ICON.up], ['quests', 'Квесты', ICON.quest], ['profile', 'Профиль', ICON.user]];
 const navHTML = `<span class="pill"></span>` + NAV.map(([r, l, i]) => `<button data-go="#/${r}" data-r="${r}">${i}<span>${l}</span></button>`).join('');
 $('#nav').innerHTML = navHTML; $('#dockNav').innerHTML = navHTML;
 const NAV_KEY = { case: '', battle: 'battles', u: 'top' };
@@ -472,7 +514,8 @@ function showcase(c) {
   const guns = by(Object.entries(c.pools).filter(([t]) => t !== 'rare').flatMap(([, l]) => l));
   const stars = by(c.pools.rare || []);
   const out = [], seen = new Set();
-  const add = s => { if (s && !seen.has(s.weapon) && out.length < 3) { seen.add(s.weapon); out.push(s); } };
+  const key = s => s.cat === 'sticker' || s.cat === 'graffiti' ? s.name : s.weapon;
+  const add = s => { if (s && !seen.has(key(s)) && out.length < 3) { seen.add(key(s)); out.push(s); } };
   if (guns.length) { add(guns[0]); add(stars[0]); guns.slice(1).forEach(add); }
   stars.forEach(add);
   const all = guns.concat(stars);
@@ -521,7 +564,7 @@ const onlineOnly = t => `<div class="empty-state"><div class="ill">🌐</div><h3
 const main = $('#view');
 let VIEW = {};
 let viewToken = 0;
-const ROUTES = { '': viewHome, case: viewCase, inventory: viewInventory, upgrade: viewUpgrade, profile: viewProfile, battles: viewBattles, battle: viewBattle, top: viewTop, u: viewUser };
+const ROUTES = { quests: viewQuests, '': viewHome, case: viewCase, inventory: viewInventory, upgrade: viewUpgrade, profile: viewProfile, battles: viewBattles, battle: viewBattle, top: viewTop, u: viewUser };
 let firstRender = true;
 async function route() {
   if (ONLINE && !ME) return;
@@ -594,6 +637,7 @@ function pushTicker(h) {
 const H = { tab: 'all', q: '', sort: 'def' };
 const GROUPS = [
   ['halloween', '🎃 Хэллоуин', 'жуткие коллекции сезона'],
+  ['stickers', '🏷 Наклейки и граффити', 'кейсы за копейки — от $0.04'],
   ['bf', '🖤 Black Friday', 'сниженная наценка — больше возврат'],
   ['knives', '🔪 Ножи и перчатки', '100% редкий предмет из каждого кейса'],
   ['custom', '✦ Авторские', 'выдуманные коллекции из реальных скинов'],
@@ -774,7 +818,7 @@ async function openCase(c, n) {
   let res;
   try { [res] = await Promise.all([API.openCase(c, n), sleep(380)]); }
   catch (e) { busy = false; notifyErr(e); if (token === viewToken) resetStage(); return; }
-  setBal(res.balance);
+  setBal(res.balance); drawLevel();
   const its = res.items;
   if (token !== viewToken) { busy = false; announce(its); return; }
   stage.hidden = true;
@@ -834,7 +878,7 @@ function winCardHTML(it, i, single) {
     <img src="${img(s.img, '360fx360f')}" alt="">
     <div class="wpn">${esc(wpnLabel(s))}</div>
     <div class="pat">${esc(s.pat)}</div>
-    <div class="info">${it.st ? '<span class="tag st">StatTrak™</span>' : ''}${w ? `<span class="tag">${w[2]}</span><span class="tag">${it.f.toFixed(5)}</span>` : '<span class="tag">Без износа</span>'}</div>
+    <div class="info">${it.st ? '<span class="tag st">StatTrak™</span>' : ''}${w ? `<span class="tag">${w[2]}</span><span class="tag">${it.f.toFixed(5)}</span>` : `<span class="tag">${{ sticker: 'Наклейка', graffiti: 'Граффити' }[s.cat] || 'Без износа'}</span>`}</div>
     <div class="pr">${money(it.p)}</div>
     <div class="mini-acts"><button class="btn sm" data-sact="sellOne" data-u="${it.u}">Продать</button></div>
   </div>`;
@@ -1032,9 +1076,9 @@ function market() {
   MARKET = [];
   for (const s of SK) {
     if (!['milspec', 'restricted', 'classified', 'covert', 'contraband'].includes(s.r) && !s.star) continue;
-    if (s.cat === 'equip') continue;
+    if (s.cat === 'equip' || s.cat === 'sticker' || s.cat === 'graffiti') continue;
     let code = null;
-    if (!s.vanilla) {
+    if (s.mn != null) {
       const ok = WEARS.filter(w => s.mn < w[4] && s.mx > w[3]).map(w => w[0]);
       code = ok.includes('FT') ? 'FT' : ok[0];
       if (s.star && ok.includes('FN')) MARKET.push({ s: s.i, code: 'FN', p: priceCode(s, 'FN', false) });
@@ -1062,7 +1106,7 @@ function viewUpgrade() {
         <div class="needle" id="needle"></div>
         <div class="center"><b id="chance">0%</b><span>шанс апгрейда</span></div>
       </div>
-      <div class="upg-ctrl">${[1.5, 2, 3, 5, 10, 20].map(m => `<button class="btn sm" data-act="mul" data-m="${m}">×${m}</button>`).join('')}</div>
+      <div class="upg-ctrl">${[1.2, 1.5, 2, 3, 5, 10, 20].map(m => `<button class="btn sm" data-act="mul" data-m="${m}">×${m}</button>`).join('')}</div>
       <div class="upg-ctrl"><button class="btn gold big" id="upBtn" data-act="go">Апгрейд</button></div>
     </div>
     <div class="upg-slot" id="slotOut"></div>
@@ -1398,6 +1442,181 @@ async function viewBattle(id) {
   };
 }
 
+/* ================= LEVELS / QUESTS / DAILY / PUMPKINS ================= */
+// level L needs 50·L·(L-1) total XP: 2 → 100, 3 → 300, 4 → 600 …
+function levelOf(xp) {
+  let L = 1; while (50 * (L + 1) * L <= xp) L++;
+  const base = 50 * L * (L - 1), next = 50 * (L + 1) * L;
+  return { lvl: L, cur: xp - base, need: next - base, k: (xp - base) / (next - base) };
+}
+const QUESTS = {
+  open: { t: [5, 25, 75, 200, 500, 1000, 2500], m: [10, 30, 75, 150, 300, 500, 1000], x: [50, 100, 200, 350, 500, 750, 1000], icon: '📦', title: n => `Открой ${n} ${plural(n, 'кейс', 'кейса', 'кейсов')}`, cur: () => S.stats.opened },
+  upgrades: { t: [1, 5, 15, 40, 100, 250], m: [10, 50, 120, 300, 700, 1500], x: [50, 120, 250, 450, 700, 1100], icon: '⬆️', title: n => `Сделай ${n} ${plural(n, 'удачный апгрейд', 'удачных апгрейда', 'удачных апгрейдов')}`, cur: () => S.stats.upW },
+  battles: { t: [1, 5, 15, 40, 100, 250], m: [15, 60, 150, 350, 800, 1500], x: [60, 150, 300, 500, 800, 1200], icon: '⚔️', title: n => `Выиграй ${n} ${plural(n, 'баттл', 'баттла', 'баттлов')}`, cur: () => S.stats.bw, online: true },
+  spent: { t: [50, 250, 1000, 5000, 20000, 100000], m: [5, 25, 100, 400, 1500, 6000], x: [40, 100, 250, 500, 900, 1500], icon: '💸', title: n => `Потрать ${money(n)} на кейсы`, cur: () => S.stats.spent },
+};
+function plural(n, a, b, c) { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? a : m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? b : c; }
+function questDef(type, tier) {
+  const d = QUESTS[type], n = d.t.length;
+  return tier < n ? { target: d.t[tier], money: d.m[tier], xp: d.x[tier] } : { target: d.t[n - 1] * 2 ** (tier - n + 1), money: d.m[n - 1], xp: d.x[n - 1] };
+}
+const activeQuests = () => Object.keys(QUESTS).filter(k => ONLINE || !QUESTS[k].online);
+const questReady = k => QUESTS[k].cur() >= questDef(k, S.quests[k] || 0).target;
+const utcDay = off => new Date(Date.now() + off * 864e5).toISOString().slice(0, 10);
+const msToUtcMidnight = () => { const d = new Date(); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1) - d.getTime(); };
+const hms = ms => { const t = Math.max(0, Math.floor(ms / 1000)), p = n => String(n).padStart(2, '0'); return `${p(Math.floor(t / 3600))}:${p(Math.floor(t / 60) % 60)}:${p(t % 60)}`; };
+const dailyAmount = st => st >= 31 ? 200 + 25 * Math.floor((st - 31) / 30) : st >= 8 ? 70 : 50;
+const dailyReady = () => S.dailyLast !== utcDay(0);
+const nextStreak = () => S.dailyLast === utcDay(-1) || S.dailyLast === utcDay(0) ? S.dailyStreak + (dailyReady() ? 1 : 0) : 1;
+const anythingToClaim = () => dailyReady() || activeQuests().some(questReady);
+
+const lvlEl = $('#lvlBadge');
+function drawLevel() {
+  const L = levelOf(S.xp || 0);
+  if (lvlEl) {
+    lvlEl.innerHTML = `<svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="17" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="3"/><circle cx="20" cy="20" r="17" fill="none" stroke="url(#lvg)" stroke-width="3" stroke-linecap="round" stroke-dasharray="${106.8 * L.k} 200" transform="rotate(-90 20 20)"/><defs><linearGradient id="lvg"><stop offset="0" stop-color="#ffb347"/><stop offset="1" stop-color="#b26bff"/></linearGradient></defs></svg><b>${L.lvl}</b>${anythingToClaim() ? '<i class="dot"></i>' : ''}`;
+    lvlEl.title = `Уровень ${L.lvl} · ${L.cur}/${L.need} XP — квесты и ежедневный бонус`;
+  }
+  $$('[data-r="quests"]').forEach(b => b.classList.toggle('has-dot', anythingToClaim()));
+}
+setInterval(drawLevel, 5000);
+
+async function claimDaily(btn) {
+  if (btn) btn.disabled = true;
+  try {
+    const r = await API.daily();
+    setBal(r.balance); SFX.win(r.amount >= 200 ? 'rare' : 'covert');
+    notify({ title: `Ежедневный бонус · день ${r.streak} 🔥`, sub: r.streak >= 7 ? 'Стрик держится — так держать!' : `С 8-го дня подряд — по $70`, icon: '📅', color: 'rgba(255,159,10,.4)', amt: '+' + money(r.amount), amtColor: '#ffd60a', tall: true, ms: 4000 });
+  } catch (e) { notifyErr(e); }
+  drawLevel(); VIEW.refresh && VIEW.refresh();
+}
+async function claimQuest(type, btn) {
+  if (btn) btn.disabled = true;
+  try {
+    const r = await API.claimQuest(type);
+    setBal(r.balance); SFX.win('classified');
+    notify({ title: 'Квест выполнен!', sub: `+${r.xp} XP`, icon: QUESTS[type].icon, color: 'rgba(48,209,88,.35)', amt: '+' + money(r.money), amtColor: '#5ee07f', tall: true });
+  } catch (e) { notifyErr(e); }
+  drawLevel(); VIEW.refresh && VIEW.refresh();
+}
+
+function viewQuests() {
+  const draw = () => {
+    const L = levelOf(S.xp || 0), st = nextStreak(), ready = dailyReady();
+    const days = Array.from({ length: 7 }, (_, i) => {
+      const day = Math.max(1, st - (ready ? 0 : 0) - 3) + i;
+      const done = day < st || (!ready && day === st);
+      return `<div class="dday ${done ? 'done' : ''} ${day === st ? 'today' : ''}"><span>день ${day}</span><b>${money(dailyAmount(day)).replace('.00', '')}</b></div>`;
+    }).join('');
+    const pk = Array.from({ length: PK_TOTAL }, (_, i) => `<i class="${S.pumpkins.includes(i + 1) ? 'on' : ''}">🎃</i>`).join('');
+    main.innerHTML = `
+    <section class="lvl-card glass edge">
+      <div class="lvl-big"><b>${L.lvl}</b><span>уровень</span></div>
+      <div class="lvl-info">
+        <h1>Квесты и награды</h1>
+        <div class="xpbar"><i style="width:${(L.k * 100).toFixed(1)}%"></i></div>
+        <div class="ev-note">${L.cur} / ${L.need} XP до ${L.lvl + 1} уровня · всего ${S.xp || 0} XP</div>
+      </div>
+    </section>
+    <div class="q-top">
+      <section class="q-card daily glass-flat">
+        <div class="q-head"><span class="q-ico">📅</span><div><h3>Ежедневный бонус</h3><div class="ev-note">🔥 Стрик: ${S.dailyLast === utcDay(0) || S.dailyLast === utcDay(-1) ? S.dailyStreak : 0} ${plural(S.dailyStreak, 'день', 'дня', 'дней')} подряд</div></div></div>
+        <div class="days">${days}</div>
+        <div class="ev-note rules">Дни 1–7: $50 · с 8-го дня: $70 · с 31-го: $200 · каждый следующий месяц +$25. Пропустил день — стрик с начала.</div>
+        ${ready ? `<button class="btn primary big" data-act="daily">Забрать ${money(dailyAmount(st))}</button>` : `<button class="btn big" disabled>Следующий через <span id="dailyCd">${hms(msToUtcMidnight())}</span></button>`}
+      </section>
+      <section class="q-card pumpkin glass-flat">
+        <div class="q-head"><span class="q-ico">🎃</span><div><h3>Охота на тыквы</h3><div class="ev-note">${S.pumpkins.length} из ${PK_TOTAL} найдено</div></div></div>
+        <div class="pk-grid">${pk}</div>
+        <div class="ev-note rules">По всему сайту спрятано ${PK_TOTAL} маленьких тыкв — на разных страницах, в углах и за заголовками. Нажми на тыкву, чтобы забрать её. Найдёшь все — получишь <b>$1000</b> и 500 XP.</div>
+        <div class="q-reward ${S.pumpkinDone ? 'done' : ''}">${S.pumpkinDone ? '✓ Награда $1000 получена' : 'Награда: $1000 + 500 XP'}</div>
+      </section>
+    </div>
+    <div class="section-head"><h2>Задания</h2><span class="sub">награда растёт с каждым уровнем задания</span></div>
+    <div class="q-list stagger">${activeQuests().map((k, i) => {
+      const q = QUESTS[k], tier = S.quests[k] || 0, d = questDef(k, tier), cur = Math.min(q.cur(), d.target), ok = q.cur() >= d.target;
+      return `<div class="q-item glass-flat ${ok ? 'ready' : ''}" style="--i:${i}">
+        <span class="q-ico">${q.icon}</span>
+        <div class="q-body"><b>${q.title(d.target)}</b><span class="q-tier">этап ${tier + 1}</span>
+          <div class="xpbar small"><i style="width:${(cur / d.target * 100).toFixed(1)}%"></i></div>
+          <span class="ev-note">${k === 'spent' ? money(cur) + ' / ' + money(d.target) : cur + ' / ' + d.target}</span></div>
+        <div class="q-prize"><b>${money(d.money)}</b><span>+${d.xp} XP</span></div>
+        <button class="btn ${ok ? 'green' : ''} sm" data-act="quest" data-q="${k}" ${ok ? '' : 'disabled'}>${ok ? 'Забрать' : 'В процессе'}</button>
+      </div>`;
+    }).join('')}</div>`;
+  };
+  draw();
+  const t = setInterval(() => { const e = $('#dailyCd'); if (e) e.textContent = hms(msToUtcMidnight()); if (!dailyReady() || !e) return; draw(); }, 1000);
+  VIEW = {
+    destroy() { clearInterval(t); },
+    refresh: draw,
+    act(a, el) {
+      if (a === 'daily') claimDaily(el);
+      if (a === 'quest') claimQuest(el.dataset.q, el);
+    },
+  };
+}
+
+// ---- pumpkin hunt: 20 little pumpkins hidden around the site ----
+const PK_TOTAL = 20;
+const PK_SPOTS = [
+  [1, '*', 'footer', 'right:14%;top:2px'],
+  [2, '*', '.ticker .lbl', 'right:2px;bottom:0'],
+  [3, '', '.season-hero', 'left:16px;bottom:12px'],
+  [4, '', '#casesHead h2', 'right:-30px;top:2px'],
+  [5, '', '.grp-head.grp-knives', 'right:4px;top:6px'],
+  [6, '', '.grp-head.grp-official', 'right:30%;top:8px'],
+  [7, '', '.grp-head.grp-stickers h2', 'right:-28px;top:-6px'],
+  [8, 'case', '.case-top .head', 'right:110px;bottom:-6px'],
+  [9, 'case', '.case-stage', 'right:6%;bottom:6px'],
+  [10, 'case', '.contents-legend', 'right:-26px;top:2px'],
+  [11, 'inventory', '.inv-head', 'right:16px;top:6px'],
+  [12, 'inventory', '#invGrid', 'left:2px;bottom:-28px'],
+  [13, 'upgrade', '.upg', 'left:18px;bottom:12px'],
+  [14, 'upgrade', '.upg-ctrl', 'right:0;bottom:-6px'],
+  [15, 'battles', '.battle-create', 'right:16px;bottom:12px'],
+  [16, 'battles', '#doneList', 'right:0;bottom:-28px'],
+  [17, 'top', '#topList', 'left:48%;bottom:-28px'],
+  [18, 'top', '.section-head h2', 'right:-28px;top:0'],
+  [19, 'profile', '.stats', 'right:-4px;bottom:-12px'],
+  [20, 'quests', '.lvl-card', 'right:22px;bottom:12px'],
+];
+let pkRaf = 0;
+function placePumpkins() {
+  pkRaf = 0;
+  if (ONLINE && !ME) return;
+  const r = location.hash.replace(/^#\/?/, '').split('?')[0].split('/')[0];
+  for (const [id, route, sel, css] of PK_SPOTS) {
+    if (S.pumpkins.includes(id) || (route !== '*' && route !== r)) continue;
+    const el = document.querySelector(sel);
+    if (!el || el.querySelector(`:scope > .pk[data-pk="${id}"]`)) continue;
+    if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
+    el.insertAdjacentHTML('beforeend', `<button class="pk" data-pk="${id}" style="${css}" aria-label="тыква">🎃</button>`);
+  }
+}
+const schedulePk = () => { if (!pkRaf) pkRaf = requestAnimationFrame(placePumpkins); };
+new MutationObserver(schedulePk).observe(document.body, { childList: true, subtree: true });
+document.addEventListener('click', async e => {
+  const pk = e.target.closest('.pk');
+  if (!pk) return;
+  e.stopPropagation(); e.preventDefault();
+  if (pk.dataset.busy) return;
+  pk.dataset.busy = 1;
+  const id = +pk.dataset.pk;
+  try {
+    const r = await API.pumpkin(id);
+    pk.classList.add('got'); setTimeout(() => pk.remove(), 600);
+    if (r.reward) {
+      setBal(r.balance); SFX.win('rare');
+      notify({ title: '🎃 Все 20 тыкв найдены!', sub: 'Награда за охоту на тыквы + 500 XP', icon: '🎃', color: 'rgba(255,138,31,.5)', amt: '+' + money(r.reward), amtColor: '#ffd60a', tall: true, ms: 6000 });
+    } else {
+      SFX.ping();
+      notify({ title: `Тыква найдена! ${r.found}/${PK_TOTAL}`, sub: r.found >= PK_TOTAL ? 'Все найдены' : `Осталось ${PK_TOTAL - r.found} — ищи на других страницах`, icon: '🎃', color: 'rgba(255,138,31,.4)' });
+    }
+    drawLevel(); VIEW.refresh && location.hash.startsWith('#/quests') && VIEW.refresh();
+  } catch (err) { delete pk.dataset.busy; notifyErr(err); }
+}, true);
+
 /* ================= TOP ================= */
 const T = { by: 'networth' };
 async function viewTop() {
@@ -1405,14 +1624,14 @@ async function viewTop() {
   const tk = viewToken;
   main.innerHTML = `
   <div class="section-head" style="margin-top:22px"><h2>Топ игроков</h2><div class="grow"></div>
-    ${seg('by', [['networth', 'Богачи'], ['best_price', 'Лучший дроп'], ['opened', 'Открыто кейсов'], ['battles_w', 'Баттлы']], T.by)}</div>
+    ${seg('by', [['networth', 'Богачи'], ['xp', 'Уровень'], ['best_price', 'Лучший дроп'], ['opened', 'Кейсы'], ['battles_w', 'Баттлы']], T.by)}</div>
   <div id="topList">${loadingHTML}</div>`;
   const load = async () => {
     const { data, error } = await sb.from('leaderboard').select('*').order(T.by, { ascending: false }).limit(50);
     if (tk !== viewToken) return;
     if (error) { $('#topList').innerHTML = `<div class="empty-state">${esc(error.message)}</div>`; return; }
-    const val = r => T.by === 'networth' ? money(r.networth) : T.by === 'best_price' ? money(r.best_price) : T.by === 'opened' ? r.opened : `${r.battles_w} побед`;
-    const sub = r => T.by === 'best_price' && r.best_skin != null ? esc(fullName({ s: r.best_skin, f: r.best_float, st: r.best_st })) : T.by === 'networth' ? `баланс ${money(r.balance)} · инвентарь ${money(r.inv_value)}` : T.by === 'battles_w' ? `${r.battles_l} поражений` : `потрачено на апгрейды: ${r.up_w + r.up_l}`;
+    const val = r => T.by === 'xp' ? `ур. ${levelOf(r.xp || 0).lvl}` : T.by === 'networth' ? money(r.networth) : T.by === 'best_price' ? money(r.best_price) : T.by === 'opened' ? r.opened : `${r.battles_w} побед`;
+    const sub = r => T.by === 'xp' ? `${r.xp || 0} XP · стрик ${r.daily_streak || 0} дн.` : T.by === 'best_price' && r.best_skin != null ? esc(fullName({ s: r.best_skin, f: r.best_float, st: r.best_st })) : T.by === 'networth' ? `баланс ${money(r.balance)} · инвентарь ${money(r.inv_value)}` : T.by === 'battles_w' ? `${r.battles_l} поражений` : `потрачено на апгрейды: ${r.up_w + r.up_l}`;
     $('#topList').innerHTML = `<div class="list glass-flat stagger">${data.map((r, i) => {
       const bs = r.best_skin != null ? SK[r.best_skin] : null;
       return `<div class="li top-li ${r.id === ME.id ? 'me' : ''}" style="--i:${i};--rc:${bs ? colOf(bs) : 'transparent'}" data-go="#/u/${r.id}">
@@ -1625,6 +1844,7 @@ async function startOnline() {
   ME = { id: session.user.id, nick: '', guest: !!session.user.is_anonymous };
   await refreshProfile();
   await refreshInventory();
+  try { S.pumpkins = await rpc('my_pumpkins'); } catch { S.pumpkins = []; }
   shownBal = S.bal; balVal.textContent = fmt(S.bal); drawBonus();
   // feed
   const { data: feed } = await sb.from('drops').select('*').order('id', { ascending: false }).limit(24);
@@ -1654,11 +1874,11 @@ async function startOnline() {
     main.innerHTML = loadingHTML;
     try { await startOnline(); }
     catch (e) { console.error(e); main.innerHTML = `<div class="empty-state"><div class="ill">⚠️</div><h3>Не удалось подключиться к серверу</h3>${esc(errText(e))}<br><button class="btn primary" onclick="location.reload()">Обновить</button></div>`; return; }
-    route();
+    route(); drawLevel();
     notify({ title: `Привет, ${esc(ME.nick)}!`, sub: ME.guest ? 'Ты играешь как гость' : 'С возвращением', icon: ICON.gift, color: 'rgba(10,132,255,.35)' });
   } else {
     startStats();
-    route();
+    route(); drawLevel();
     if (!localStorage.getItem(KEY)) { save(); setTimeout(() => notify({ title: 'Добро пожаловать!', sub: 'На балансе $100 — открывайте кейсы', icon: ICON.gift, color: 'rgba(10,132,255,.35)' }), 900); }
   }
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => layoutPills(document));
