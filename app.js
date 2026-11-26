@@ -2023,10 +2023,12 @@ const PK_SPOTS = [
   [19, 'profile', '.stats', 'right:-4px;bottom:-12px'],
   [20, 'quests', '.lvl-card', 'right:22px;bottom:12px'],
 ];
-let pkRaf = 0;
+let pkRaf = 0, pkReady = !ONLINE;
 function placePumpkins() {
   pkRaf = 0;
-  if (ONLINE && !ME) return;
+  if (ONLINE && (!ME || !pkReady)) return;
+  // a pumpkin may have been drawn before the list arrived or found in another tab
+  for (const el of document.querySelectorAll('.pk:not(.got)')) if (S.pumpkins.includes(+el.dataset.pk)) el.remove();
   const r = location.hash.replace(/^#\/?/, '').split('?')[0].split('/')[0];
   for (const [id, route, sel, css] of PK_SPOTS) {
     if (S.pumpkins.includes(id) || (route !== '*' && route !== r)) continue;
@@ -2044,11 +2046,13 @@ document.addEventListener('click', async e => {
   e.stopPropagation(); e.preventDefault();
   if (pk.dataset.busy) return;
   pk.dataset.busy = 1;
-  const id = +pk.dataset.pk;
+  const id = +pk.dataset.pk, before = S.pumpkins.length;
   try {
     const r = await API.pumpkin(id);
     pk.classList.add('got'); setTimeout(() => pk.remove(), 600);
-    if (r.reward) {
+    if (r.found <= before && !r.reward) {
+      notify({ title: 'Эта тыква уже найдена', sub: `${r.found}/${PK_TOTAL} · ищи оставшиеся на других страницах`, icon: gi('pumpkin'), color: 'rgba(255,138,31,.25)' });
+    } else if (r.reward) {
       setBal(r.balance); SFX.win('rare');
       notify({ title: 'Все 20 тыкв найдены!', sub: 'Награда за охоту на тыквы + 500 XP', icon: gi('pumpkin'), color: 'rgba(255,138,31,.5)', amt: '+' + money(r.reward), amtColor: '#ffd60a', tall: true, ms: 6000 });
     } else {
@@ -2575,7 +2579,8 @@ async function startOnline() {
   ME = { id: session.user.id, nick: '', guest: !!session.user.is_anonymous };
   await refreshProfile();
   await refreshInventory();
-  try { S.pumpkins = await rpc('my_pumpkins'); } catch { S.pumpkins = []; }
+  // pumpkins stay hidden if the list can't be loaded: otherwise found ones would show up again
+  try { S.pumpkins = await rpc('my_pumpkins'); pkReady = true; schedulePk(); } catch { S.pumpkins = []; }
   shownBal = S.bal; balVal.textContent = fmt(S.bal); drawBonus();
   // feed
   const { data: feed } = await sb.from('drops').select('*').order('id', { ascending: false }).limit(24);
