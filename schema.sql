@@ -645,6 +645,17 @@ begin
                        from rl_inv r where r.owner = uid), '[]'::jsonb));
 end $$;
 
+-- someone else's "Реальная жизнь" (read-only); a player who never opened the tab still owns the starter things
+create or replace function rl_public(p_uid uuid) returns jsonb language plpgsql stable security definer set search_path = public as $$
+declare p profiles;
+begin
+  select * into p from profiles where id = p_uid;
+  if not found then raise exception 'NO_USER'; end if;
+  return jsonb_build_object('balance', p.rl_balance, 'items',
+    case when p.rl_init then coalesce((select jsonb_agg(jsonb_build_object('item', r.item, 'paid', r.paid, 'rent', r.rent_from is not null) order by r.id) from rl_inv r where r.owner = p_uid), '[]'::jsonb)
+         else coalesce((select jsonb_agg(jsonb_build_object('item', c.id, 'paid', c.price, 'rent', false) order by c.id) from rl_catalog c where c.starter), '[]'::jsonb) end);
+end $$;
+
 create or replace function rl_buy(p_item text, p_n int) returns jsonb language plpgsql security definer set search_path = public as $$
 declare uid uuid := auth.uid(); c rl_catalog; cost numeric; lim int;
 begin
@@ -800,6 +811,8 @@ do $$ declare f text; begin
   end loop;
 end $$;
 grant execute on function nick_free(text) to anon, authenticated;
+revoke all on function rl_public(uuid) from public;
+grant execute on function rl_public(uuid) to anon, authenticated;
 revoke all on function site_stats() from public;
 grant execute on function site_stats() to anon, authenticated;
 -- read-only access for the site (writes happen only inside the functions above)
