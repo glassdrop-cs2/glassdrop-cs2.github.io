@@ -359,6 +359,7 @@ function bumpBest(it) { if (!S.stats.best || it.p > S.stats.best.p) S.stats.best
 
 function applyProfile(p) {
   S.bal = +p.balance;
+  if (p.time_sec != null && !S.timeSec) { S.timeSec = p.time_sec; S.timeAt = Date.now(); }
   S.lastBonus = p.last_bonus ? Date.parse(p.last_bonus) : 0;
   S.bonusN = p.bonus_n || 0;
   S.bpClaimed = p.bp_claimed || []; S.bpPremium = !!p.bp_premium; S.steamQ = p.steam_q || []; S.rlBal = +(p.rl_balance || 0); S.luckUntil = p.luck_until ? Date.parse(p.luck_until) : 0;
@@ -616,9 +617,13 @@ function setBal(v) {
 balVal.textContent = fmt(S.bal);
 
 const bonusBtn = $('#bonusBtn');
+let bonusKey = '';
 function drawBonus() {
   const left = Math.max(0, BONUS_CD - (Date.now() - S.lastBonus));
   const k = left / BONUS_CD;
+  const key = Math.ceil(left / 1000) + ':' + (S.bonusN || 0);
+  if (key === bonusKey) return;
+  bonusKey = key;
   bonusBtn.innerHTML = `${ICON.plus}${left ? `<svg class="cd" viewBox="0 0 40 40"><circle cx="20" cy="20" r="18.5" fill="none" stroke="rgba(255,255,255,.85)" stroke-width="2.5" stroke-dasharray="${116.2 * k} 200" transform="rotate(-90 20 20)" stroke-linecap="round"/></svg>` : ''}`;
   bonusBtn.style.filter = left ? 'saturate(.35) brightness(.8)' : '';
   const nx = (S.bonusN || 0) + 1, amt = bonusAmt(nx);
@@ -2347,14 +2352,14 @@ async function viewTop() {
   const tk = viewToken;
   main.innerHTML = `
   <div class="section-head" style="margin-top:22px"><h2>Топ игроков</h2><div class="grow"></div>
-    ${seg('by', [['networth', 'Богачи'], ['xp', 'Уровень'], ['best_price', 'Лучший дроп'], ['opened', 'Кейсы'], ['battles_w', 'Баттлы']], T.by)}</div>
+    ${seg('by', [['networth', 'Богачи'], ['xp', 'Уровень'], ['best_price', 'Лучший дроп'], ['opened', 'Кейсы'], ['battles_w', 'Баттлы'], ['time_sec', 'Время']], T.by, 'top-by')}</div>
   <div id="topList">${loadingHTML}</div>`;
   const load = async () => {
     const { data, error } = await sb.from('leaderboard').select('*').order(T.by, { ascending: false }).limit(50);
     if (tk !== viewToken) return;
     if (error) { $('#topList').innerHTML = `<div class="empty-state">${esc(error.message)}</div>`; return; }
-    const val = r => T.by === 'xp' ? `ур. ${levelOf(r.xp || 0).lvl}` : T.by === 'networth' ? money(r.networth) : T.by === 'best_price' ? money(r.best_price) : T.by === 'opened' ? r.opened : `${r.battles_w} побед`;
-    const sub = r => T.by === 'xp' ? `${r.xp || 0} XP · стрик ${r.daily_streak || 0} дн.` : T.by === 'best_price' && r.best_skin != null ? esc(fullName({ s: r.best_skin, f: r.best_float, st: r.best_st })) : T.by === 'networth' ? `баланс ${money(r.balance)} · инвентарь ${money(r.inv_value)}` : T.by === 'battles_w' ? `${r.battles_l} поражений` : `потрачено на апгрейды: ${r.up_w + r.up_l}`;
+    const val = r => T.by === 'time_sec' ? fmtTime(r.id === ME.id ? Math.max(r.time_sec || 0, myTime()) : r.time_sec) : T.by === 'xp' ? `ур. ${levelOf(r.xp || 0).lvl}` : T.by === 'networth' ? money(r.networth) : T.by === 'best_price' ? money(r.best_price) : T.by === 'opened' ? r.opened : `${r.battles_w} побед`;
+    const sub = r => T.by === 'time_sec' ? `ур. ${levelOf(r.xp || 0).lvl} · ${r.opened} кейсов` : T.by === 'xp' ? `${r.xp || 0} XP · стрик ${r.daily_streak || 0} дн.` : T.by === 'best_price' && r.best_skin != null ? esc(fullName({ s: r.best_skin, f: r.best_float, st: r.best_st })) : T.by === 'networth' ? `баланс ${money(r.balance)} · инвентарь ${money(r.inv_value)}` : T.by === 'battles_w' ? `${r.battles_l} поражений` : `потрачено на апгрейды: ${r.up_w + r.up_l}`;
     $('#topList').innerHTML = `<div class="list glass-flat stagger">${data.map((r, i) => {
       const bs = r.best_skin != null ? SK[r.best_skin] : null;
       return `<div class="li top-li ${r.id === ME.id ? 'me' : ''}" style="--i:${i};--rc:${bs ? colOf(bs) : 'transparent'}" data-go="#/u/${r.id}">
@@ -2420,6 +2425,7 @@ async function viewUser(id) {
     <div class="stat"><span>Состояние</span><b>${money(p.networth)}</b></div>
     <div class="stat"><span>Кейсов</span><b>${p.opened}</b></div>
     <div class="stat"><span>Баттлы</span><b>${p.battles_w}/${p.battles_l}</b></div>
+    <div class="stat"><span>На сайте</span><b>${fmtTime(p.time_sec)}</b></div>
     <div class="grow"></div>
     <button class="btn" data-go="#/top">${ICON.trophy.replace('<svg', '<svg width="16" height="16"')} Топ</button>
   </section>
@@ -2476,7 +2482,8 @@ async function viewProfile() {
     <div class="stat-tile glass-flat" style="--i:3"><span>Потрачено на кейсы</span><b>${money(st.spent)}</b></div>
     <div class="stat-tile glass-flat" style="--i:4"><span>Продано предметов на</span><b>${money(st.sold)}</b></div>
     <div class="stat-tile glass-flat" style="--i:5"><span>Апгрейды (успех / провал)</span><b><span style="color:var(--green)">${st.upW}</span> / <span style="color:var(--red)">${st.upL}</span></b></div>
-    ${ONLINE ? `<div class="stat-tile glass-flat" style="--i:6"><span>Баттлы (победы / поражения)</span><b><span style="color:var(--green)">${st.bw}</span> / <span style="color:var(--red)">${st.bl}</span></b></div>` : ''}
+    ${ONLINE ? `<div class="stat-tile glass-flat" style="--i:6"><span>Баттлы (победы / поражения)</span><b><span style="color:var(--green)">${st.bw}</span> / <span style="color:var(--red)">${st.bl}</span></b></div>
+    <div class="stat-tile glass-flat" style="--i:7"><span>Время на сайте</span><b data-mytime>${fmtTime(myTime())}</b></div>` : ''}
   </div>
   <div class="section-head"><h2>Лучший дроп</h2></div>
   ${b ? `<div style="max-width:340px">${itemCard(b)}</div>` : '<div class="ev-note" style="margin-left:4px">Пока пусто</div>'}
@@ -2603,6 +2610,15 @@ async function claimSteamQuest(el, redraw) {
 /* ================= «Реальная жизнь» ================= */
 const RLC = Object.fromEntries((window.RL || []).map(r => [r.id, r]));
 const RL_CATS = [['home', 'Недвижимость'], ['car', 'Машины'], ['tech', 'Гаджеты'], ['food', 'Супермаркет'], ['med', 'Аптека'], ['stuff', 'Всякое']];
+/* ---- time on site: the server adds the time between pings (once a minute while the tab is visible) ---- */
+const fmtTime = sec => { const m = Math.floor((sec || 0) / 60), h = Math.floor(m / 60), d = Math.floor(h / 24);
+  return d ? `${d} д ${h % 24} ч ${m % 60} мин` : h ? `${h} ч ${m % 60} мин` : `${m} мин`; };
+const myTime = () => (S.timeSec || 0) + (document.hidden || !S.timeAt ? 0 : Math.min(90, (Date.now() - S.timeAt) / 1000));
+function drawTime() { $$('[data-mytime]').forEach(e => { e.textContent = fmtTime(myTime()); }); }
+async function timePing() {
+  if (!ONLINE || !ME || document.hidden) return;
+  try { S.timeSec = await rpc('time_ping'); S.timeAt = Date.now(); drawTime(); } catch {}
+}
 const LIFE = { tab: 'mine', cat: 'home', q: '', sort: 'asc', limit: 60 };
 /* ---- needs: satiety -2/h, water -3/h; health drops when hungry, thirsty or homeless, heals when all is fine ---- */
 let ndWarned = null;
@@ -2960,6 +2976,8 @@ async function startOnline() {
   // pumpkins stay hidden if the list can't be loaded: otherwise found ones would show up again
   try { S.pumpkins = await rpc('my_pumpkins'); pkReady = true; schedulePk(); } catch { S.pumpkins = []; }
   ndPoll(); setInterval(ndPoll, 4 * 60e3); setInterval(drawVitals, 60e3);
+  timePing(); setInterval(timePing, 60e3); setInterval(drawTime, 15e3);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) timePing(); });
   $('#vitals').onclick = vitalsSheet;
   shownBal = S.bal; balVal.textContent = fmt(S.bal); drawBonus();
   // feed

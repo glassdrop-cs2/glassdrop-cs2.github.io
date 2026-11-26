@@ -1298,3 +1298,24 @@ body { overflow-x: clip; }
   .topbar { gap: 8px; padding-left: 10px; }
   .top-right { gap: 4px; }
 }
+
+/* ===== v19: performance on every device =====
+   The background behind the panels is a soft moving gradient: blurring it again under every panel
+   (50+ live blur layers, re-rendered on each frame of the background) looked the same as a plain
+   translucent panel but cost a lot. Only the floating bars and sheets keep the real glass blur. */
+.glass:not(.topbar):not(.dock):not(.actionbar), .badge, .logo-mark::before { -webkit-backdrop-filter: none; backdrop-filter: none; }
+.glass:not(.topbar):not(.dock):not(.actionbar) { background: linear-gradient(180deg, rgba(255,255,255,.1), rgba(255,255,255,.04)), rgba(14,15,26,.35); }
+/* case cards: spinning rays and the shine run only under the mouse (still animated on the big case pages) */
+.case-card .crate .rays, .case-card .crate .front::after { animation-play-state: paused; }
+.case-card:hover .crate .rays, .case-card:hover .crate .front::after { animation-play-state: running; }
+/* long lists are rendered only near the screen */
+.rl-grid > .rl-card, .list > .li { content-visibility: auto; contain-intrinsic-size: auto 90px; }
+.rl-grid > .rl-card { contain-intrinsic-size: auto 260px; }
+/* the moving background does not need to blend with the page every frame */
+.bg { contain: strict; }
+.bg .blob { mix-blend-mode: normal; }
+@media (max-width: 400px) {
+  .site-stats .on em { display: none; }
+  .site-stats > span { padding: 0 7px; }
+  .balance { padding-left: 10px; }
+}
