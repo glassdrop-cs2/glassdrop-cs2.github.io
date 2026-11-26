@@ -6,6 +6,7 @@ create table if not exists skins (
   id int primary key, tier text not null, r text not null, cat text not null,
   mn float8, mx float8, st boolean not null, star boolean not null, base numeric not null
 );
+alter table skins add column if not exists px numeric[];  -- real market prices: FN,MW,FT,WW,BS, then StatTrak FN..BS
 create table if not exists cases (id text primary key, name text not null, price numeric not null, odds jsonb not null);
 create table if not exists case_items (case_id text references cases on delete cascade, tier text not null, skin_id int references skins, primary key (case_id, skin_id));
 
@@ -22,6 +23,11 @@ create table if not exists profiles (
   created_at timestamptz not null default now()
 );
 create unique index if not exists profiles_nick_uq on profiles (lower(nickname));
+alter table profiles add column if not exists bonus_n int not null default 0;
+
+-- unique visitors per day (for the traffic counter)
+create table if not exists visits (day date not null default current_date, uid uuid not null, hits int not null default 1, primary key (day, uid));
+alter table visits enable row level security;
 
 create table if not exists inventory (
   id bigserial primary key,
@@ -84,9 +90,13 @@ create or replace function wear_code(f float8) returns text language sql immutab
   select case when f is null then null when f < .07 then 'FN' when f < .15 then 'MW' when f < .38 then 'FT' when f < .45 then 'WW' else 'BS' end $$;
 
 create or replace function price_code(p_skin int, p_code text, p_st boolean) returns numeric language plpgsql stable as $$
-declare s skins; p numeric;
+declare s skins; p numeric; k int;
 begin
   select * into s from skins where id = p_skin;
+  if s.px is not null then
+    k := coalesce(array_position(array['FN','MW','FT','WW','BS'], p_code), 1) + case when p_st then 5 else 0 end;
+    if s.px[k] is not null then return greatest(.03, s.px[k]); end if;
+  end if;
   p := s.base;
   if p_code is not null then
     p := p * case when s.star then (case p_code when 'FN' then 1.7 when 'MW' then 1.2 when 'FT' then 1 when 'WW' then .9 else .82 end)
@@ -170,15 +180,16 @@ create or replace function nick_free(p_nick text) returns boolean language sql s
   select not exists (select 1 from profiles where lower(nickname) = lower(btrim(p_nick))) $$;
 
 create or replace function claim_bonus() returns jsonb language plpgsql security definer set search_path = public as $$
-declare uid uuid := auth.uid(); lb timestamptz; bal numeric;
+declare uid uuid := auth.uid(); lb timestamptz; bal numeric; n int; amt numeric;
 begin
-  select last_bonus into lb from profiles where id = uid for update;
+  select last_bonus, bonus_n + 1 into lb, n from profiles where id = uid for update;
   if not found then raise exception 'NO_PROFILE'; end if;
   if lb is not null and lb > now() - interval '2 minutes' then
     raise exception 'COOLDOWN:%', ceil(extract(epoch from (lb + interval '2 minutes' - now())));
   end if;
-  update profiles set balance = balance + 15, last_bonus = now() where id = uid returning balance into bal;
-  return jsonb_build_object('balance', bal, 'last_bonus', now());
+  amt := case when n % 100 = 0 then 1000 when n % 10 = 0 then 100 else 15 end;  -- every 10th: $100, every 100th: $1000
+  update profiles set balance = balance + amt, last_bonus = now(), bonus_n = n where id = uid returning balance into bal;
+  return jsonb_build_object('balance', bal, 'last_bonus', now(), 'amount', amt, 'n', n);
 end $$;
 
 create or replace function open_case(p_case text, p_n int) returns jsonb language plpgsql security definer set search_path = public as $$
@@ -347,6 +358,20 @@ begin
   update battles set status = 'cancelled', finished_at = now() where id = p_id;
 end $$;
 
+-- ============ traffic ============
+create or replace function site_stats() returns jsonb language sql stable security definer set search_path = public as $$
+  select jsonb_build_object(
+    'day', (select count(*) from visits where day = current_date),
+    'month', (select count(distinct uid) from visits where day >= date_trunc('month', current_date)::date),
+    'players', (select count(*) from profiles)) $$;
+create or replace function track_visit() returns jsonb language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is not null then
+    insert into visits (day, uid) values (current_date, auth.uid()) on conflict (day, uid) do update set hits = visits.hits + 1;
+  end if;
+  return site_stats();
+end $$;
+
 -- ============ permissions ============
 do $$ declare f text; begin
   -- internal helpers: not callable from the API
@@ -356,12 +381,14 @@ do $$ declare f text; begin
   -- player API: signed-in users only (guests are signed in anonymously)
   foreach f in array array['ensure_profile(text)','set_nickname(text)','claim_bonus()','open_case(text,int)','sell_items(bigint[])',
                            'upgrade_items(bigint[],int,text)','gift_item(bigint,text)','create_battle(text,int,int)','join_battle(bigint)',
-                           'add_bot(bigint)','cancel_battle(bigint)'] loop
+                           'add_bot(bigint)','cancel_battle(bigint)','track_visit()'] loop
     execute format('revoke all on function %s from public, anon', f);
     execute format('grant execute on function %s to authenticated', f);
   end loop;
 end $$;
 grant execute on function nick_free(text) to anon, authenticated;
+revoke all on function site_stats() from public;
+grant execute on function site_stats() to anon, authenticated;
 -- read-only access for the site (writes happen only inside the functions above)
 grant usage on schema public to anon, authenticated;
 grant select on skins, cases, case_items, profiles, inventory, drops, battles, battle_players, battle_drops, leaderboard to anon, authenticated;
