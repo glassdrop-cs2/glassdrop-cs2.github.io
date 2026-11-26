@@ -912,6 +912,7 @@ const GROUPS = [
   ['bf', gi('bf') + ' Black Friday', `скидки на ${ALL_CASES.filter(c => c.old).length} кейсов — до конца распродажи`],
   ['knives', gi('knife') + ' Ножи и перчатки', '100% редкий предмет из каждого кейса'],
   ['custom', gi('sparkle') + ' Авторские', 'выдуманные коллекции из реальных скинов'],
+  ['maps', gi('globe') + ' Коллекции карт', 'Cobblestone с Dragon Lore, Dust 2, Mirage и другие — шансы как у сувенирных наборов'],
   ['official', 'Кейсы CS2', 'официальные, с реальным содержимым'],
 ];
 const grpOf = c => c.kind === 'official' ? 'official' : c.grp || 'custom';
@@ -1030,7 +1031,7 @@ function viewCase(id) {
   <section class="case-top glass edge">
     <div class="head">
       <button class="icon-btn" data-go="#/">${ICON.back}</button>
-      <div><h1>${esc(c.name)}</h1><div class="ev-note">${c.kind === 'custom' ? 'Авторский кейс · ' + esc(c.desc) : 'Официальный кейс CS2 · ' + (c.d || '')}</div></div>
+      <div><h1>${esc(c.name)}</h1><div class="ev-note">${c.grp === 'maps' ? 'Коллекция карты · ' + esc(c.desc) : c.kind === 'custom' ? 'Авторский кейс · ' + esc(c.desc) : 'Официальный кейс CS2 · ' + (c.d || '')}</div></div>
       <div class="grow"></div>
       <span class="pc-col"><span class="price-chip ${c.old ? 'sale' : ''}" style="margin:0">${priceHTML(c)}</span>${uah(c.price, 'under')}</span>
     </div>
