@@ -39,6 +39,8 @@ alter table pumpkins enable row level security;
 alter table profiles add column if not exists bp_claimed int[] not null default '{}';
 alter table profiles add column if not exists luck_until timestamptz;
 alter table profiles add column if not exists bp_premium boolean not null default false;
+alter table profiles add column if not exists bp_s1_lvl int;   -- season 1 level; stops changing when the season ends
+alter table profiles add column if not exists frame text;      -- profile frame the player wears
 alter table cases add column if not exists sale numeric not null default 0;
 -- Steam inventory quests (slots come from seed.sql)
 create table if not exists steam_quests (code text primary key, min numeric not null default 0, reward numeric not null, xp int not null, slots jsonb not null);
@@ -139,6 +141,7 @@ create or replace view leaderboard with (security_invoker = on) as
 select p.id, p.nickname, p.balance, coalesce(i.v, 0)::numeric(14,2) as inv_value, (p.balance + coalesce(i.v, 0) + coalesce(sv.v, 0))::numeric(14,2) as networth,
        p.best_price, p.best_skin, p.best_float, p.best_st, p.opened, p.up_w, p.up_l, p.battles_w, p.battles_l
 , p.xp, p.daily_streak, coalesce(sv.v, 0)::numeric(14,2) as steam_value, p.time_sec
+, p.frame, p.bp_premium, p.bp_s1_lvl, p.created_at
 from profiles p left join (select owner, sum(price) v from inventory group by owner) i on i.owner = p.id
 left join (select owner, sum(price) v from steam_items group by owner) sv on sv.owner = p.id;
 
@@ -547,7 +550,7 @@ begin
   return l;
 end $$;
 
--- levels 2..50 come from bp_rewards (seed); after 50: every 10th a Budget Blades opening, every 5th a 30-min luck potion, else $100
+-- levels 2..100 come from bp_rewards (seed); after 100 every level gives money: $50..$200, every 10th $250
 create or replace function bp_reward(p_level int) returns bp_rewards language plpgsql stable as $$
 declare r bp_rewards;
 begin
@@ -555,9 +558,8 @@ begin
   if found then return r; end if;
   r.level := p_level;
   r.free := p_level % 7 = 0;
-  if p_level % 10 = 0 then r.kind := 'case'; r.case_id := 'c-knife-budget'; r.n := 1;
-  elsif p_level % 5 = 0 then r.kind := 'luck'; r.mins := 30;
-  else r.kind := 'money'; r.amount := 100; end if;
+  r.kind := 'money';
+  r.amount := case when p_level % 10 = 0 then 250 when p_level % 5 = 0 then 150 else 50 * (p_level % 5) end;
   return r;
 end $$;
 
@@ -582,6 +584,34 @@ begin
    where id = uid and balance >= 200 returning balance into bal;
   if not found then raise exception 'NO_FUNDS'; end if;
   return jsonb_build_object('balance', bal);
+end $$;
+
+-- season level follows XP until the season ends, then stays as it was (it is shown on the season medal)
+create or replace function bp_track_lvl() returns trigger language plpgsql as $$
+begin
+  if now() < bp_end() then new.bp_s1_lvl := level_of(new.xp); end if;
+  return new;
+end $$;
+drop trigger if exists bp_track_lvl on profiles;
+create trigger bp_track_lvl before insert or update of xp on profiles for each row execute function bp_track_lvl();
+update profiles set bp_s1_lvl = level_of(xp) where now() < bp_end() and bp_s1_lvl is distinct from level_of(xp);
+
+-- season 1 profile frames: the first is free, the rest need the premium pass; only obtainable while the season runs
+create or replace function frame_req(p_frame text) returns int language sql immutable as $f$
+  select case p_frame when 's1-ember' then 10 when 's1-neon' then 25 when 's1-obsidian' then 50 when 's1-crown' then 100 end $f$;
+create or replace function set_frame(p_frame text) returns text language plpgsql security definer set search_path = public as $$
+declare uid uuid := auth.uid(); p profiles; need int;
+begin
+  select * into p from profiles where id = uid;
+  if not found then raise exception 'NO_PROFILE'; end if;
+  if p_frame is not null then
+    need := frame_req(p_frame);
+    if need is null then raise exception 'BAD_FRAME'; end if;
+    if coalesce(p.bp_s1_lvl, 0) < need then raise exception 'LEVEL_LOCKED'; end if;
+    if p_frame <> 's1-ember' and not p.bp_premium then raise exception 'PREMIUM_REQUIRED'; end if;
+  end if;
+  update profiles set frame = p_frame where id = uid;
+  return p_frame;
 end $$;
 
 create or replace function claim_level(p_level int) returns jsonb language plpgsql security definer set search_path = public as $$
@@ -917,7 +947,7 @@ end $$;
 -- ============ permissions ============
 do $$ declare f text; begin
   -- internal helpers: not callable from the API
-  foreach f in array array['roll_float(int)','roll_drop(text)','grant_item(uuid,jsonb,text)','resolve_battle(bigint)','do_open(uuid,text,text,int)','roll_code_float(int,text)','bp_reward(int)','rl_accrued(text,timestamptz)','rl_tick(uuid)','rl_home(uuid)','rl_bill_day(uuid)','rl_needs_json(uuid)'] loop
+  foreach f in array array['roll_float(int)','roll_drop(text)','grant_item(uuid,jsonb,text)','resolve_battle(bigint)','do_open(uuid,text,text,int)','roll_code_float(int,text)','bp_reward(int)','rl_accrued(text,timestamptz)','rl_tick(uuid)','rl_home(uuid)','rl_bill_day(uuid)','rl_needs_json(uuid)','bp_track_lvl()'] loop
     execute format('revoke all on function %s from public, anon, authenticated', f);
   end loop;
   -- player API: signed-in users only (guests are signed in anonymously)
@@ -927,7 +957,7 @@ do $$ declare f text; begin
                            'find_pumpkin(int)','my_pumpkins()','claim_level(int)','use_luck(bigint)','open_free(text,int)',
                            'withdraw_items(bigint[])','play_climb(bigint[],numeric,numeric)','buy_pass()','steam_deposit(bigint[])',
                            'claim_steam_quest(text)','rl_state()','rl_buy(text,int)','rl_sell(bigint[])','rl_rent(bigint,boolean)',
-                           'rl_collect()','rl_eat(bigint)','rl_deposit(numeric)','steam_sell_rl(bigint[])','rl_needs()','time_ping()','chat_send(uuid,text)','chat_dms()'] loop
+                           'rl_collect()','rl_eat(bigint)','rl_deposit(numeric)','steam_sell_rl(bigint[])','rl_needs()','time_ping()','chat_send(uuid,text)','chat_dms()','set_frame(text)'] loop
     execute format('revoke all on function %s from public, anon', f);
     execute format('grant execute on function %s to authenticated', f);
   end loop;
