@@ -843,13 +843,29 @@ function setTint(col) { tintEl.style.background = col ? `radial-gradient(70% 55%
 
 /* ================= live ticker ================= */
 const SRC_ICO = { upgrade: gi('upgrade'), battle: gi('swords'), gift: gi('gift'), pass: gi('ticket') };
+const SRC_NAME = { upgrade: 'Апгрейд', battle: 'Баттл', gift: 'Подарок', pass: 'Боевой пропуск', climb: 'Подъём' };
+const tkTime = t => t ? new Date(t).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : '';
 function tkHTML(h, isNew) {
-  const s = SK[h.s];
-  const who = h.nick ? `${h.nick}: ` : '';
-  const what = h.src === 'battle' ? `выиграл баттл на ${money(h.p)}` : h.src === 'gift' ? `подарил ${h.extra} ${fullName(h)}` : `${fullName(h)} — ${money(h.p)}`;
+  const s = SK[h.s], c = h.c && caseById(h.c);
   const go = h.uid ? `#/u/${h.uid}` : h.c ? `#/case/${h.c}` : '';
-  return `<div class="tk ${isNew ? 'new' : ''}" style="--rc:${colOf(s)}" title="${esc(who + what)}" ${go ? `data-go="${go}"` : ''}>${SRC_ICO[h.src] ? `<i class="src">${SRC_ICO[h.src]}</i>` : ''}<img src="${img(s.img, '128fx128f')}" alt=""><span>${esc(h.nick || s.pat)}</span></div>`;
+  const from = h.src === 'upgrade' ? `Апгрейд${h.extra ? ` · ${esc(h.extra)}%` : ''}` : h.src === 'gift' ? `Подарок → ${esc(h.extra || '')}`
+    : h.src === 'pass' ? `Боевой пропуск${h.extra ? ` · ур. ${esc(h.extra)}` : ''}` : c ? esc(c.name) : SRC_NAME[h.src] || 'Кейс';
+  return `<div class="tk ${isNew ? 'new' : ''}" style="--rc:${colOf(s)}" ${go ? `data-go="${go}"` : ''} data-c="${(h.src === 'case' || h.src === 'battle' || !h.src) && c ? c.id : ''}" data-src="${h.src || 'case'}">
+    <div class="tk-main">${SRC_ICO[h.src] ? `<i class="src">${SRC_ICO[h.src]}</i>` : ''}
+      <div class="tk-art"><img class="tk-skin" src="${img(s.img, '128fx128f')}" alt=""><div class="tk-case"></div></div>
+      <span>${esc(h.nick || s.pat)}</span></div>
+    <div class="tk-info"><b>${from}</b><em>${tkTime(h.t)}</em><i>${h.src === 'battle' ? `банк ${money(h.p)}` : `${esc(fullName(h))}`}</i><strong>${money(h.p)}</strong></div>
+  </div>`;
 }
+// the case picture is drawn only when the tile is hovered (24 drawn crates at once would be heavy)
+document.addEventListener('mouseover', e => {
+  const tk = e.target.closest && e.target.closest('.tk');
+  if (!tk || tk.dataset.art) return;
+  tk.dataset.art = 1;
+  const box = $('.tk-case', tk), c = tk.dataset.c && caseById(tk.dataset.c);
+  if (c) box.innerHTML = caseArt(c, '256fx192f');
+  else box.innerHTML = `<span class="tk-src">${SRC_ICO[tk.dataset.src] || gi('crate')}</span>`;
+});
 function tickerHTML() {
   const list = ONLINE ? FEED : S.hist;
   return `<section class="ticker glass-flat" id="ticker"><div class="lbl"><b>Live</b>${ONLINE ? 'все игроки' : 'ваши дропы'}</div>${list.length ? list.slice(0, 24).map(h => tkHTML(h)).join('') : '<div class="empty">Тут появятся последние дропы — откройте первый кейс</div>'}</section>`;
@@ -889,6 +905,21 @@ function webSVG() {
   }
   return `<svg class="web" viewBox="0 0 150 150"><path d="${d}" fill="none" stroke="rgba(255,255,255,.22)" stroke-width=".8"/><line x1="96" y1="0" x2="96" y2="62" stroke="rgba(255,255,255,.3)" stroke-width=".6"/><g transform="translate(96 66)"><ellipse rx="5" ry="6" fill="#120a18"/><circle cy="-6" r="3.2" fill="#120a18"/><path d="M-4-2l-7-4M-4 1l-8 0M-4 4l-7 5M4-2l7-4M4 1l8 0M4 4l7 5" stroke="#120a18" stroke-width="1.2"/></g></svg>`;
 }
+const HOW_KEY = 'gd_how_v14';
+function howHTML() {
+  if (!ONLINE || localStorage.getItem(HOW_KEY)) return '';
+  const steps = [
+    ['#/', gi('crate'), 'Открывай кейсы', 'скины, ножи, перчатки и теперь агенты', ''],
+    ['#/steam', gi('steam'), 'Выводи в Steam', 'собирай коллекцию — за неё задания до $3000', 'new'],
+    ['#/steam', gi('coins'), 'Продавай за реальные', 'скин из Steam → «реальные деньги»', 'new'],
+    ['#/life', ICON.home, 'Живи', 'квартиры в 25 городах, машины, аренда, деп обратно', 'new'],
+  ];
+  return `<section class="how glass-flat" id="how">
+    <div class="how-steps">${steps.map(([go, ico, t, d, n], i) => `${i ? '<i class="how-arr">→</i>' : ''}<a class="how-step" ${go === '#/' ? 'data-act="toCases"' : `href="${go}"`}>
+      <span class="how-ico">${ico}</span><span class="how-t"><b>${t}${n ? '<em>new</em>' : ''}</b><small>${d}</small></span></a>`).join('')}</div>
+    <button class="how-x" data-act="howHide" aria-label="Скрыть">×</button>
+  </section>`;
+}
 function viewHome() {
   const feat = caseById('c-halloween') || OFFICIAL[0];
   main.innerHTML = `
@@ -911,6 +942,7 @@ function viewHome() {
       <div class="hero-tag glass">Хит сезона · ${money(feat.price)}</div>
     </div>
   </section>
+  ${howHTML()}
   <div class="section-head" id="casesHead">
     <h2>Кейсы</h2><span class="sub" id="caseCount"></span><div class="grow"></div>
     <div class="controls">
@@ -934,6 +966,8 @@ function viewHome() {
         H.tab = el.dataset.g; segSelect($('[data-seg="tab"]', main), H.tab); drawCaseGrid();
         $('#casesHead').scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
+      if (a === 'toCases') $('#casesHead').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (a === 'howHide') { localStorage.setItem(HOW_KEY, '1'); const h = $('#how'); h.classList.add('out'); setTimeout(() => h.remove(), 350); }
     },
   };
 }
@@ -2346,6 +2380,37 @@ async function viewUser(id) {
   if (tk !== viewToken) return;
   if (!p) { main.innerHTML = `<div class="empty-state"><h3>Игрок не найден</h3></div>`; return; }
   const inv = invRows.map(fromInv);
+  const U2 = { tab: 'inv', steam: null, rl: null };
+  const tabBody = () => {
+    if (U2.tab === 'inv') return inv.length ? `<div class="grid-items stagger">${inv.slice(0, 200).map((it, i) => itemCard(it, { i: Math.min(i, 30), attr: `data-act="view" data-u="${it.u}"` })).join('')}</div>` : '<div class="ev-note" style="margin-left:4px">Пусто</div>';
+    if (U2.tab === 'steam') {
+      if (!U2.steam) return loadingHTML;
+      const sv = r2(U2.steam.reduce((a, i) => a + i.p, 0));
+      return `<div class="ev-note" style="margin:0 0 10px 4px">${U2.steam.length} предм. в Steam · ${money(sv)}</div>` + (U2.steam.length
+        ? `<div class="grid-items stagger">${U2.steam.map((it, i) => itemCard(it, { i: Math.min(i, 30), attr: `data-act="viewSt" data-u="${it.u}"`, wearText: new Date(it.t).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }) })).join('')}</div>`
+        : '<div class="ev-note" style="margin-left:4px">В Steam пусто</div>');
+    }
+    if (!U2.rl) return loadingHTML;
+    const items = U2.rl.items.filter(x => RLC[x.item]);
+    const worth = r2(items.reduce((a, x) => a + x.paid * RLC[x.item].sell, 0));
+    const by = {}; items.forEach(x => { const k = x.item + (x.rent ? '+r' : ''); (by[k] = by[k] || { ...x, n: 0 }).n++; });
+    const order = ['home', 'car', 'stuff', 'tech', 'mine', 'food', 'organ'];
+    const list = Object.values(by).sort((a, b) => (order.indexOf(RLC[a.item].cat) - order.indexOf(RLC[b.item].cat)) || RLC[b.item].p - RLC[a.item].p);
+    return `<div class="ev-note" style="margin:0 0 10px 4px">Реальные деньги: <b>${rlMoney(+U2.rl.balance)}</b> · имущество: <b>${rlMoney(worth)}</b></div>
+      <div class="rl-grid">${list.map((x, i) => { const c = RLC[x.item]; return `<div class="rl-card glass-flat" style="--i:${Math.min(i, 24)}">
+        <div class="rl-img">${c.img ? `<img loading="lazy" decoding="async" src="${c.img}" alt="">` : ICON.home}</div>
+        <div class="rl-body"><b>${esc(c.n)}${x.n > 1 ? ` ×${x.n}` : ''}</b><span class="rl-note">${esc(c.note || '')}</span>
+          <span class="rl-price">${rlMoney(c.p)}</span>${x.rent ? `<span class="rl-rent on">Сдаётся в аренду</span>` : ''}</div></div>`; }).join('') || '<div class="ev-note">Ничего нет</div>'}</div>`;
+  };
+  const drawTab = () => { const b = $('#uBody'); if (b) b.innerHTML = tabBody(); };
+  const loadTab = async () => {
+    if (U2.tab === 'steam' && !U2.steam) {
+      const rows = await fetchAll(() => sb.from('steam_items').select('*').eq('owner', id).order('price', { ascending: false }));
+      U2.steam = rows.map(r => ({ u: r.id, s: r.skin_id, f: r.float, st: r.st, p: +r.price, t: Date.parse(r.withdrawn_at) }));
+    }
+    if (U2.tab === 'life' && !U2.rl) { try { U2.rl = await rpc('rl_public', { p_uid: id }); } catch (e) { U2.rl = { balance: 0, items: [] }; notifyErr(e); } }
+    if (tk === viewToken) drawTab();
+  };
   main.innerHTML = `
   <section class="inv-head glass edge">
     <div class="avatar">${esc(p.nickname.slice(0, 2))}</div>
@@ -2357,11 +2422,19 @@ async function viewUser(id) {
     <button class="btn" data-go="#/top">${ICON.trophy.replace('<svg', '<svg width="16" height="16"')} Топ</button>
   </section>
   ${p.best_skin != null ? `<div class="section-head"><h2>Лучший дроп</h2></div><div style="max-width:340px">${itemCard({ s: p.best_skin, f: p.best_float, st: p.best_st, p: +p.best_price })}</div>` : ''}
-  <div class="section-head"><h2>Инвентарь</h2><span class="sub">${inv.length} предм. · ${money(p.inv_value)}</span></div>
-  ${inv.length ? `<div class="grid-items stagger">${inv.slice(0, 200).map((it, i) => itemCard(it, { i: Math.min(i, 30), attr: `data-act="view" data-u="${it.u}"` })).join('')}</div>` : '<div class="ev-note" style="margin-left:4px">Пусто</div>'}
+  <div class="section-head">${seg('utab', [['inv', `${ICON.inv} Инвентарь · ${inv.length}`], ['steam', `${gi('steam')} Steam`], ['life', `${ICON.home} Жизнь`]], U2.tab, 'utabs')}
+    <span class="sub">${money(p.inv_value)} на сайте</span></div>
+  <div id="uBody">${tabBody()}</div>
   <div class="section-head"><h2>Последние события</h2></div>
   ${histList((hist || []).map(fromFeed))}`;
-  VIEW = { act(a, el) { if (a === 'view') { const it = inv.find(x => x.u === +el.dataset.u); if (it) showItem(it, { readonly: true }); } } };
+  layoutPills();
+  VIEW = {
+    onSeg(n, v) { if (n === 'utab') { U2.tab = v; drawTab(); loadTab(); } },
+    act(a, el) {
+      if (a === 'view') { const it = inv.find(x => x.u === +el.dataset.u); if (it) showItem(it, { readonly: true }); }
+      if (a === 'viewSt') { const it = U2.steam && U2.steam.find(x => x.u === +el.dataset.u); if (it) showItem(it, { readonly: true }); }
+    },
+  };
 }
 function histList(list) {
   if (!list.length) return '<div class="list glass-flat"><div class="li"><div class="t"><span>Пока ничего</span></div></div></div>';
