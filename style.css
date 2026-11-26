@@ -743,3 +743,24 @@ body.season { --bg: #07040b; }
 .season-hero .hero-case .hero-tag { bottom: -8px; z-index: 6; }
 .logo small { display: none; }
 .topbar { width: min(1360px, calc(100% - 28px)); }
+
+/* ===== phone fixes ===== */
+.hero { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); }
+.season-hero .hero-case .crate, .hero-case .crate { width: min(360px, 100%); }
+@media (max-width: 980px) {
+  .hero { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 560px) {
+  .season-hero .hero-case { height: 260px; }
+  .season-hero .hero-case .crate { width: min(280px, 100%); }
+  .season-chip { font-size: 12px; padding: 0 12px; }
+  .sale-timer { justify-content: center; }
+  .hero .actions .btn.big { flex: 1 1 100%; }
+}
+.case-stage .crate { width: min(420px, 86vw); }
+@media (max-width: 560px) {
+  .case-stage .crate { width: min(300px, 78vw); }
+  .section-head > .seg { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .section-head > .seg::-webkit-scrollbar { display: none; }
+  .section-head > .seg button { flex: none; }
+}
