@@ -37,7 +37,10 @@ alter table pumpkins enable row level security;
 -- battle pass, perks (luck potions, free case openings), steam withdrawals, climb game
 alter table profiles add column if not exists bp_claimed int[] not null default '{}';
 alter table profiles add column if not exists luck_until timestamptz;
+alter table profiles add column if not exists bp_premium boolean not null default false;
+alter table cases add column if not exists sale numeric not null default 0;
 create table if not exists bp_rewards (level int primary key, kind text not null, amount numeric, case_id text, n int, skin_id int, code text, mins int);
+alter table bp_rewards add column if not exists free boolean not null default false;
 create table if not exists perks (
   id bigserial primary key, owner uuid not null references profiles on delete cascade,
   kind text not null, case_id text, mins int, src text not null default 'pass', created_at timestamptz not null default now()
@@ -243,13 +246,22 @@ begin
   return res;
 end $$;
 
+-- cheap cases open in bigger batches (client mirrors this in maxOpen)
+create or replace function max_open(p_price numeric) returns int language sql immutable as $f$
+  select case when p_price <= 1 then 50 when p_price <= 3 then 20 when p_price <= 10 then 10 else 5 end
+$f$;
+
+create or replace function case_price(c cases) returns numeric language sql stable as $f$
+  select case when c.sale > 0 and now() < timestamptz '2026-12-01 00:00+02' then round(c.price * (1 - c.sale), 2) else c.price end
+$f$;
+
 create or replace function open_case(p_case text, p_n int) returns jsonb language plpgsql security definer set search_path = public as $$
 declare uid uuid := auth.uid(); c cases; cost numeric; nick text; bal numeric;
 begin
-  if p_n < 1 or p_n > 5 then raise exception 'BAD_N'; end if;
   select * into c from cases where id = p_case;
   if not found then raise exception 'NO_CASE'; end if;
-  cost := round(c.price * p_n, 2);
+  if p_n < 1 or p_n > max_open(c.price) then raise exception 'BAD_N'; end if;
+  cost := round(case_price(c) * p_n, 2);
   update profiles set balance = balance - cost, opened = opened + p_n, spent = spent + cost,
          xp = xp + floor(cost)::int + case when c.price >= 1 then 2 * p_n else 0 end
    where id = uid and balance >= cost returning nickname, balance into nick, bal;
@@ -261,7 +273,7 @@ end $$;
 create or replace function open_free(p_case text, p_n int) returns jsonb language plpgsql security definer set search_path = public as $$
 declare uid uuid := auth.uid(); nick text; bal numeric; k int;
 begin
-  if p_n < 1 or p_n > 5 then raise exception 'BAD_N'; end if;
+  if p_n < 1 or p_n > (select max_open(price) from cases where id = p_case) then raise exception 'BAD_N'; end if;
   with del as (delete from perks where id in (select id from perks where owner = uid and kind = 'case' and case_id = p_case order by id limit p_n) returning 1)
   select count(*) into k from del;
   if k < p_n then raise exception 'NO_TICKETS'; end if;
@@ -308,7 +320,7 @@ begin
     d := d || jsonb_build_object('id', iid);
     update profiles set up_w = up_w + 1 where id = uid returning nickname into nick;
     insert into drops (user_id, nickname, skin_id, float, st, price, source, extra)
-    values (uid, nick, p_skin, f, false, (d->>'price')::numeric, 'upgrade', round(ch * 100, 2)::text);
+    values (uid, nick, p_skin, f, false, (d->>'price')::numeric, 'upgrade', round((ch * 100)::numeric, 2)::text);
   else
     update profiles set up_l = up_l + 1 where id = uid;
   end if;
@@ -336,7 +348,7 @@ begin
   if p_rounds not between 1 and 5 or p_players not between 2 and 4 then raise exception 'BAD_INPUT'; end if;
   select * into c from cases where id = p_case;
   if not found then raise exception 'NO_CASE'; end if;
-  cost := round(c.price * p_rounds, 2);
+  cost := round(case_price(c) * p_rounds, 2);
   update profiles set balance = balance - cost, opened = opened + p_rounds, spent = spent + cost, xp = xp + floor(cost)::int + 2 * p_rounds
    where id = uid and balance >= cost returning nickname into nick;
   if not found then raise exception 'NO_FUNDS'; end if;
@@ -497,6 +509,7 @@ begin
   select * into r from bp_rewards where level = p_level;
   if found then return r; end if;
   r.level := p_level;
+  r.free := p_level % 7 = 0;
   if p_level % 10 = 0 then r.kind := 'case'; r.case_id := 'c-knife-budget'; r.n := 1;
   elsif p_level % 5 = 0 then r.kind := 'luck'; r.mins := 30;
   else r.kind := 'money'; r.amount := 100; end if;
@@ -513,6 +526,19 @@ begin
   return round((lo + (hi - lo) * random() * .999)::numeric, 9)::float8;
 end $$;
 
+create or replace function bp_end() returns timestamptz language sql immutable as $f$ select timestamptz '2027-01-01 00:00+02' $f$;
+
+create or replace function buy_pass() returns jsonb language plpgsql security definer set search_path = public as $$
+declare uid uuid := auth.uid(); bal numeric;
+begin
+  if now() >= bp_end() then raise exception 'PASS_ENDED'; end if;
+  if (select bp_premium from profiles where id = uid) then raise exception 'ALREADY_PREMIUM'; end if;
+  update profiles set balance = balance - 200, spent = spent + 200, bp_premium = true
+   where id = uid and balance >= 200 returning balance into bal;
+  if not found then raise exception 'NO_FUNDS'; end if;
+  return jsonb_build_object('balance', bal);
+end $$;
+
 create or replace function claim_level(p_level int) returns jsonb language plpgsql security definer set search_path = public as $$
 declare uid uuid := auth.uid(); p profiles; r bp_rewards; bal numeric; d jsonb := null; iid bigint; f float8;
 begin
@@ -520,7 +546,9 @@ begin
   if not found then raise exception 'NO_PROFILE'; end if;
   if p_level < 2 or level_of(p.xp) < p_level then raise exception 'LEVEL_LOCKED'; end if;
   if p_level = any(p.bp_claimed) then raise exception 'ALREADY_CLAIMED'; end if;
+  if now() >= bp_end() then raise exception 'PASS_ENDED'; end if;
   r := bp_reward(p_level);
+  if not r.free and not p.bp_premium then raise exception 'PREMIUM_REQUIRED'; end if;
   update profiles set bp_claimed = bp_claimed || p_level where id = uid;
   if r.kind = 'money' then
     update profiles set balance = balance + r.amount where id = uid;
@@ -550,6 +578,17 @@ begin
 end $$;
 
 -- ============ "steam": withdrawn skins (virtual, they leave the inventory for good) ============
+create or replace function steam_deposit(p_ids bigint[]) returns jsonb language plpgsql security definer set search_path = public as $$
+declare uid uuid := auth.uid(); n int; v numeric; pay numeric; bal numeric;
+begin
+  with del as (delete from steam_items where owner = uid and id = any(p_ids) returning price)
+  select count(*), coalesce(sum(price), 0) into n, v from del;
+  if n = 0 then raise exception 'NOT_OWNER'; end if;
+  pay := round(v * .95, 2);
+  update profiles set balance = balance + pay where id = uid returning balance into bal;
+  return jsonb_build_object('n', n, 'sum', v, 'payout', pay, 'fee', v - pay, 'balance', bal);
+end $$;
+
 create or replace function withdraw_items(p_ids bigint[]) returns jsonb language plpgsql security definer set search_path = public as $$
 declare uid uuid := auth.uid(); n int; v numeric;
 begin
@@ -613,7 +652,7 @@ do $$ declare f text; begin
                            'upgrade_items(bigint[],int,text)','gift_item(bigint,text)','create_battle(text,int,int)','join_battle(bigint)',
                            'add_bot(bigint)','cancel_battle(bigint)','track_visit()','claim_quest(text)','claim_daily()',
                            'find_pumpkin(int)','my_pumpkins()','claim_level(int)','use_luck(bigint)','open_free(text,int)',
-                           'withdraw_items(bigint[])','play_climb(bigint[],numeric,numeric)'] loop
+                           'withdraw_items(bigint[])','play_climb(bigint[],numeric,numeric)','buy_pass()','steam_deposit(bigint[])'] loop
     execute format('revoke all on function %s from public, anon', f);
     execute format('grant execute on function %s to authenticated', f);
   end loop;
