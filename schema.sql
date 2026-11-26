@@ -142,9 +142,24 @@ select p.id, p.nickname, p.balance, coalesce(i.v, 0)::numeric(14,2) as inv_value
 from profiles p left join (select owner, sum(price) v from inventory group by owner) i on i.owner = p.id
 left join (select owner, sum(price) v from steam_items group by owner) sv on sv.owner = p.id;
 
+-- ============ chat: one global room + private rooms between two players ============
+create table if not exists chat_messages (
+  id bigserial primary key, room text not null,
+  a uuid references profiles on delete cascade, b uuid references profiles on delete cascade,  -- the two players of a private room (null in 'global')
+  sender uuid not null references profiles on delete cascade, nick text not null, body text not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists chat_room on chat_messages (room, id desc);
+create index if not exists chat_a on chat_messages (a, id desc);
+create index if not exists chat_b on chat_messages (b, id desc);
+create index if not exists chat_sender on chat_messages (sender, created_at desc);
+alter table chat_messages enable row level security;
+drop policy if exists chat_read on chat_messages;
+create policy chat_read on chat_messages for select using (room = 'global' or auth.uid() = a or auth.uid() = b);
+
 -- realtime
 do $$ declare t text; begin
-  foreach t in array array['drops','battles','battle_players','inventory','profiles','climbs','perks'] loop
+  foreach t in array array['drops','battles','battle_players','inventory','profiles','climbs','perks','chat_messages'] loop
     begin execute format('alter publication supabase_realtime add table %I', t);
     exception when duplicate_object then null; end;
   end loop;
@@ -697,6 +712,34 @@ begin
   return t;
 end $$;
 
+-- p_to = null -> global chat, otherwise a private message to that player
+create or replace function chat_send(p_to uuid, p_body text) returns jsonb language plpgsql security definer set search_path = public as $$
+declare uid uuid := auth.uid(); nk text; body text := btrim(regexp_replace(coalesce(p_body, ''), '\s+', ' ', 'g')); x uuid; y uuid; rm text; m chat_messages;
+begin
+  if length(body) < 1 or length(body) > 300 then raise exception 'BAD_MSG'; end if;
+  select nickname into nk from profiles where id = uid;
+  if not found then raise exception 'NO_PROFILE'; end if;
+  if exists (select 1 from chat_messages where sender = uid and created_at > now() - interval '1 second')
+     or (select count(*) from chat_messages where sender = uid and created_at > now() - interval '1 minute') >= 20 then raise exception 'CHAT_RATE'; end if;
+  if p_to is null then rm := 'global';
+  else
+    if p_to = uid or not exists (select 1 from profiles where id = p_to) then raise exception 'NO_USER'; end if;
+    x := least(uid, p_to); y := greatest(uid, p_to); rm := 'dm:' || x || ':' || y;
+  end if;
+  insert into chat_messages (room, a, b, sender, nick, body) values (rm, x, y, uid, nk, body) returning * into m;
+  return to_jsonb(m);
+end $$;
+
+-- my private conversations, newest first
+create or replace function chat_dms() returns jsonb language plpgsql stable security definer set search_path = public as $$
+declare uid uuid := auth.uid();
+begin
+  return coalesce((select jsonb_agg(to_jsonb(x) order by x.last_id desc) from (
+    select distinct on (m.room) m.room, o.id as peer, o.nickname as nick, m.body, m.sender, m.id as last_id, m.created_at
+      from chat_messages m join profiles o on o.id = case when m.a = uid then m.b else m.a end
+     where m.a = uid or m.b = uid order by m.room, m.id desc) x), '[]'::jsonb);
+end $$;
+
 create or replace function rl_needs() returns jsonb language plpgsql security definer set search_path = public as $$
 begin
   perform rl_tick(auth.uid());
@@ -884,7 +927,7 @@ do $$ declare f text; begin
                            'find_pumpkin(int)','my_pumpkins()','claim_level(int)','use_luck(bigint)','open_free(text,int)',
                            'withdraw_items(bigint[])','play_climb(bigint[],numeric,numeric)','buy_pass()','steam_deposit(bigint[])',
                            'claim_steam_quest(text)','rl_state()','rl_buy(text,int)','rl_sell(bigint[])','rl_rent(bigint,boolean)',
-                           'rl_collect()','rl_eat(bigint)','rl_deposit(numeric)','steam_sell_rl(bigint[])','rl_needs()','time_ping()'] loop
+                           'rl_collect()','rl_eat(bigint)','rl_deposit(numeric)','steam_sell_rl(bigint[])','rl_needs()','time_ping()','chat_send(uuid,text)','chat_dms()'] loop
     execute format('revoke all on function %s from public, anon', f);
     execute format('grant execute on function %s to authenticated', f);
   end loop;
