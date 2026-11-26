@@ -2567,7 +2567,7 @@ function viewLife() {
     const groups = [['home', 'Недвижимость', it => RLC[it.item].cat === 'home' || it.item === 'st-flat'],
                     ['things', 'Вещи', it => ['mine', 'car', 'tech', 'stuff'].includes(RLC[it.item].cat) && it.item !== 'st-flat'],
                     ['food', 'Еда', it => RLC[it.item].cat === 'food'],
-                    ['organ', 'Чёрный рынок (это шутка)', it => RLC[it.item].cat === 'organ']];
+                    ['organ', 'Чёрный рынок', it => RLC[it.item].cat === 'organ']];
     let i = 0;
     return groups.map(([g, title, f]) => {
       let list = S.rl.filter(f);
@@ -2578,7 +2578,7 @@ function viewLife() {
           <span class="rl-price">×${l.length} · продать за ${rlMoney(rlSellValue(l[0]))} шт.</span>
           <div class="rl-acts"><button class="btn sm" data-act="rlEat" data-id="${l[0].id}">Съесть</button><button class="btn sm green" data-act="rlSell" data-id="${l[0].id}">Продать</button></div>`, i++)).join('')}</div>`;
       }
-      return `<div class="section-head"><h2>${title}</h2>${g === 'organ' ? '<span class="sub">по приколу: продаётся один раз и навсегда</span>' : ''}</div><div class="rl-grid">${list.map(it => {
+      return `<div class="section-head"><h2>${title}</h2></div><div class="rl-grid">${list.map(it => {
         const c = RLC[it.item];
         return card(c, `
           <span class="rl-price">${c.cat === 'mine' || c.cat === 'organ' ? 'Стоит' : 'Продать за'} ${rlMoney(rlSellValue(it))}</span>
@@ -2671,7 +2671,7 @@ function rlSellSheet(it, onDone) {
   openSheet(`
     <div class="rl-sheet-img">${c.img ? `<img src="${c.img}" alt="">` : ICON.home}</div>
     <h2>Продать ${esc(c.n)}?</h2>
-    <div class="subtitle">${c.cat === 'organ' ? 'Это шутка, но продаётся один раз и навсегда.' : c.cat === 'mine' ? 'Своё, родное. Назад купить не получится.' : `Покупатель даёт ${Math.round(c.sell * 100)}% от цены покупки.`}</div>
+    <div class="subtitle">${c.cat === 'organ' ? 'Продаётся один раз и навсегда.' : c.cat === 'mine' ? 'Своё, родное. Назад купить не получится.' : `Покупатель даёт ${Math.round(c.sell * 100)}% от цены покупки.`}</div>
     <div class="steam-calc"><span>Получишь</span><b class="g">${rlMoney(v)}</b>${it.acc >= .01 ? `<span>+ аренда</span><b class="g">${rlMoney(it.acc)}</b>` : ''}</div>
     <div class="acts"><button class="btn" data-sact="close">Отмена</button><button class="btn green" data-sact="ok">Продать · ${rlMoney(r2(v + it.acc))}</button></div>`, {
     narrow: true,
