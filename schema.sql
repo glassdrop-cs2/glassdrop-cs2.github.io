@@ -34,6 +34,27 @@ alter table profiles add column if not exists pumpkin_done boolean not null defa
 create table if not exists pumpkins (owner uuid not null references profiles on delete cascade, pid int not null, found_at timestamptz not null default now(), primary key (owner, pid));
 alter table pumpkins enable row level security;
 
+-- battle pass, perks (luck potions, free case openings), steam withdrawals, climb game
+alter table profiles add column if not exists bp_claimed int[] not null default '{}';
+alter table profiles add column if not exists luck_until timestamptz;
+create table if not exists bp_rewards (level int primary key, kind text not null, amount numeric, case_id text, n int, skin_id int, code text, mins int);
+create table if not exists perks (
+  id bigserial primary key, owner uuid not null references profiles on delete cascade,
+  kind text not null, case_id text, mins int, src text not null default 'pass', created_at timestamptz not null default now()
+);
+create index if not exists perks_owner on perks (owner);
+create table if not exists steam_items (
+  id bigserial primary key, owner uuid not null references profiles on delete cascade,
+  skin_id int not null references skins, float float8, st boolean not null default false, price numeric(14,2) not null,
+  src text, got_at timestamptz, withdrawn_at timestamptz not null default now()
+);
+create index if not exists steam_owner on steam_items (owner);
+create table if not exists climbs (
+  id bigserial primary key, user_id uuid references profiles on delete cascade, nickname text not null,
+  bet numeric(14,2) not null, skins int not null default 0, target numeric(10,2) not null, crash numeric(10,2) not null,
+  win boolean not null, payout numeric(14,2) not null default 0, created_at timestamptz not null default now()
+);
+
 -- unique visitors per day (for the traffic counter)
 create table if not exists visits (day date not null default current_date, uid uuid not null, hits int not null default 1, primary key (day, uid));
 alter table visits enable row level security;
@@ -74,7 +95,7 @@ create index if not exists battle_drops_b on battle_drops (battle_id);
 
 -- ============ row level security: everyone reads, nobody writes directly ============
 do $$ declare t text; begin
-  foreach t in array array['skins','cases','case_items','profiles','inventory','drops','battles','battle_players','battle_drops'] loop
+  foreach t in array array['skins','cases','case_items','profiles','inventory','drops','battles','battle_players','battle_drops','bp_rewards','perks','steam_items','climbs'] loop
     execute format('alter table %I enable row level security', t);
     execute format('drop policy if exists read_all on %I', t);
     execute format('create policy read_all on %I for select using (true)', t);
@@ -82,14 +103,15 @@ do $$ declare t text; begin
 end $$;
 
 create or replace view leaderboard with (security_invoker = on) as
-select p.id, p.nickname, p.balance, coalesce(i.v, 0)::numeric(14,2) as inv_value, (p.balance + coalesce(i.v, 0))::numeric(14,2) as networth,
+select p.id, p.nickname, p.balance, coalesce(i.v, 0)::numeric(14,2) as inv_value, (p.balance + coalesce(i.v, 0) + coalesce(sv.v, 0))::numeric(14,2) as networth,
        p.best_price, p.best_skin, p.best_float, p.best_st, p.opened, p.up_w, p.up_l, p.battles_w, p.battles_l
-, p.xp, p.daily_streak
-from profiles p left join (select owner, sum(price) v from inventory group by owner) i on i.owner = p.id;
+, p.xp, p.daily_streak, coalesce(sv.v, 0)::numeric(14,2) as steam_value
+from profiles p left join (select owner, sum(price) v from inventory group by owner) i on i.owner = p.id
+left join (select owner, sum(price) v from steam_items group by owner) sv on sv.owner = p.id;
 
 -- realtime
 do $$ declare t text; begin
-  foreach t in array array['drops','battles','battle_players','inventory','profiles'] loop
+  foreach t in array array['drops','battles','battle_players','inventory','profiles','climbs','perks'] loop
     begin execute format('alter publication supabase_realtime add table %I', t);
     exception when duplicate_object then null; end;
   end loop;
@@ -202,24 +224,49 @@ begin
   return jsonb_build_object('balance', bal, 'last_bonus', now(), 'amount', amt, 'n', n);
 end $$;
 
+-- roll p_n drops for a player; with an active luck potion 40% of rolls get a second try and keep the pricier one
+create or replace function do_open(p_uid uuid, p_nick text, p_case text, p_n int) returns jsonb language plpgsql as $$
+declare d jsonb; d2 jsonb; iid bigint; res jsonb := '[]'; lucky boolean;
+begin
+  select coalesce(luck_until > now(), false) into lucky from profiles where id = p_uid;
+  for i in 1..p_n loop
+    d := roll_drop(p_case);
+    if lucky and random() < .4 then
+      d2 := roll_drop(p_case);
+      if (d2->>'price')::numeric > (d->>'price')::numeric then d := d2 || '{"luck":true}'; end if;
+    end if;
+    iid := grant_item(p_uid, d, 'case');
+    insert into drops (user_id, nickname, skin_id, float, st, price, source, case_id)
+    values (p_uid, p_nick, (d->>'skin')::int, (d->>'float')::float8, (d->>'st')::boolean, (d->>'price')::numeric, 'case', p_case);
+    res := res || jsonb_build_array(d || jsonb_build_object('id', iid));
+  end loop;
+  return res;
+end $$;
+
 create or replace function open_case(p_case text, p_n int) returns jsonb language plpgsql security definer set search_path = public as $$
-declare uid uuid := auth.uid(); c cases; cost numeric; nick text; bal numeric; d jsonb; iid bigint; res jsonb := '[]';
+declare uid uuid := auth.uid(); c cases; cost numeric; nick text; bal numeric;
 begin
   if p_n < 1 or p_n > 5 then raise exception 'BAD_N'; end if;
   select * into c from cases where id = p_case;
   if not found then raise exception 'NO_CASE'; end if;
   cost := round(c.price * p_n, 2);
-  update profiles set balance = balance - cost, opened = opened + p_n, spent = spent + cost
+  update profiles set balance = balance - cost, opened = opened + p_n, spent = spent + cost,
+         xp = xp + floor(cost)::int + case when c.price >= 1 then 2 * p_n else 0 end
    where id = uid and balance >= cost returning nickname, balance into nick, bal;
   if not found then raise exception 'NO_FUNDS'; end if;
-  for i in 1..p_n loop
-    d := roll_drop(p_case);
-    iid := grant_item(uid, d, 'case');
-    insert into drops (user_id, nickname, skin_id, float, st, price, source, case_id)
-    values (uid, nick, (d->>'skin')::int, (d->>'float')::float8, (d->>'st')::boolean, (d->>'price')::numeric, 'case', p_case);
-    res := res || jsonb_build_array(d || jsonb_build_object('id', iid));
-  end loop;
-  return jsonb_build_object('items', res, 'balance', bal);
+  return jsonb_build_object('items', do_open(uid, nick, p_case, p_n), 'balance', bal);
+end $$;
+
+-- open with free-opening tickets from the battle pass
+create or replace function open_free(p_case text, p_n int) returns jsonb language plpgsql security definer set search_path = public as $$
+declare uid uuid := auth.uid(); nick text; bal numeric; k int;
+begin
+  if p_n < 1 or p_n > 5 then raise exception 'BAD_N'; end if;
+  with del as (delete from perks where id in (select id from perks where owner = uid and kind = 'case' and case_id = p_case order by id limit p_n) returning 1)
+  select count(*) into k from del;
+  if k < p_n then raise exception 'NO_TICKETS'; end if;
+  update profiles set opened = opened + p_n, xp = xp + 2 * p_n where id = uid returning nickname, balance into nick, bal;
+  return jsonb_build_object('items', do_open(uid, nick, p_case, p_n), 'balance', bal);
 end $$;
 
 create or replace function sell_items(p_ids bigint[]) returns jsonb language plpgsql security definer set search_path = public as $$
@@ -247,7 +294,8 @@ begin
   end if;
   tgt := price_code(p_skin, p_code, false);
   if tgt <= total then raise exception 'TARGET_TOO_CHEAP'; end if;
-  ch := least(.9, total / tgt * .92);
+  ch := least(.9, total / tgt * .92 * case when (select coalesce(luck_until > now(), false) from profiles where id = uid) then 1.1 else 1 end);
+  update profiles set xp = xp + 5 where id = uid;
   delete from inventory where owner = uid and id = any(p_ids);
   win := random() < ch;
   if win then
@@ -289,7 +337,7 @@ begin
   select * into c from cases where id = p_case;
   if not found then raise exception 'NO_CASE'; end if;
   cost := round(c.price * p_rounds, 2);
-  update profiles set balance = balance - cost, opened = opened + p_rounds, spent = spent + cost
+  update profiles set balance = balance - cost, opened = opened + p_rounds, spent = spent + cost, xp = xp + floor(cost)::int + 2 * p_rounds
    where id = uid and balance >= cost returning nickname into nick;
   if not found then raise exception 'NO_FUNDS'; end if;
   insert into battles (case_id, rounds, max_players, cost, creator, creator_nick) values (p_case, p_rounds, p_players, cost, uid, nick) returning id into bid;
@@ -335,7 +383,7 @@ begin
   if exists (select 1 from battle_players where battle_id = p_id and user_id = uid) then raise exception 'ALREADY_IN'; end if;
   select count(*) into cnt from battle_players where battle_id = p_id;
   if cnt >= b.max_players then raise exception 'FULL'; end if;
-  update profiles set balance = balance - b.cost, opened = opened + b.rounds, spent = spent + b.cost
+  update profiles set balance = balance - b.cost, opened = opened + b.rounds, spent = spent + b.cost, xp = xp + floor(b.cost)::int + 2 * b.rounds
    where id = uid and balance >= b.cost returning nickname into nick;
   if not found then raise exception 'NO_FUNDS'; end if;
   insert into battle_players (battle_id, user_id, nickname, slot)
@@ -434,6 +482,112 @@ begin
   return jsonb_build_object('found', n, 'reward', reward, 'balance', bal, 'list', my_pumpkins());
 end $$;
 
+-- ============ battle pass ============
+create or replace function level_of(p_xp int) returns int language plpgsql immutable as $$
+declare l int := 1;
+begin
+  while 50 * (l + 1) * l <= p_xp loop l := l + 1; end loop;
+  return l;
+end $$;
+
+-- levels 2..50 come from bp_rewards (seed); after 50: every 10th a Budget Blades opening, every 5th a 30-min luck potion, else $100
+create or replace function bp_reward(p_level int) returns bp_rewards language plpgsql stable as $$
+declare r bp_rewards;
+begin
+  select * into r from bp_rewards where level = p_level;
+  if found then return r; end if;
+  r.level := p_level;
+  if p_level % 10 = 0 then r.kind := 'case'; r.case_id := 'c-knife-budget'; r.n := 1;
+  elsif p_level % 5 = 0 then r.kind := 'luck'; r.mins := 30;
+  else r.kind := 'money'; r.amount := 100; end if;
+  return r;
+end $$;
+
+create or replace function roll_code_float(p_skin int, p_code text) returns float8 language plpgsql volatile as $$
+declare s skins; lo float8; hi float8;
+begin
+  select * into s from skins where id = p_skin;
+  if s.mn is null or p_code is null then return null; end if;
+  select w.lo, w.hi into lo, hi from (values ('FN',0::float8,.07::float8),('MW',.07,.15),('FT',.15,.38),('WW',.38,.45),('BS',.45,1)) w(c,lo,hi) where w.c = p_code;
+  lo := greatest(lo, s.mn); hi := least(hi, s.mx);
+  return round((lo + (hi - lo) * random() * .999)::numeric, 9)::float8;
+end $$;
+
+create or replace function claim_level(p_level int) returns jsonb language plpgsql security definer set search_path = public as $$
+declare uid uuid := auth.uid(); p profiles; r bp_rewards; bal numeric; d jsonb := null; iid bigint; f float8;
+begin
+  select * into p from profiles where id = uid for update;
+  if not found then raise exception 'NO_PROFILE'; end if;
+  if p_level < 2 or level_of(p.xp) < p_level then raise exception 'LEVEL_LOCKED'; end if;
+  if p_level = any(p.bp_claimed) then raise exception 'ALREADY_CLAIMED'; end if;
+  r := bp_reward(p_level);
+  update profiles set bp_claimed = bp_claimed || p_level where id = uid;
+  if r.kind = 'money' then
+    update profiles set balance = balance + r.amount where id = uid;
+  elsif r.kind = 'luck' then
+    insert into perks (owner, kind, mins) values (uid, 'luck', r.mins);
+  elsif r.kind = 'case' then
+    insert into perks (owner, kind, case_id) select uid, 'case', r.case_id from generate_series(1, r.n);
+  elsif r.kind = 'skin' then
+    f := roll_code_float(r.skin_id, r.code);
+    d := jsonb_build_object('skin', r.skin_id, 'float', f, 'st', false, 'price', price_of(r.skin_id, f, false));
+    iid := grant_item(uid, d, 'pass');
+    d := d || jsonb_build_object('id', iid);
+    insert into drops (user_id, nickname, skin_id, float, st, price, source, extra)
+    values (uid, p.nickname, r.skin_id, f, false, (d->>'price')::numeric, 'pass', p_level::text);
+  end if;
+  select balance into bal from profiles where id = uid;
+  return jsonb_build_object('balance', bal, 'kind', r.kind, 'item', d, 'level', p_level);
+end $$;
+
+create or replace function use_luck(p_id bigint) returns jsonb language plpgsql security definer set search_path = public as $$
+declare uid uuid := auth.uid(); m int; u timestamptz;
+begin
+  delete from perks where id = p_id and owner = uid and kind = 'luck' returning mins into m;
+  if m is null then raise exception 'NO_PERK'; end if;
+  update profiles set luck_until = greatest(coalesce(luck_until, now()), now()) + make_interval(mins => m) where id = uid returning luck_until into u;
+  return jsonb_build_object('luck_until', u);
+end $$;
+
+-- ============ "steam": withdrawn skins (virtual, they leave the inventory for good) ============
+create or replace function withdraw_items(p_ids bigint[]) returns jsonb language plpgsql security definer set search_path = public as $$
+declare uid uuid := auth.uid(); n int; v numeric;
+begin
+  with del as (delete from inventory where owner = uid and id = any(p_ids) returning *),
+       ins as (insert into steam_items (owner, skin_id, float, st, price, src, got_at)
+               select owner, skin_id, float, st, price, src, created_at from del returning price)
+  select count(*), coalesce(sum(price), 0) into n, v from ins;
+  if n = 0 then raise exception 'NOT_OWNER'; end if;
+  return jsonb_build_object('n', n, 'sum', v);
+end $$;
+
+-- ============ climb: the operator runs up the stairs and trips at a random multiplier ============
+-- P(reaching x) = 0.96 / x; the crash point is decided here, before the client animates anything
+create or replace function play_climb(p_ids bigint[], p_amount numeric, p_target numeric) returns jsonb language plpgsql security definer set search_path = public as $$
+declare uid uuid := auth.uid(); nick text; bet numeric; k int := 0; crash numeric; win boolean; pay numeric := 0; bal numeric;
+begin
+  if p_target is null or p_target < 1.01 or p_target > 1000 then raise exception 'BAD_TARGET'; end if;
+  p_target := round(p_target, 2);
+  if coalesce(array_length(p_ids, 1), 0) > 0 then
+    if array_length(p_ids, 1) > 20 then raise exception 'BAD_INPUT'; end if;
+    with del as (delete from inventory where owner = uid and id = any(p_ids) returning price)
+    select count(*), coalesce(sum(price), 0) into k, bet from del;
+    if k <> array_length(p_ids, 1) then raise exception 'NOT_OWNER'; end if;
+  else
+    bet := round(coalesce(p_amount, 0), 2);
+    if bet < 0.1 then raise exception 'BAD_BET'; end if;
+    update profiles set balance = balance - bet where id = uid and balance >= bet;
+    if not found then raise exception 'NO_FUNDS'; end if;
+  end if;
+  crash := least(1000, greatest(1, floor(96 / (1 - random())) / 100));
+  win := crash >= p_target;
+  if win then pay := round(bet * p_target, 2); end if;
+  update profiles set balance = balance + pay, xp = xp + 2 + least(floor(bet / 4), 500)::int
+   where id = uid returning nickname, balance into nick, bal;
+  insert into climbs (user_id, nickname, bet, skins, target, crash, win, payout) values (uid, nick, bet, k, p_target, crash, win, pay);
+  return jsonb_build_object('crash', crash, 'win', win, 'payout', pay, 'bet', bet, 'balance', bal, 'target', p_target);
+end $$;
+
 -- ============ traffic ============
 create or replace function site_stats() returns jsonb language sql stable security definer set search_path = public as $$
   select jsonb_build_object(
@@ -451,14 +605,15 @@ end $$;
 -- ============ permissions ============
 do $$ declare f text; begin
   -- internal helpers: not callable from the API
-  foreach f in array array['roll_float(int)','roll_drop(text)','grant_item(uuid,jsonb,text)','resolve_battle(bigint)'] loop
+  foreach f in array array['roll_float(int)','roll_drop(text)','grant_item(uuid,jsonb,text)','resolve_battle(bigint)','do_open(uuid,text,text,int)','roll_code_float(int,text)','bp_reward(int)'] loop
     execute format('revoke all on function %s from public, anon, authenticated', f);
   end loop;
   -- player API: signed-in users only (guests are signed in anonymously)
   foreach f in array array['ensure_profile(text)','set_nickname(text)','claim_bonus()','open_case(text,int)','sell_items(bigint[])',
                            'upgrade_items(bigint[],int,text)','gift_item(bigint,text)','create_battle(text,int,int)','join_battle(bigint)',
                            'add_bot(bigint)','cancel_battle(bigint)','track_visit()','claim_quest(text)','claim_daily()',
-                           'find_pumpkin(int)','my_pumpkins()'] loop
+                           'find_pumpkin(int)','my_pumpkins()','claim_level(int)','use_luck(bigint)','open_free(text,int)',
+                           'withdraw_items(bigint[])','play_climb(bigint[],numeric,numeric)'] loop
     execute format('revoke all on function %s from public, anon', f);
     execute format('grant execute on function %s to authenticated', f);
   end loop;
@@ -468,4 +623,4 @@ revoke all on function site_stats() from public;
 grant execute on function site_stats() to anon, authenticated;
 -- read-only access for the site (writes happen only inside the functions above)
 grant usage on schema public to anon, authenticated;
-grant select on skins, cases, case_items, profiles, inventory, drops, battles, battle_players, battle_drops, leaderboard to anon, authenticated;
+grant select on skins, cases, case_items, profiles, inventory, drops, battles, battle_players, battle_drops, leaderboard, bp_rewards, perks, steam_items, climbs to anon, authenticated;
