@@ -2563,7 +2563,7 @@ function viewLife() {
       <div class="rl-body"><b>${esc(c.n)}</b><span class="rl-note">${esc(c.note || '')}</span>${body}</div>
     </div>`;
   const mineHTML = () => {
-    if (!S.rl.length) return `<div class="empty-state"><div class="ill">${ICON.home}</div><h3>Ничего нет</h3>Даже ковра. Загляни в магазин.</div>`;
+    if (!S.rl.length) return `<div class="empty-state"><div class="ill">${ICON.home}</div><h3>Ничего нет</h3>Загляни в магазин.</div>`;
     const groups = [['home', 'Недвижимость', it => RLC[it.item].cat === 'home' || it.item === 'st-flat'],
                     ['things', 'Вещи', it => ['mine', 'car', 'tech', 'stuff'].includes(RLC[it.item].cat) && it.item !== 'st-flat'],
                     ['food', 'Еда', it => RLC[it.item].cat === 'food'],
@@ -2671,7 +2671,7 @@ function rlSellSheet(it, onDone) {
   openSheet(`
     <div class="rl-sheet-img">${c.img ? `<img src="${c.img}" alt="">` : ICON.home}</div>
     <h2>Продать ${esc(c.n)}?</h2>
-    <div class="subtitle">${c.cat === 'organ' ? 'Продаётся один раз и навсегда.' : c.cat === 'mine' ? 'Своё, родное. Назад купить не получится.' : `Покупатель даёт ${Math.round(c.sell * 100)}% от цены покупки.`}</div>
+    <div class="subtitle">${c.cat === 'organ' ? 'Продаётся один раз и навсегда.' : c.cat === 'mine' ? 'Назад купить не получится.' : `Покупатель даёт ${Math.round(c.sell * 100)}% от цены покупки.`}</div>
     <div class="steam-calc"><span>Получишь</span><b class="g">${rlMoney(v)}</b>${it.acc >= .01 ? `<span>+ аренда</span><b class="g">${rlMoney(it.acc)}</b>` : ''}</div>
     <div class="acts"><button class="btn" data-sact="close">Отмена</button><button class="btn green" data-sact="ok">Продать · ${rlMoney(r2(v + it.acc))}</button></div>`, {
     narrow: true,
