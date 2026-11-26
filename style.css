@@ -1028,3 +1028,90 @@ svg.gi { width: 1.2em; height: 1.2em; flex: none; display: inline-block; vertica
 }
 .case-stage[hidden] { display: none; }
 .badge.knife svg.gi { width: 1.25em; height: 1.25em; vertical-align: -.25em; margin-right: 2px; }
+
+/* ===== v9: profile tabs ===== */
+.ptabs { display: flex; justify-content: center; margin: 0 0 16px; }
+.ptab-bar { display: inline-flex; gap: 4px; padding: 4px; border-radius: 999px; background: rgba(255,255,255,.06); border: 1px solid var(--stroke); max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.ptab { display: inline-flex; align-items: center; gap: 7px; height: 40px; padding: 0 18px; border-radius: 999px; color: var(--text-2); text-decoration: none; font-weight: 700; font-size: 14px; white-space: nowrap; transition: background .25s, color .25s; }
+.ptab svg { width: 18px; height: 18px; flex: none; }
+.ptab em { font-style: normal; font-size: 11px; font-weight: 800; padding: 1px 7px; border-radius: 999px; background: rgba(255,255,255,.1); }
+.ptab:hover { color: #fff; }
+.ptab.on { color: #fff; background: linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,.08)); box-shadow: inset 0 1px 0 rgba(255,255,255,.2); }
+@media (max-width: 560px) { .ptab { padding: 0 12px; font-size: 13px; } }
+
+/* ===== real "Rare Special Item" medal ===== */
+.rare-ico { display: inline-block; height: 1.3em; width: auto; vertical-align: -.3em; object-fit: contain; }
+.item.gold-card .img .rare-ico { height: auto; width: 100%; max-height: 100%; filter: drop-shadow(0 0 16px rgba(255,200,80,.35)); }
+.rc.gold b .rare-ico { height: auto; width: 100%; max-height: 92px; vertical-align: 0; }
+.rolls.multi .rc.gold b .rare-ico, .mt .rc.gold b .rare-ico, .roll.bt-roll .rc.gold b .rare-ico { max-height: 64px; }
+.section-head h2 .rare-ico { height: 1.5em; vertical-align: -.4em; }
+.seg .rare-ico.sm { height: 22px; vertical-align: -.45em; }
+.badge .rare-ico { height: 1.6em; vertical-align: -.5em; margin: -3px 0; }
+
+/* ===== steam: back to the site ===== */
+.steam-calc { display: grid; grid-template-columns: 1fr auto; gap: 6px 16px; max-width: 300px; margin: 12px auto 4px; padding: 12px 16px; border-radius: 16px; background: rgba(255,255,255,.05); font-size: 14px; }
+.steam-calc span { color: var(--text-3); }
+.steam-calc b { text-align: right; }
+.steam-calc b.r { color: #ff6b5e; } .steam-calc b.g { color: #5ee07f; }
+.steam-head .btn.green { margin-left: 4px; }
+
+/* ===== battles: case picker with pictures ===== */
+.case-pick { display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px 14px 8px 8px; border-radius: 18px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); color: inherit; font: inherit; text-align: left; cursor: pointer; transition: background .2s; }
+.case-pick:hover { background: rgba(255,255,255,.1); }
+.cp-art { width: 74px; height: 56px; flex: none; display: grid; place-items: center; }
+.cp-art img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.cp-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cp-t b { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cp-t small, .cp-item small { color: var(--text-3); font-weight: 700; }
+.cp-t small s, .cp-item small s { margin-right: 5px; opacity: .7; }
+.cp-chev { color: var(--text-3); font-size: 14px; }
+.cp-search { display: flex; margin: 12px 0; width: 100%; }
+.cp-search input { width: 100%; }
+.cp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 8px; max-height: 60vh; overflow-y: auto; padding: 2px; }
+.cp-item { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 8px; border-radius: 16px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.07); color: inherit; font: inherit; cursor: pointer; transition: background .2s, border-color .2s; }
+.cp-item:hover { background: rgba(255,255,255,.09); }
+.cp-item.on { border-color: var(--blue); background: rgba(10,132,255,.14); }
+.cp-item[hidden] { display: none; }
+.cp-img { width: 100%; height: 80px; display: grid; place-items: center; }
+.cp-img img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.cp-item b { font-size: 12.5px; line-height: 1.2; text-align: center; }
+.cp-item small { font-size: 12px; }
+@media (max-width: 560px) { .cp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* ===== battle pass: free / premium ===== */
+.bp-head { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; padding: 14px 18px; border-radius: 20px; margin-bottom: 10px; }
+.bp-head > div:not(.grow) { display: flex; flex-direction: column; gap: 2px; }
+.bp-head span { font-size: 12px; color: var(--text-3); }
+.bp-head b { font-size: 15px; display: inline-flex; align-items: center; gap: 4px; }
+.bp-head b svg { width: 15px; height: 15px; color: var(--green); }
+.bp-plan.prem b { color: #ffd60a; }
+.bp-head.premium { border-color: rgba(255,214,10,.4); background: linear-gradient(120deg, rgba(255,214,10,.1), rgba(255,255,255,.03)); }
+.bp-tag { position: absolute; top: 9px; right: 8px; z-index: 2; padding: 2px 6px; border-radius: 6px; font-size: 9px; font-weight: 900; letter-spacing: .06em; }
+.bp-card.is-free .bp-tag { background: rgba(48,209,88,.2); color: #5ee07f; }
+.bp-card.is-prem .bp-tag { background: linear-gradient(135deg, #ffd60a, #ff9f0a); color: #2a1600; }
+.bp-card.is-prem { border-color: rgba(255,214,10,.18); }
+.bp-card.prem-lock { border-color: rgba(255,214,10,.45); background: linear-gradient(180deg, rgba(255,214,10,.1), rgba(255,255,255,.03)); }
+.bp-card.prem-lock > :is(.bp-ico, .bp-skin, .bp-case, .bp-name, .bp-sub) { opacity: .7; }
+.btn.prem { background: linear-gradient(180deg, #ffd60a, #ff9f0a); color: #2a1600; border: 0; }
+.btn.prem svg { width: 13px; height: 13px; margin-right: 4px; }
+.bp-crown { display: grid; place-items: center; margin: 2px auto 8px; }
+.bp-crown svg.gi { width: 64px; height: 64px; }
+
+/* ===== performance ===== */
+/* off-screen cards are not rendered until scrolled near */
+.grid-cases > .case-card, .grid-items > .item, .blist > * { content-visibility: auto; contain-intrinsic-size: auto 240px; }
+/* phones / touch: the background is a static soft gradient; blurring it again every frame is what made iOS slow */
+.lowfx .bg .blob { filter: none; mix-blend-mode: normal; animation: none; will-change: auto; }
+.lowfx .bg .b1 { opacity: .42; } .lowfx .bg .b2 { opacity: .4; }
+.lowfx .bg .grain { display: none; }
+.lowfx .glass:not(.topbar):not(.dock):not(.actionbar) { -webkit-backdrop-filter: none; backdrop-filter: none; }
+.lowfx .topbar, .lowfx .dock, .lowfx .actionbar { -webkit-backdrop-filter: blur(18px) saturate(160%); backdrop-filter: blur(18px) saturate(160%); }
+.lowfx .scrim { -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.lowfx .case-stage .halo, .lowfx .detail-art .glow, .lowfx .win-card .glow, .lowfx .upg-slot .glow, .lowfx .bc-art .halo { filter: blur(40px); }
+.lowfx .win-card:not(.single) .rays { animation: none; }
+@media (prefers-reduced-motion: reduce) { .bg .blob, .bat { animation: none !important; } }
+.cp-img { height: 84px; overflow: hidden; flex: none; }
+.cp-img img { height: 100%; width: auto; max-width: 100%; object-fit: contain; }
+.cp-art img { height: 100%; width: auto; }
+.bp-case > img { max-width: 100%; max-height: 78px; object-fit: contain; filter: drop-shadow(0 6px 10px rgba(0,0,0,.5)); }
+@media (max-width: 560px) { .actionbar { max-width: calc(100vw - 16px); flex-wrap: wrap; justify-content: center; row-gap: 6px; } .actionbar .btn.sm { padding: 0 10px; } }

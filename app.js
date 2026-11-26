@@ -58,7 +58,7 @@ const GI_SPRITE = `<svg width="0" height="0" style="position:absolute" aria-hidd
 <linearGradient id="gd-dark" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3d3546"/><stop offset="1" stop-color="#141118"/></linearGradient>
 <linearGradient id="gd-fire" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd23f"/><stop offset=".5" stop-color="#ff7a1a"/><stop offset="1" stop-color="#e0302a"/></linearGradient>
 <radialGradient id="gd-rareglow"><stop offset="0" stop-color="#ffd36a" stop-opacity=".55"/><stop offset=".6" stop-color="#e4ae39" stop-opacity=".18"/><stop offset="1" stop-color="#e4ae39" stop-opacity="0"/></radialGradient>
-<linearGradient id="gd-steamb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1e4f8f"/><stop offset="1" stop-color="#0b1a2e"/></linearGradient>
+<linearGradient id="gd-steamb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#111d2e"/><stop offset=".212" stop-color="#051839"/><stop offset=".407" stop-color="#0a1b48"/><stop offset=".581" stop-color="#132e62"/><stop offset=".738" stop-color="#144b7e"/><stop offset=".873" stop-color="#136497"/><stop offset="1" stop-color="#1387b8"/></linearGradient>
 <linearGradient id="gd-holo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7ad7ff"/><stop offset=".35" stop-color="#b79bff"/><stop offset=".7" stop-color="#ff8ad8"/><stop offset="1" stop-color="#ffe08a"/></linearGradient>
 </defs>
 <symbol id="gi-pumpkin" viewBox="0 0 32 32">
@@ -198,14 +198,10 @@ const GI_SPRITE = `<svg width="0" height="0" style="position:absolute" aria-hidd
   <path d="M12.5 10.5l1.6 3.3 3.6.5-2.6 2.5.6 3.6-3.2-1.7-3.2 1.7.6-3.6-2.6-2.5 3.6-.5z" fill="#fff8d6"/>
   <path d="M6.5 9.5h4" stroke="#fff" stroke-opacity=".7" stroke-width="1.2" stroke-linecap="round"/>
 </symbol>
-<symbol id="gi-steam" viewBox="0 0 32 32">
-  <circle cx="16" cy="16" r="14" fill="url(#gd-steamb)"/>
-  <circle cx="20.6" cy="12.2" r="4.9" fill="none" stroke="#fff" stroke-width="2.2"/>
-  <circle cx="20.6" cy="12.2" r="2.4" fill="#fff"/>
-  <path d="M3 18.2l7.2 3" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/>
-  <circle cx="11.8" cy="21.9" r="3.3" fill="#fff"/><circle cx="11.8" cy="21.9" r="1.4" fill="#1b2838"/>
-  <path d="M14.6 20.4l3.6-5.2" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>
-</symbol>
+<symbol id="gi-steam" viewBox="0 0 65 65"><g transform="translate(.5 .5)">
+  <path d="M1.305 41.202C5.259 54.386 17.488 64 31.959 64c17.673 0 32-14.327 32-32s-14.327-32-32-32C15.001 0 1.124 13.193.028 29.874c2.074 3.477 2.879 5.628 1.275 11.328z" fill="url(#gd-steamb)"/>
+  <path fill="#fff" d="M30.31 23.985l.003.158-7.83 11.375c-1.268-.058-2.54.165-3.748.662a8.14 8.14 0 0 0-1.498.8L.042 29.893s-.398 6.546 1.26 11.424l12.156 5.016c.6 2.728 2.48 5.12 5.242 6.27a8.88 8.880 0 0 0 11.603-4.782 8.89 8.89 0 0 0 .684-3.656L42.18 36.16l.275.005c6.705 0 12.155-5.466 12.155-12.18s-5.44-12.160-12.155-12.174c-6.702 0-12.155 5.46-12.155 12.174zm-1.88 23.05c-1.454 3.5-5.466 5.147-8.953 3.694a6.84 6.84 0 0 1-3.524-3.362l3.957 1.640a5.04 5.04 0 0 0 6.591-2.719 5.05 5.050 0 0 0-2.715-6.601l-4.1-1.695c1.578-.6 3.372-.62 5.050.077 1.7.703 3 2.027 3.696 3.720s.692 3.56-.01 5.246M42.466 32.1a8.12 8.12 0 0 1-8.098-8.113 8.12 8.12 0 0 1 8.098-8.111 8.12 8.12 0 0 1 8.1 8.111 8.12 8.12 0 0 1-8.1 8.113m-6.068-8.126a6.09 6.09 0 0 1 6.08-6.095c3.355 0 6.084 2.730 6.084 6.095a6.09 6.090 0 0 1-6.084 6.093 6.09 6.09 0 0 1-6.081-6.093z"/>
+</g></symbol>
 <symbol id="gi-warn" viewBox="0 0 32 32">
   <path d="M14 5.2a2.3 2.3 0 0 1 4 0l10.8 19.2a2.3 2.3 0 0 1-2 3.4H5.2a2.3 2.3 0 0 1-2-3.4z" fill="url(#gd-org)"/>
   <path d="M16 12v7.5" stroke="#2a1300" stroke-width="3" stroke-linecap="round"/><circle cx="16" cy="23.4" r="1.8" fill="#2a1300"/>
@@ -237,7 +233,7 @@ const SK = window.SKINS.map((a, i) => {
 });
 const colOf = s => s.star ? TIER_COL.rare : TIER_COL[s.r];
 // mystery icon for a case's rare pool: gloves only -> golden glove, otherwise golden knife
-const rareIco = c => gi(c && c.pools && c.pools.rare && c.pools.rare.length && c.pools.rare.every(s => s.cat === 'glove') ? 'rareglove' : 'rareknife');
+const rareIco = (c, cls = '') => `<img class="rare-ico ${cls}" src="rare.png" alt="Редкий особый предмет" decoding="async">`;
 // cheap cases can be opened in bigger batches (mirrors max_open() on the server)
 const maxOpen = price => price <= 1 ? 50 : price <= 3 ? 20 : price <= 10 ? 10 : 5;
 const tierOf = s => s.star ? 'rare' : s.r === 'contraband' ? 'covert' : s.r;
@@ -284,10 +280,13 @@ function rollFloat(s) {
 }
 
 /* ================= cases ================= */
+const SALE_END = new Date(2026, 11, 1); // Black Friday sale runs until Dec 1
 const ALL_CASES = window.CASES.map((c, idx) => {
   const pools = {};
   for (const t in c.pools) pools[t] = c.pools[t].map(i => SK[i]);
-  return { ...c, name: c.n, idx, pools, hero: SK[c.hero], count: Object.values(pools).reduce((a, l) => a + l.length, 0) };
+  const onSale = c.sale > 0 && Date.now() < SALE_END;
+  return { ...c, name: c.n, idx, pools, hero: SK[c.hero], count: Object.values(pools).reduce((a, l) => a + l.length, 0),
+    full: c.price, price: onSale ? Math.round(c.price * (1 - c.sale) * 100 + 1e-7) / 100 : c.price, old: onSale ? c.price : c.old, onSale };
 });
 const CUSTOM = ALL_CASES.filter(c => c.kind === 'custom');
 const OFFICIAL = ALL_CASES.filter(c => c.kind === 'official');
@@ -302,7 +301,7 @@ const ERR = {
   NO_FUNDS: 'Недостаточно средств', NICK_TAKEN: 'Этот ник уже занят', BAD_NICK: 'Ник: 3–16 символов — буквы, цифры, пробел, _ . -',
   NOT_OPEN: 'Баттл уже начался или отменён', FULL: 'Мест уже нет', ALREADY_IN: 'Ты уже в этом баттле', NO_USER: 'Игрок с таким ником не найден',
   SELF: 'Нельзя подарить самому себе', NOT_OWNER: 'Этот предмет уже не твой', TARGET_TOO_CHEAP: 'Цель должна быть дороже ставки',
-  NOT_CREATOR: 'Это может только создатель баттла', QUEST_NOT_DONE: 'Квест ещё не выполнен', LEVEL_LOCKED: 'Этот уровень ещё не открыт', ALREADY_CLAIMED: 'Награда уже получена',
+  NOT_CREATOR: 'Это может только создатель баттла', QUEST_NOT_DONE: 'Квест ещё не выполнен', LEVEL_LOCKED: 'Этот уровень ещё не открыт', PREMIUM_REQUIRED: 'Эта награда — только в премиум-пропуске', PASS_ENDED: 'Сезон боевого пропуска завершён', ALREADY_PREMIUM: 'Премиум уже куплен', ALREADY_CLAIMED: 'Награда уже получена',
   NO_TICKETS: 'Бесплатных открытий не осталось', NO_PERK: 'Зелья уже нет', BAD_TARGET: 'Цель: от 1.01x до 1000x', BAD_BET: 'Минимальная ставка — $0.10', ONLINE_ONLY: 'Работает только онлайн', 'Invalid login credentials': 'Неверный ник или пароль', NO_PROFILE: 'Профиль не найден',
   'Anonymous sign-ins are disabled': 'Гостевой вход выключен на сервере', 'Password should be at least': 'Пароль — минимум 6 символов',
   'already registered': 'Этот ник уже зарегистрирован', 'Failed to fetch': 'Нет связи с сервером',
@@ -360,7 +359,7 @@ function applyProfile(p) {
   S.bal = +p.balance;
   S.lastBonus = p.last_bonus ? Date.parse(p.last_bonus) : 0;
   S.bonusN = p.bonus_n || 0;
-  S.bpClaimed = p.bp_claimed || []; S.luckUntil = p.luck_until ? Date.parse(p.luck_until) : 0;
+  S.bpClaimed = p.bp_claimed || []; S.bpPremium = !!p.bp_premium; S.luckUntil = p.luck_until ? Date.parse(p.luck_until) : 0;
   S.xp = p.xp || 0; S.quests = p.quests || {}; S.dailyLast = p.daily_last; S.dailyStreak = p.daily_streak || 0; S.pumpkinDone = !!p.pumpkin_done;
   S.stats = { opened: p.opened, spent: +p.spent, sold: +p.sold, upW: p.up_w, upL: p.up_l, bw: p.battles_w, bl: p.battles_l, best: p.best_skin != null ? { s: p.best_skin, f: p.best_float, st: p.best_st, p: +p.best_price } : null };
   if (ME) ME.nick = p.nickname;
@@ -480,7 +479,7 @@ const API = {
     const r = await rpc('withdraw_items', { p_ids: uids });
     const set = new Set(uids), moved = S.inv.filter(i => set.has(i.u));
     S.inv = S.inv.filter(i => !set.has(i.u));
-    S.steam.unshift(...moved.map(i => ({ ...i, t: Date.now() })));
+    await refreshPerks(); // steam_items get their own ids on the server
     return { n: r.n, sum: +r.sum };
   },
   async climb(uids, amount, target) {
@@ -684,12 +683,16 @@ const layoutPills = (root = document, instant = true) => $$('.seg', root).forEac
 window.addEventListener('resize', () => layoutPills());
 function segSelect(sg, v) { $$('button', sg).forEach(b => b.classList.toggle('on', b.dataset.v === v)); placePill(sg, false); }
 
+const LOWFX = matchMedia('(hover: none), (max-width: 760px)').matches;
+if (LOWFX) document.documentElement.classList.add('lowfx');
 const NAV = ONLINE
-  ? [['', 'Кейсы', ICON.cases], ['battles', 'Баттлы', ICON.swords], ['climb', 'Подъём', ICON.climb], ['inventory', 'Инвентарь', ICON.inv], ['upgrade', 'Апгрейд', ICON.up], ['quests', 'Квесты', ICON.quest], ['top', 'Топ', ICON.trophy], ['profile', 'Профиль', ICON.user]]
-  : [['', 'Кейсы', ICON.cases], ['inventory', 'Инвентарь', ICON.inv], ['upgrade', 'Апгрейд', ICON.up], ['quests', 'Квесты', ICON.quest], ['profile', 'Профиль', ICON.user]];
+  ? [['', 'Кейсы', ICON.cases], ['battles', 'Баттлы', ICON.swords], ['climb', 'Подъём', ICON.climb], ['upgrade', 'Апгрейд', ICON.up], ['quests', 'Квесты', ICON.quest], ['top', 'Топ', ICON.trophy], ['profile', 'Профиль', ICON.user]]
+  : [['', 'Кейсы', ICON.cases], ['upgrade', 'Апгрейд', ICON.up], ['quests', 'Квесты', ICON.quest], ['profile', 'Профиль', ICON.user]];
 const navHTML = list => `<span class="pill"></span>` + list.map(([r, l, i]) => `<button data-go="#/${r}" data-r="${r}">${i}<span>${l}</span></button>`).join('');
-$('#nav').innerHTML = navHTML(NAV); $('#dockNav').innerHTML = navHTML(ONLINE ? NAV.filter(n => n[0] !== 'quests') : NAV);
-const NAV_KEY = { case: '', battle: 'battles', u: 'top' };
+$('#nav').innerHTML = navHTML(NAV); $('#dockNav').innerHTML = navHTML(NAV);
+const NAV_KEY = { case: '', battle: 'battles', u: 'top', inventory: 'profile', steam: 'profile' };
+const ptabsHTML = active => `<nav class="ptabs"><div class="ptab-bar">${[['profile', 'Профиль', ICON.user], ['inventory', 'Инвентарь', ICON.inv], ...(ONLINE ? [['steam', 'Steam', gi('steam')]] : [])]
+  .map(([r, l, i]) => `<a class="ptab ${r === active ? 'on' : ''}" href="#/${r}">${i}<span>${l}</span>${r === 'inventory' ? `<em>${S.inv.length}</em>` : r === 'steam' && S.steam.length ? `<em>${S.steam.length}</em>` : ''}</a>`).join('')}</div></nav>`;
 function updateNav(r) {
   const key = r in NAV_KEY ? NAV_KEY[r] : r;
   for (const nav of [$('#nav'), $('#dockNav')]) {
@@ -748,13 +751,13 @@ function showcase(c) {
 }
 const GRP_DECO = { halloween: gi('pumpkin'), bf: '%' };
 function caseArt(c, size = '360fx360f') {
-  if (c.kind === 'official') return `<img src="${img(c.img, size)}" alt="${esc(c.name)}" loading="lazy">`;
+  if (c.kind === 'official' || c.img) return `<img src="${img(c.img, size)}" alt="${esc(c.name)}" loading="lazy" decoding="async">`;
   const [a, b, d] = showcase(c);
   return `<div class="crate g-${c.grp}" style="--a:${c.a};--b:${c.b}">
     <div class="rays"></div>
-    <img class="loot l2" src="${img(b.img)}" alt="" loading="lazy">
-    <img class="loot l3" src="${img(d.img)}" alt="" loading="lazy">
-    <img class="loot l1" src="${img(a.img)}" alt="" loading="lazy">
+    <img class="loot l2" src="${img(b.img)}" alt="" loading="lazy" decoding="async">
+    <img class="loot l3" src="${img(d.img)}" alt="" loading="lazy" decoding="async">
+    <img class="loot l1" src="${img(a.img)}" alt="" loading="lazy" decoding="async">
     <div class="box"><div class="lid"></div><div class="front"><span>${esc(c.mark)}</span></div></div>
     ${GRP_DECO[c.grp] ? `<span class="deco">${GRP_DECO[c.grp]}</span>` : ''}
   </div>`;
@@ -762,9 +765,9 @@ function caseArt(c, size = '360fx360f') {
 const saleOf = c => c.old ? Math.round((1 - c.price / c.old) * 100) : 0;
 const priceHTML = c => c.old ? `<s>${money(c.old)}</s>${money(c.price)}` : money(c.price);
 function caseCard(c, i) {
-  const badge = c.grp === 'halloween' ? `<span class="badge hw">${gi('pumpkin')} Хэллоуин</span>`
-    : c.grp === 'bf' ? `<span class="badge bf">−${saleOf(c)}% Black Friday</span>`
-    : c.reveal ? `<span class="badge knife">${gi('rareknife')} 100%</span>`
+  const badge = c.grp === 'bf' || c.onSale ? `<span class="badge bf">−${saleOf(c)}% Black Friday</span>`
+    : c.grp === 'halloween' ? `<span class="badge hw">${gi('pumpkin')} Хэллоуин</span>`
+    : c.reveal ? `<span class="badge knife">${rareIco(c)} 100%</span>`
     : c.kind === 'custom' ? '<span class="badge custom">Авторский</span>' : (c.idx < 3 ? '<span class="badge new">New</span>' : '');
   return `<div class="case-card glass-flat ${c.grp ? 'grp-' + c.grp : ''}" style="--i:${i};--glow:${c.glow}" data-go="#/case/${c.id}">${badge}<div class="art">${caseArt(c)}</div><h3>${esc(c.name)}</h3><div class="meta">${c.kind === 'custom' ? esc(c.desc) : c.count + ' предметов · ' + (c.d || '').slice(0, 4)}</div><span class="price-chip ${c.old ? 'sale' : ''}">${priceHTML(c)}</span></div>`;
 }
@@ -788,7 +791,7 @@ const onlineOnly = t => `<div class="empty-state"><div class="ill">${gi('globe')
 const main = $('#view');
 let VIEW = {};
 let viewToken = 0;
-const ROUTES = { climb: viewClimb, quests: viewQuests, '': viewHome, case: viewCase, inventory: viewInventory, upgrade: viewUpgrade, profile: viewProfile, battles: viewBattles, battle: viewBattle, top: viewTop, u: viewUser };
+const ROUTES = { steam: viewSteam, climb: viewClimb, quests: viewQuests, '': viewHome, case: viewCase, inventory: viewInventory, upgrade: viewUpgrade, profile: viewProfile, battles: viewBattles, battle: viewBattle, top: viewTop, u: viewUser };
 let firstRender = true;
 async function route() {
   if (ONLINE && !ME) return;
@@ -798,7 +801,7 @@ async function route() {
   viewToken++;
   if (!firstRender) {
     main.style.transition = 'opacity .18s, filter .18s, transform .18s';
-    main.style.opacity = 0; main.style.filter = 'blur(6px)'; main.style.transform = 'scale(.995)';
+    main.style.opacity = 0; if (!LOWFX) { main.style.filter = 'blur(6px)'; main.style.transform = 'scale(.995)'; }
     await sleep(170);
   }
   firstRender = false;
@@ -862,13 +865,12 @@ const H = { tab: 'all', q: '', sort: 'def' };
 const GROUPS = [
   ['halloween', gi('pumpkin') + ' Хэллоуин', 'жуткие коллекции сезона'],
   ['stickers', gi('sticker') + ' Наклейки и граффити', 'кейсы за копейки — от $0.04'],
-  ['bf', gi('bf') + ' Black Friday', 'сниженная наценка — больше возврат'],
+  ['bf', gi('bf') + ' Black Friday', `скидки на ${ALL_CASES.filter(c => c.old).length} кейсов — до конца распродажи`],
   ['knives', gi('knife') + ' Ножи и перчатки', '100% редкий предмет из каждого кейса'],
   ['custom', gi('sparkle') + ' Авторские', 'выдуманные коллекции из реальных скинов'],
   ['official', 'Кейсы CS2', 'официальные, с реальным содержимым'],
 ];
 const grpOf = c => c.kind === 'official' ? 'official' : c.grp || 'custom';
-const SALE_END = new Date(2026, 11, 1); // sale runs until Dec 1
 function countdown() {
   const ms = SALE_END - Date.now();
   if (ms <= 0) return '';
@@ -935,7 +937,7 @@ function viewHome() {
 }
 function drawCaseGrid() {
   const q = H.q.trim().toLowerCase();
-  let list = ALL_CASES.filter(c => (H.tab === 'all' || grpOf(c) === H.tab) && (!q || c.name.toLowerCase().includes(q)));
+  let list = ALL_CASES.filter(c => (H.tab === 'all' || grpOf(c) === H.tab || (H.tab === 'bf' && c.onSale)) && (!q || c.name.toLowerCase().includes(q)));
   if (H.sort === 'pa') list.sort((a, b) => a.price - b.price);
   if (H.sort === 'pd') list.sort((a, b) => b.price - a.price);
   if (H.sort === 'nm') list.sort((a, b) => a.name.localeCompare(b.name));
@@ -961,7 +963,7 @@ function viewCase(id) {
   const items = order.filter(t => t !== 'rare' && c.odds[t]).flatMap(t => c.pools[t].slice().sort((a, b) => evSkin(b) - evSkin(a)).map(s => ({ s, t })));
   const rare = c.odds.rare ? c.pools.rare.slice().sort((a, b) => evSkin(b) - evSkin(a)) : [];
   const card = (s, t, i) => itemCard({ s: s.i, p: evSkin(s) }, { i, chance: pct(c.odds[t] / c.pools[t].length), priceText: '≈ ' + money(evSkin(s)), wearText: '' });
-  if (C.n > maxOpen(c.price)) C.n = 1;
+  if (C.n > maxOpen(c.full)) C.n = 1;
   main.innerHTML = `
   <section class="case-top glass edge">
     <div class="head">
@@ -973,7 +975,7 @@ function viewCase(id) {
     <div class="case-stage" id="stage" style="--glow:${c.glow}"><div class="halo"></div>${caseArt(c, '512fx384f')}</div>
     <div class="rolls" id="rolls" hidden></div>
     <div class="open-bar">
-      ${seg('n', [1, 2, 3, 4, 5, 10, 20, 50].filter(n => n <= maxOpen(c.price)).map(n => [String(n), '×' + n]), String(C.n))}
+      ${seg('n', [1, 2, 3, 4, 5, 10, 20, 50].filter(n => n <= maxOpen(c.full)).map(n => [String(n), '×' + n]), String(C.n))}
       <button class="btn primary big" id="openBtn" data-act="open"></button>
       <button class="btn green big" id="freeBtn" data-act="free" hidden></button>
       <label class="toggle" data-act="fast"><span class="switch ${SET.fast ? 'on' : ''}" id="fastSw"></span>Быстро</label>
@@ -1267,7 +1269,7 @@ function giftSheet(it, onChange) {
 
 /* ================= INVENTORY ================= */
 const I = { f: 'all', q: '', sort: 'new', select: false, sel: new Set(), limit: 120 };
-const INV_FILTERS = [['all', 'Все'], ['rare', gi('rareknife')], ['covert', 'Тайные'], ['classified', 'Засекр.'], ['restricted', 'Запрещ.'], ['milspec', 'Армейские'], ['low', 'Прочие']];
+const INV_FILTERS = [['all', 'Все'], ['rare', rareIco(null, 'sm')], ['covert', 'Тайные'], ['classified', 'Засекр.'], ['restricted', 'Запрещ.'], ['milspec', 'Армейские'], ['low', 'Прочие']];
 function invList() {
   const q = I.q.trim().toLowerCase();
   let l = S.inv.filter(it => {
@@ -1282,7 +1284,7 @@ function invList() {
 }
 function viewInventory() {
   I.sel = new Set(); I.select = false; I.limit = 120;
-  main.innerHTML = `
+  main.innerHTML = `${ptabsHTML('inventory')}
   <section class="inv-head glass edge">
     <div class="stat"><span>Предметов</span><b id="invN"></b></div>
     <div class="stat"><span>Стоимость инвентаря</span><b id="invV"></b></div>
@@ -1573,7 +1575,7 @@ async function viewBattles() {
     <div class="bc-form">
       <h1>Кейс-баттл</h1>
       <p class="ev-note">Все открывают одинаковые кейсы. У кого дроп дороже — забирает всё. Нет друзей онлайн? Добавь бота.</p>
-      <select class="select" id="bcCase">${ALL_CASES.slice().sort((a, b) => a.price - b.price).map(c => `<option value="${c.id}" ${c.id === B.caseId ? 'selected' : ''}>${esc(c.name)} — ${money(c.price)}</option>`).join('')}</select>
+      <button class="case-pick" data-act="pickCase" id="bcPick"></button>
       <div class="bc-row"><span>Раунды</span>${seg('rounds', [1, 2, 3, 4, 5].map(n => [String(n), String(n)]), String(B.rounds), 'sm')}</div>
       <div class="bc-row"><span>Игроки</span>${seg('players', [['2', '1 на 1'], ['3', '3 игрока'], ['4', '4 игрока']], String(B.players), 'sm')}</div>
       <button class="btn primary big" id="bcGo" data-act="create"></button>
@@ -1586,6 +1588,7 @@ async function viewBattles() {
   const drawForm = () => {
     const c = caseById(B.caseId);
     $('#bcArt').innerHTML = `<div class="halo" style="background:${c.glow}"></div>${caseArt(c, '360fx360f')}`;
+    $('#bcPick').innerHTML = `<span class="cp-art">${caseArt(c, '256fx192f')}</span><span class="cp-t"><b>${esc(c.name)}</b><small>${priceHTML(c)}</small></span><span class="cp-chev">▾</span>`;
     $('#bcGo').textContent = `Создать за ${money(r2(c.price * B.rounds))}`;
   };
   drawForm();
@@ -1607,6 +1610,7 @@ async function viewBattles() {
     onChange(t) { if (t.id === 'bcCase') { B.caseId = t.value; drawForm(); } },
     async act(a, el, e) {
       if (a === 'join') { e.stopPropagation(); el.disabled = true; await joinBattle(el.dataset.id); el.disabled = false; }
+      if (a === 'pickCase') casePicker(B.caseId, id => { B.caseId = id; drawForm(); });
       if (a === 'create') {
         el.disabled = true;
         try {
@@ -1619,6 +1623,18 @@ async function viewBattles() {
   };
 }
 
+function casePicker(cur, onPick) {
+  const list = ALL_CASES.slice().sort((a, b) => a.price - b.price);
+  openSheet(`<h2>Выбери кейс</h2>
+    <label class="search cp-search">${ICON.search}<input id="cpQ" placeholder="Поиск кейса" autocomplete="off"></label>
+    <div class="cp-grid">${list.map(c => `<button class="cp-item ${c.id === cur ? 'on' : ''}" data-sact="pick" data-id="${c.id}" data-n="${esc(c.name.toLowerCase())}">
+      <span class="cp-img">${caseArt(c, '256fx192f')}</span><b>${esc(c.name)}</b><small>${priceHTML(c)}</small></button>`).join('')}</div>`, {
+    acts: { pick(b, close) { onPick(b.dataset.id); SFX.click(); close(); } },
+  });
+  const q = document.querySelector('.scrim #cpQ');
+  if (q) q.addEventListener('input', () => { const v = q.value.trim().toLowerCase(); document.querySelectorAll('.scrim .cp-item').forEach(x => { x.hidden = !!v && !x.dataset.n.includes(v); }); });
+  const on = document.querySelector('.scrim .cp-item.on'); if (on) on.scrollIntoView({ block: 'center' });
+}
 async function viewBattle(id) {
   if (!ONLINE) { main.innerHTML = onlineOnly('Кейс-баттлы'); return; }
   const tk = viewToken;
@@ -1775,9 +1791,36 @@ const nextStreak = () => S.dailyLast === utcDay(-1) || S.dailyLast === utcDay(0)
 const BPMAP = Object.fromEntries((window.BP || []).map(r => [r.level, r]));
 function bpReward(lv) {
   if (BPMAP[lv]) return BPMAP[lv];
-  return lv % 10 === 0 ? { level: lv, kind: 'case', case_id: 'c-knife-budget', n: 1 } : lv % 5 === 0 ? { level: lv, kind: 'luck', mins: 30 } : { level: lv, kind: 'money', amount: 100 };
+  const free = lv % 7 === 0;
+  return lv % 10 === 0 ? { level: lv, kind: 'case', case_id: 'c-knife-budget', n: 1, free } : lv % 5 === 0 ? { level: lv, kind: 'luck', mins: 30, free } : { level: lv, kind: 'money', amount: 100, free };
 }
-const bpReadyList = () => { if (!ONLINE) return []; const L = levelOf(S.xp || 0).lvl, out = []; for (let l = 2; l <= L; l++) if (!S.bpClaimed.includes(l)) out.push(l); return out; };
+const BP_END = new Date('2027-01-01T00:00:00+02:00'), BP_PRICE = 200;
+const bpEnded = () => Date.now() >= BP_END;
+const bpOpen = lv => bpReward(lv).free || S.bpPremium;
+const bpUnclaimed = () => { if (!ONLINE || bpEnded()) return []; const L = levelOf(S.xp || 0).lvl, out = []; for (let l = 2; l <= L; l++) if (!S.bpClaimed.includes(l)) out.push(l); return out; };
+const bpReadyList = () => bpUnclaimed().filter(bpOpen);
+const bpLockedList = () => bpUnclaimed().filter(l => !bpOpen(l));
+function buyPassSheet(onDone) {
+  const locked = bpLockedList();
+  openSheet(`
+    <div class="bp-crown">${gi('trophy')}</div>
+    <h2>Премиум боевой пропуск</h2>
+    <div class="subtitle">Открывает все награды сезона: скины вплоть до Karambit | Fade, ножевые кейсы, пачки открытий и зелья удачи. Бесплатная дорожка — около 15% наград, остальное только в премиуме.${locked.length ? `<br><b>Уже доступно сразу: ${locked.length} наград${locked.length === 1 ? 'а' : locked.length < 5 ? 'ы' : ''}.</b>` : ''}<br>Сезон до ${BP_END.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}.</div>
+    <div class="acts"><button class="btn" data-sact="close">Позже</button><button class="btn primary" data-sact="ok">Купить за ${money(BP_PRICE)}</button></div>`, {
+    narrow: true,
+    acts: {
+      async ok(b, close) {
+        b.disabled = true;
+        try {
+          const r = await rpc('buy_pass');
+          S.bpPremium = true; setBal(+r.balance); SFX.win('covert'); close(); drawLevel();
+          notify({ title: 'Премиум пропуск активен!', sub: locked.length ? `Можно забрать ещё ${locked.length} наград` : 'Все награды сезона открыты', icon: gi('trophy'), color: 'rgba(255,214,10,.35)', tall: true });
+          onDone && onDone();
+        } catch (e) { b.disabled = false; notifyErr(e); }
+      },
+    },
+  });
+}
 function bpName(r) {
   if (r.kind === 'money') return money(r.amount);
   if (r.kind === 'luck') return `Зелье удачи · ${r.mins} мин`;
@@ -1788,7 +1831,7 @@ function bpArt(r) {
   if (r.kind === 'money') return `<div class="bp-ico">${gi('coins')}</div>`;
   if (r.kind === 'luck') return `<div class="bp-ico">${gi('potion')}</div>`;
   if (r.kind === 'case') { const c = caseById(r.case_id); return c ? `<div class="bp-case">${caseArt(c, '256fx192f')}${r.n > 1 ? `<span class="bp-n">×${r.n}</span>` : ''}</div>` : ''; }
-  const sk = SK[r.skin_id]; return sk ? `<div class="bp-skin" style="--rc:${colOf(sk)}"><img src="${img(sk.img, '256fx192f')}" alt="" loading="lazy"></div>` : '';
+  const sk = SK[r.skin_id]; return sk ? `<div class="bp-skin" style="--rc:${colOf(sk)}"><img src="${img(sk.img, '256fx192f')}" alt="" loading="lazy" decoding="async"></div>` : '';
 }
 const bpSub = r => r.kind === 'case' ? 'бесплатн' + (r.n > 1 ? 'ые открытия' : 'ое открытие') : r.kind === 'skin' ? 'скин в инвентарь' : r.kind === 'luck' ? 'кладётся в инвентарь' : 'на баланс';
 const anythingToClaim = () => dailyReady() || activeQuests().some(questReady) || bpReadyList().length > 0;
@@ -1867,11 +1910,11 @@ function viewQuests() {
     const pk = Array.from({ length: PK_TOTAL }, (_, i) => `<i class="${S.pumpkins.includes(i + 1) ? 'on' : ''}">${gi('pumpkin')}</i>`).join('');
     const bpReady = bpReadyList(), maxLv = Math.max(50, L.lvl + 10);
     const bpCards = ONLINE ? Array.from({ length: maxLv - 1 }, (_, i) => {
-      const lv = i + 2, r = bpReward(lv), done = S.bpClaimed.includes(lv), can = !done && lv <= L.lvl;
-      return `<div class="bp-card ${done ? 'done' : can ? 'ready' : 'locked'} k-${r.kind}" data-lv="${lv}">
-        <div class="bp-lv">${lv}</div>${bpArt(r)}
+      const lv = i + 2, r = bpReward(lv), done = S.bpClaimed.includes(lv), reached = !done && lv <= L.lvl && !bpEnded(), can = reached && bpOpen(lv);
+      return `<div class="bp-card ${done ? 'done' : can ? 'ready' : reached ? 'prem-lock' : 'locked'} k-${r.kind} ${r.free ? 'is-free' : 'is-prem'}" data-lv="${lv}">
+        <div class="bp-lv">${lv}</div><span class="bp-tag">${r.free ? 'FREE' : 'PREMIUM'}</span>${bpArt(r)}
         <div class="bp-name">${bpName(r)}</div><div class="bp-sub">${bpSub(r)}</div>
-        ${done ? `<span class="bp-state">${ICON.check} получено</span>` : can ? `<button class="btn green sm" data-act="bp" data-lv="${lv}">Забрать</button>` : `<span class="bp-state">с ${lv} уровня</span>`}
+        ${done ? `<span class="bp-state">${ICON.check} получено</span>` : can ? `<button class="btn green sm" data-act="bp" data-lv="${lv}">Забрать</button>` : reached ? `<button class="btn sm prem" data-act="buyPass">${ICON.lock || ''}Премиум</button>` : `<span class="bp-state">с ${lv} уровня</span>`}
       </div>`;
     }).join('') : '';
     main.innerHTML = `
@@ -1883,7 +1926,13 @@ function viewQuests() {
         <div class="ev-note">${L.cur} / ${L.need} XP до ${L.lvl + 1} уровня · всего ${S.xp || 0} XP</div>
       </div>
     </section>
-    ${ONLINE ? `<div class="section-head"><h2>${gi('ticket')} Боевой пропуск</h2><span class="sub">награда за каждый уровень · XP дают кейсы, апгрейды, баттлы, подъём и квесты</span><div class="grow"></div>${bpReady.length > 1 ? `<button class="btn green sm" data-act="bpAll">Забрать всё (${bpReady.length})</button>` : ''}</div>
+    ${ONLINE ? `<div class="section-head"><h2>${gi('ticket')} Боевой пропуск</h2><span class="sub">награда за каждый уровень · XP дают кейсы, апгрейды, баттлы, подъём и квесты</span></div>
+    <div class="bp-head glass-flat ${S.bpPremium ? 'premium' : ''}">
+      <div class="bp-season"><span>Сезон 1 · ${bpEnded() ? 'завершён' : 'до ' + BP_END.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}</span><b>${bpEnded() ? 'Награды больше не выдаются' : `осталось ${Math.ceil((BP_END - Date.now()) / 864e5)} дн.`}</b></div>
+      <div class="bp-plan"><span>Бесплатно</span><b>${(window.BP || []).filter(r => r.free).length} из ${(window.BP || []).length} наград</b></div>
+      <div class="bp-plan prem"><span>Премиум</span><b>${S.bpPremium ? `${ICON.check} активен` : `все награды · ${money(BP_PRICE)}`}</b></div>
+      <div class="grow"></div>${bpReady.length > 1 ? `<button class="btn green sm" data-act="bpAll">Забрать всё (${bpReady.length})</button>` : ''}
+      ${!S.bpPremium && !bpEnded() ? `<button class="btn primary sm" data-act="buyPass">Купить премиум${bpLockedList().length ? ` · ${bpLockedList().length} наград ждут` : ''}</button>` : ''}</div>
     <div class="bp-track glass-flat" id="bpTrack">${bpCards}</div>` : ''}
     <div class="q-top">
       <section class="q-card daily glass-flat">
@@ -1923,6 +1972,7 @@ function viewQuests() {
       if (a === 'quest') claimQuest(el.dataset.q, el);
       if (a === 'bp') claimLevels([+el.dataset.lv], el).then(() => { const k = $('#bpTrack') && $('#bpTrack').scrollLeft; draw(); if ($('#bpTrack')) $('#bpTrack').scrollLeft = k; });
       if (a === 'bpAll') claimLevels(bpReadyList(), el).then(() => { draw(); scrollBp(); });
+      if (a === 'buyPass') buyPassSheet(() => { draw(); scrollBp(); });
     },
   };
 }
@@ -2287,7 +2337,7 @@ function histList(list) {
   return `<div class="list glass-flat">${list.map(h => {
     const s = SK[h.s], c = caseById(h.c);
     const what = h.src === 'battle' ? `Победа в баттле · банк ${money(h.p)}` : h.src === 'upgrade' ? `Апгрейд (${h.extra}%)` : h.src === 'gift' ? `Подарок → ${esc(h.extra)}` : h.src === 'pass' ? `Боевой пропуск · ур. ${esc(h.extra)}` : (c ? esc(c.name) : 'Кейс');
-    return `<div class="li" style="--rc:${colOf(s)}"><div class="dot"></div><img src="${img(s.img, '128fx128f')}" alt="" loading="lazy"><div class="t"><b>${esc(fullName(h))}</b><span>${what} · ${new Date(h.t).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span></div><div class="p">${money(h.src === 'battle' ? h.p : h.p)}</div></div>`;
+    return `<div class="li" style="--rc:${colOf(s)}"><div class="dot"></div><img src="${img(s.img, '128fx128f')}" alt="" loading="lazy" decoding="async"><div class="t"><b>${esc(fullName(h))}</b><span>${what} · ${new Date(h.t).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span></div><div class="p">${money(h.src === 'battle' ? h.p : h.p)}</div></div>`;
   }).join('')}</div>`;
 }
 
@@ -2304,8 +2354,7 @@ async function viewProfile() {
   }
   const st = S.stats, b = st.best;
   main.innerHTML = `
-  ${ONLINE ? `<div class="ptabs">${seg('ptab', [['main', ICON.user + '<span>Профиль</span>'], ['steam', gi('steam') + '<span>Steam</span>']], 'main')}</div>` : ''}
-  <div id="ptabBody">
+  ${ptabsHTML('profile')}
   ${ONLINE ? `<section class="inv-head glass edge">
     <div class="avatar">${esc(ME.nick.slice(0, 2))}</div>
     <div class="stat"><span>${ME.guest ? 'Гость' : 'Аккаунт'}</span><b>${esc(ME.nick)}</b></div>
@@ -2332,16 +2381,8 @@ async function viewProfile() {
     <div class="li"><div class="t"><b>Звуки</b><span>Щелчки рулетки, звук выигрыша</span></div><span class="switch ${SET.sound ? 'on' : ''}" data-act="snd"></span></div>
     <div class="li"><div class="t"><b>Быстрое открытие</b><span>Рулетка крутится ~1.5 секунды</span></div><span class="switch ${SET.fast ? 'on' : ''}" data-act="fast"></span></div>
     ${ONLINE ? '' : '<div class="li"><div class="t"><b>Сбросить прогресс</b><span>Баланс $100, пустой инвентарь и статистика</span></div><button class="btn danger sm" data-act="reset">Сбросить</button></div>'}
-  </div>
   </div>`;
-  const mainHTML = $('#ptabBody').innerHTML;
   VIEW = {
-    onSeg(n, v) {
-      if (n !== 'ptab') return;
-      const body = $('#ptabBody');
-      body.innerHTML = v === 'steam' ? steamHTML() : mainHTML;
-      body.animate([{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 260, easing: 'ease-out' });
-    },
     act(a, el) {
       if (a === 'snd') { SET.sound = !SET.sound; saveSet(); el.classList.toggle('on', SET.sound); drawSound(); SFX.click(); }
       if (a === 'fast') { SET.fast = !SET.fast; saveSet(); el.classList.toggle('on', SET.fast); SFX.click(); }
@@ -2358,6 +2399,42 @@ async function viewProfile() {
     },
   };
 }
+const STEAM_FEE = .05;
+function viewSteam() {
+  if (!ONLINE) { location.hash = '#/profile'; return; }
+  const draw = () => { main.innerHTML = ptabsHTML('steam') + steamHTML(); };
+  draw();
+  VIEW = {
+    act(a, el) {
+      if (a === 'stItem') steamBackSheet([+el.dataset.u], draw);
+      if (a === 'stAll') steamBackSheet(S.steam.map(i => i.u), draw);
+    },
+  };
+}
+function steamBackSheet(ids, onDone) {
+  const its = S.steam.filter(i => ids.includes(i.u)); if (!its.length) return;
+  const sum = r2(its.reduce((a, i) => a + i.p, 0)), pay = r2(sum * (1 - STEAM_FEE)), one = its.length === 1 ? its[0] : null, s = one && SK[one.s];
+  openSheet(`
+    <div class="steam-badge">${gi('steam')}</div>
+    <h2>${one ? 'Вернуть на сайт?' : `Вернуть все ${its.length} предм.?`}</h2>
+    <div class="subtitle">${one ? esc(fullName(one)) + ' · ' : ''}стоимость ${money(sum)}<br>Предмет${one ? '' : 'ы'} прода${one ? 'ётся' : 'дутся'} из Steam, деньги придут на баланс сайта с комиссией ${STEAM_FEE * 100}%.</div>
+    ${one ? `<div class="detail-art" style="--rc:${colOf(s)};height:140px"><div class="glow"></div><img src="${img(s.img)}" alt=""></div>` : ''}
+    <div class="steam-calc"><span>Стоимость</span><b>${money(sum)}</b><span>Комиссия ${STEAM_FEE * 100}%</span><b class="r">−${money(r2(sum - pay))}</b><span>На баланс</span><b class="g">${money(pay)}</b></div>
+    <div class="acts"><button class="btn" data-sact="close">Отмена</button><button class="btn green" data-sact="ok">Получить ${money(pay)}</button></div>`, {
+    narrow: true,
+    acts: {
+      async ok(b, close) {
+        b.disabled = true;
+        try {
+          const r = await rpc('steam_deposit', { p_ids: ids });
+          S.steam = S.steam.filter(i => !ids.includes(i.u)); setBal(+r.balance); SFX.coin(); close();
+          notify({ title: 'Деньги на балансе', sub: `${r.n} предм. из Steam · комиссия ${money(+r.fee)}`, icon: gi('steam'), color: 'rgba(48,209,88,.3)', amt: '+' + money(+r.payout), amtColor: '#5ee07f', tall: true });
+          onDone && onDone();
+        } catch (e) { b.disabled = false; notifyErr(e); }
+      },
+    },
+  });
+}
 function steamHTML() {
   const list = S.steam.slice().sort((a, b) => b.p - a.p), sv = r2(list.reduce((a, i) => a + i.p, 0));
   return `
@@ -2368,9 +2445,10 @@ function steamHTML() {
     <div class="stat"><span>Предметов</span><b>${list.length}</b></div>
     <div class="stat"><span>Стоимость в Steam</span><b class="steam-v">${money(sv)}</b></div>
     <div class="stat"><span>Всего с инвентарём сайта</span><b>${money(r2(sv + invValue()))}</b></div>
+    ${list.length ? `<button class="btn green" data-act="stAll">Всё на баланс · ${money(r2(sv * (1 - STEAM_FEE)))}</button>` : ''}
   </section>
-  <div class="hint glass-flat">Это симуляция: «вывод» убирает предмет из инвентаря сайта и кладёт сюда. В настоящий Steam ничего не уходит.</div>
-  ${list.length ? `<div class="grid-items stagger">${list.map((it, i) => itemCard(it, { i: Math.min(i, 30), wearText: new Date(it.t).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }) })).join('')}</div>`
+  <div class="hint glass-flat">Это симуляция: в настоящий Steam ничего не уходит. Нажми на предмет, чтобы продать его обратно на сайт — деньги придут на баланс с комиссией ${STEAM_FEE * 100}%.</div>
+  ${list.length ? `<div class="grid-items stagger">${list.map((it, i) => itemCard(it, { i: Math.min(i, 30), attr: `data-act="stItem" data-u="${it.u}"`, wearText: new Date(it.t).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }) })).join('')}</div>`
     : `<div class="empty-state"><div class="ill">${gi('steam')}</div><h3>В Steam пока пусто</h3>Открой предмет в инвентаре и нажми «Вывести в Steam».<br><button class="btn primary" data-go="#/inventory">В инвентарь</button></div>`}`;
 }
 function renameSheet() {
