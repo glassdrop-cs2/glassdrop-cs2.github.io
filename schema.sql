@@ -646,11 +646,12 @@ begin
 end $$;
 
 create or replace function rl_buy(p_item text, p_n int) returns jsonb language plpgsql security definer set search_path = public as $$
-declare uid uuid := auth.uid(); c rl_catalog; cost numeric;
+declare uid uuid := auth.uid(); c rl_catalog; cost numeric; lim int;
 begin
   select * into c from rl_catalog where id = p_item;
   if not found or not c.buy then raise exception 'BAD_ITEM'; end if;
-  if p_n < 1 or p_n > case when c.cat = 'food' then 20 else 1 end then raise exception 'BAD_N'; end if;
+  lim := case when c.cat = 'food' then 20 else 1 end;  -- food can be bought in packs
+  if p_n is null or p_n < 1 or p_n > lim then raise exception 'BAD_N'; end if;
   cost := round(c.price * p_n, 2);
   update profiles set rl_balance = rl_balance - cost where id = uid and rl_balance >= cost;
   if not found then raise exception 'NO_RL_FUNDS'; end if;
