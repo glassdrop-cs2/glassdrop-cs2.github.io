@@ -42,6 +42,134 @@ const ICON = {
   bot: svg('<rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V4M9 13h.01M15 13h.01M9 17h6"/>'),
 };
 
+/* ================= hand-drawn colour icons (SVG sprite) ================= */
+const GI_SPRITE = `<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<linearGradient id="gd-org" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffc061"/><stop offset=".55" stop-color="#ff7a1a"/><stop offset="1" stop-color="#d9480f"/></linearGradient>
+<linearGradient id="gd-org2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd27a"/><stop offset=".6" stop-color="#ff8f2a"/><stop offset="1" stop-color="#e2561a"/></linearGradient>
+<radialGradient id="gd-glow" cx=".5" cy=".55" r=".6"><stop offset="0" stop-color="#fff7b0"/><stop offset=".6" stop-color="#ffd23f"/><stop offset="1" stop-color="#ff9a00"/></radialGradient>
+<linearGradient id="gd-stem" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a5d867"/><stop offset="1" stop-color="#3e6b1f"/></linearGradient>
+<linearGradient id="gd-gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff0b8"/><stop offset=".45" stop-color="#f2b632"/><stop offset="1" stop-color="#a86a00"/></linearGradient>
+<linearGradient id="gd-steel" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".5" stop-color="#c9d3dd"/><stop offset="1" stop-color="#6f7c8a"/></linearGradient>
+<linearGradient id="gd-violet" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d8b8ff"/><stop offset=".5" stop-color="#9b5cff"/><stop offset="1" stop-color="#5a24c7"/></linearGradient>
+<linearGradient id="gd-blue" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a8e2ff"/><stop offset=".5" stop-color="#3f9dff"/><stop offset="1" stop-color="#1f4fd1"/></linearGradient>
+<linearGradient id="gd-green" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a6f7b9"/><stop offset=".5" stop-color="#34c759"/><stop offset="1" stop-color="#16803a"/></linearGradient>
+<linearGradient id="gd-red" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff9e8f"/><stop offset=".5" stop-color="#ff453a"/><stop offset="1" stop-color="#b3161b"/></linearGradient>
+<linearGradient id="gd-dark" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3d3546"/><stop offset="1" stop-color="#141118"/></linearGradient>
+<linearGradient id="gd-fire" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd23f"/><stop offset=".5" stop-color="#ff7a1a"/><stop offset="1" stop-color="#e0302a"/></linearGradient>
+<linearGradient id="gd-holo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7ad7ff"/><stop offset=".35" stop-color="#b79bff"/><stop offset=".7" stop-color="#ff8ad8"/><stop offset="1" stop-color="#ffe08a"/></linearGradient>
+</defs>
+<symbol id="gi-pumpkin" viewBox="0 0 32 32">
+  <path d="M15.2 8.6c-.6-2.8.1-4.9 2.2-6.1l1.5 1.4c-1.5 1-1.9 2.6-1.4 4.8z" fill="url(#gd-stem)"/>
+  <path d="M18.3 4.4c2.4-2 5.4-1.8 6.9 0-2.3 1.2-4.6 1.2-6.9 0z" fill="#6fae34"/>
+  <ellipse cx="9.6" cy="19" rx="7.4" ry="9.6" fill="url(#gd-org)"/>
+  <ellipse cx="22.4" cy="19" rx="7.4" ry="9.6" fill="url(#gd-org)"/>
+  <ellipse cx="16" cy="18.8" rx="7.8" ry="10.2" fill="url(#gd-org2)"/>
+  <path d="M11.4 9.6c-2 5.2-2 13.4 0 18.6M20.6 9.6c2 5.2 2 13.4 0 18.6" stroke="#a63a00" stroke-opacity=".45" stroke-width=".9" fill="none"/>
+  <path d="M9.6 16.6l2.6-3.8 2.5 3.8zM17.3 16.6l2.5-3.8 2.6 3.8zM15 19.4l1-1.5 1 1.5z" fill="url(#gd-glow)" stroke="#5a1d00" stroke-width=".7" stroke-linejoin="round"/>
+  <path d="M9.2 21.4c4.4 4.3 9.2 4.3 13.6 0l-1.8.3-.9 1.5-1.5-1.1-1.3 1.6-1.3-1.6-1.3 1.6-1.3-1.6-1.5 1.1-.9-1.5z" fill="url(#gd-glow)" stroke="#5a1d00" stroke-width=".7" stroke-linejoin="round"/>
+  <path d="M6.4 15c.5-2.6 1.6-4.3 3-5.2" stroke="#fff" stroke-opacity=".6" stroke-width="1.4" stroke-linecap="round" fill="none"/>
+</symbol>
+<symbol id="gi-bf" viewBox="0 0 32 32">
+  <path d="M3.5 6.2A2.7 2.7 0 0 1 6.2 3.5h9.6c.7 0 1.4.3 1.9.8l10.5 10.5a2.7 2.7 0 0 1 0 3.8l-9.7 9.7a2.7 2.7 0 0 1-3.8 0L4.3 17.7c-.5-.5-.8-1.2-.8-1.9z" fill="url(#gd-dark)" stroke="url(#gd-org)" stroke-width="1.6"/>
+  <circle cx="9.3" cy="9.3" r="2.1" fill="none" stroke="url(#gd-org)" stroke-width="1.6"/>
+  <circle cx="14.6" cy="15.2" r="1.7" fill="none" stroke="#ffb347" stroke-width="1.5"/>
+  <circle cx="20.4" cy="21" r="1.7" fill="none" stroke="#ffb347" stroke-width="1.5"/>
+  <path d="M21.4 14.2l-7.8 7.8" stroke="#ff7a1a" stroke-width="1.8" stroke-linecap="round"/>
+</symbol>
+<symbol id="gi-sticker" viewBox="0 0 32 32">
+  <path d="M7 3.5h18A3.5 3.5 0 0 1 28.5 7v11L18 28.5H7A3.5 3.5 0 0 1 3.5 25V7A3.5 3.5 0 0 1 7 3.5z" fill="url(#gd-holo)"/>
+  <path d="M28.5 18H21a3 3 0 0 0-3 3v7.5z" fill="#f4f1ff"/>
+  <path d="M28.5 18 18 28.5" stroke="#000" stroke-opacity=".25"/>
+  <path d="M14 8l1.7 3.5 3.8.5-2.8 2.6.7 3.8-3.4-1.9-3.4 1.9.7-3.8L8.5 12l3.8-.5z" fill="#fff" fill-opacity=".92"/>
+  <path d="M6.5 8.5c.3-1.3 1-2 2.2-2.3" stroke="#fff" stroke-opacity=".7" stroke-width="1.3" stroke-linecap="round" fill="none"/>
+</symbol>
+<symbol id="gi-knife" viewBox="0 0 32 32">
+  <path d="M27.9 3.2 12.4 18.2l2.6 2.6L29.2 6.6c1-1 .6-2.7-1.3-3.4z" fill="url(#gd-steel)" stroke="#4b5560" stroke-width=".6"/>
+  <path d="M27.4 4.6 13.9 17.9" stroke="#fff" stroke-opacity=".85" stroke-width=".8"/>
+  <path d="M10.2 16.6l1.6-1.6 6.4 6.4-1.6 1.6z" fill="url(#gd-gold)"/>
+  <path d="M13.2 21.3 6.2 28.3a2 2 0 0 1-2.9-2.9l7-7z" fill="url(#gd-dark)" stroke="#ff8a1f" stroke-width=".9"/>
+  <circle cx="4.4" cy="27.3" r="1.8" fill="url(#gd-gold)"/>
+</symbol>
+<symbol id="gi-sparkle" viewBox="0 0 32 32">
+  <path d="M13.5 2.5c1 6.8 2.9 8.8 9.6 9.7-6.7 1-8.6 2.9-9.6 9.7-1-6.8-2.9-8.7-9.6-9.7 6.7-.9 8.6-2.9 9.6-9.7z" fill="url(#gd-violet)"/>
+  <path d="M24.5 18.5c.5 2.8 1.3 3.6 4 4-2.7.5-3.5 1.3-4 4-.4-2.7-1.2-3.5-4-4 2.8-.4 3.6-1.2 4-4z" fill="url(#gd-gold)"/>
+  <circle cx="7" cy="25" r="1.6" fill="#c69bff"/>
+</symbol>
+<symbol id="gi-flame" viewBox="0 0 32 32">
+  <path d="M16 2.5c1 4.6 6.6 7.1 8.9 12.6 2.5 6-1.5 13.4-8.9 13.4S4.6 21.8 7.1 15.6c1-2.4 2.8-3.7 3.7-6.1 1 2 1 3.9 2.4 5.1C13.7 10.2 14 6 16 2.5z" fill="url(#gd-fire)"/>
+  <path d="M16 14.8c.8 2.7 4.4 3.9 4.4 7.6a4.4 4.4 0 0 1-8.8 0c0-2.1 1.3-3.1 2.1-4.6.6 1 .9 1.9 1.8 2.3-.2-1.9 0-3.5.5-5.3z" fill="#ffe36b"/>
+</symbol>
+<symbol id="gi-calendar" viewBox="0 0 32 32">
+  <rect x="3.5" y="6" width="25" height="22.5" rx="4.5" fill="url(#gd-dark)" stroke="#fff" stroke-opacity=".22"/>
+  <path d="M3.5 10.5A4.5 4.5 0 0 1 8 6h16a4.5 4.5 0 0 1 4.5 4.5V13h-25z" fill="url(#gd-org)"/>
+  <rect x="9" y="2.8" width="2.6" height="6.4" rx="1.3" fill="#ece6f3"/><rect x="20.4" y="2.8" width="2.6" height="6.4" rx="1.3" fill="#ece6f3"/>
+  <path d="M10.8 20.3l3.3 3.3 7-7.3" stroke="#5ee07f" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+</symbol>
+<symbol id="gi-coins" viewBox="0 0 32 32">
+  <path d="M3 22.5v3c0 1.9 3.8 3.5 8.5 3.5s8.5-1.6 8.5-3.5v-3z" fill="#b07408"/><ellipse cx="11.5" cy="22.5" rx="8.5" ry="3.3" fill="url(#gd-gold)"/>
+  <path d="M3 17.5v3c0 1.9 3.8 3.5 8.5 3.5s8.5-1.6 8.5-3.5v-3z" fill="#c4860f"/><ellipse cx="11.5" cy="17.5" rx="8.5" ry="3.3" fill="url(#gd-gold)"/>
+  <circle cx="22" cy="11" r="7.5" fill="url(#gd-gold)" stroke="#a86a00" stroke-width=".8"/>
+  <circle cx="22" cy="11" r="5.3" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width=".9"/>
+  <text x="22" y="14.4" font-size="9.5" font-weight="900" font-family="system-ui,sans-serif" text-anchor="middle" fill="#7a4a00">$</text>
+</symbol>
+<symbol id="gi-crate" viewBox="0 0 32 32">
+  <path d="M16 3 28.5 9.3v13.4L16 29 3.5 22.7V9.3z" fill="url(#gd-violet)"/>
+  <path d="M16 3 28.5 9.3 16 15.6 3.5 9.3z" fill="#fff" fill-opacity=".25"/>
+  <path d="M3.5 9.3 16 15.6l12.5-6.3M16 15.6V29" stroke="#fff" stroke-opacity=".45" stroke-width="1" fill="none" stroke-linejoin="round"/>
+  <path d="M9.6 6.2l12.6 6.3v5.2l-2.6 1.3v-5.2L7 7.5z" fill="url(#gd-org)"/>
+</symbol>
+<symbol id="gi-upgrade" viewBox="0 0 32 32">
+  <circle cx="16" cy="16" r="13" fill="url(#gd-green)"/>
+  <circle cx="16" cy="16" r="12.2" fill="none" stroke="#fff" stroke-opacity=".35"/>
+  <path d="M16 23.2V9.6M10.4 15 16 9.4l5.6 5.6" stroke="#fff" stroke-width="3.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+</symbol>
+<symbol id="gi-swords" viewBox="0 0 32 32">
+  <path d="M4.5 4.5l15.2 15.2M27.5 4.5 12.3 19.7" stroke="url(#gd-steel)" stroke-width="3.4" stroke-linecap="round"/>
+  <path d="M17 23.6l6.6-6.6M8.4 17l6.6 6.6" stroke="url(#gd-gold)" stroke-width="2.8" stroke-linecap="round"/>
+  <path d="M22 22l4.2 4.2M10 22l-4.2 4.2" stroke="#7a3d16" stroke-width="3.2" stroke-linecap="round"/>
+  <circle cx="27" cy="27" r="2" fill="url(#gd-gold)"/><circle cx="5" cy="27" r="2" fill="url(#gd-gold)"/>
+</symbol>
+<symbol id="gi-trophy" viewBox="0 0 32 32">
+  <path d="M9 6.5H4.8v2.4a4.8 4.8 0 0 0 4.8 4.8M23 6.5h4.2v2.4a4.8 4.8 0 0 1-4.8 4.8" stroke="#e8a317" stroke-width="2.2" fill="none"/>
+  <path d="M8.5 3.5h15v7.8a7.5 7.5 0 0 1-15 0z" fill="url(#gd-gold)"/>
+  <path d="M14.3 18.4h3.4v4.2h-3.4z" fill="#c4860f"/>
+  <rect x="9.5" y="22.5" width="13" height="6" rx="1.8" fill="url(#gd-dark)" stroke="#e8a317" stroke-width="1"/>
+  <path d="M12.2 6v4.5" stroke="#fff" stroke-opacity=".75" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M16 6.5l1 2 2.2.3-1.6 1.5.4 2.2-2-1-2 1 .4-2.2-1.6-1.5 2.2-.3z" fill="#fff8d6"/>
+</symbol>
+<symbol id="gi-gift" viewBox="0 0 32 32">
+  <rect x="5" y="13" width="22" height="15.5" rx="2.5" fill="url(#gd-red)"/>
+  <rect x="3.5" y="9.5" width="25" height="5" rx="2" fill="#ff7b6e"/>
+  <rect x="14" y="9.5" width="4" height="19" fill="url(#gd-gold)"/>
+  <path d="M16 9.5c-1.8-5.2-7.6-6.4-7.6-2.8 0 2.2 3.8 2.8 7.6 2.8zM16 9.5c1.8-5.2 7.6-6.4 7.6-2.8 0 2.2-3.8 2.8-7.6 2.8z" fill="url(#gd-gold)"/>
+</symbol>
+<symbol id="gi-search" viewBox="0 0 32 32">
+  <path d="M20.3 20.3l7.2 7.2" stroke="url(#gd-org)" stroke-width="4.4" stroke-linecap="round"/>
+  <circle cx="13.5" cy="13.5" r="9" fill="#3f9dff" fill-opacity=".28" stroke="url(#gd-blue)" stroke-width="3"/>
+  <path d="M8.8 11.5a5 5 0 0 1 3.6-3.6" stroke="#fff" stroke-opacity=".8" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+</symbol>
+<symbol id="gi-bag" viewBox="0 0 32 32">
+  <path d="M11.5 8V6.5a4.5 4.5 0 0 1 9 0V8" stroke="#c69bff" stroke-width="2.2" fill="none"/>
+  <path d="M6.5 13.5A6 6 0 0 1 12.5 7.5h7a6 6 0 0 1 6 6v12a3 3 0 0 1-3 3h-13a3 3 0 0 1-3-3z" fill="url(#gd-violet)"/>
+  <rect x="10" y="17" width="12" height="7.5" rx="2.2" fill="#fff" fill-opacity=".2" stroke="#fff" stroke-opacity=".35"/>
+  <rect x="14.6" y="15.6" width="2.8" height="3.6" rx="1" fill="url(#gd-gold)"/>
+  <path d="M9.5 12.5c.5-1.6 1.6-2.4 3-2.6" stroke="#fff" stroke-opacity=".6" stroke-width="1.4" stroke-linecap="round" fill="none"/>
+</symbol>
+<symbol id="gi-globe" viewBox="0 0 32 32">
+  <circle cx="16" cy="16" r="12.5" fill="url(#gd-blue)"/>
+  <ellipse cx="16" cy="16" rx="5.4" ry="12.5" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="1.2"/>
+  <path d="M3.5 16h25M5.5 9.5h21M5.5 22.5h21" stroke="#fff" stroke-opacity=".4" stroke-width="1.2"/>
+  <circle cx="25" cy="25" r="5" fill="url(#gd-red)" stroke="#1b1020" stroke-width="1.4"/>
+  <path d="M23.2 23.2l3.6 3.6M26.8 23.2l-3.6 3.6" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
+</symbol>
+<symbol id="gi-warn" viewBox="0 0 32 32">
+  <path d="M14 5.2a2.3 2.3 0 0 1 4 0l10.8 19.2a2.3 2.3 0 0 1-2 3.4H5.2a2.3 2.3 0 0 1-2-3.4z" fill="url(#gd-org)"/>
+  <path d="M16 12v7.5" stroke="#2a1300" stroke-width="3" stroke-linecap="round"/><circle cx="16" cy="23.4" r="1.8" fill="#2a1300"/>
+</symbol>
+</svg>`;
+document.body.insertAdjacentHTML('afterbegin', GI_SPRITE);
+const gi = (n, cls = '') => `<svg class="gi ${cls}" viewBox="0 0 32 32" aria-hidden="true"><use href="#gi-${n}"/></svg>`;
+
 /* ================= rarity / wear ================= */
 const TIERS = ['consumer', 'industrial', 'milspec', 'restricted', 'classified', 'covert', 'rare'];
 const TIER_RU = { consumer: 'Ширпотреб', industrial: 'Промышленное', milspec: 'Армейское', restricted: 'Запрещённое', classified: 'Засекреченное', covert: 'Тайное', contraband: 'Контрабанда', rare: '★ Редкий особый' };
@@ -409,7 +537,7 @@ bonusBtn.onclick = async () => {
     const to10 = 10 - (r.n % 10), next = to10 === 10 ? 10 : to10;
     if (r.amount > BONUS_AMT) {
       SFX.win(r.amount >= 1000 ? 'rare' : 'covert');
-      notify({ title: r.amount >= 1000 ? `🎃 Сотое нажатие — джекпот!` : `🎉 Десятое нажатие!`, sub: `Это было ${r.n}-е нажатие плюсика`, icon: ICON.gift, color: 'rgba(255,159,10,.45)', amt: '+' + money(r.amount), amtColor: '#ffd60a', tall: true, ms: 4500 });
+      notify({ title: r.amount >= 1000 ? `Сотое нажатие — джекпот!` : `Десятое нажатие!`, sub: `Это было ${r.n}-е нажатие плюсика`, icon: gi('coins'), color: 'rgba(255,159,10,.45)', amt: '+' + money(r.amount), amtColor: '#ffd60a', tall: true, ms: 4500 });
     } else {
       SFX.coin();
       notify({ title: 'Бонус получен', sub: `До $100 — ещё ${next} нажат${next === 1 ? 'ие' : next < 5 ? 'ия' : 'ий'}`, icon: ICON.gift, color: 'rgba(48,209,88,.3)', amt: '+' + money(r.amount), amtColor: '#5ee07f' });
@@ -522,7 +650,7 @@ function showcase(c) {
   while (out.length < 3) out.push(all[out.length % all.length]);
   return (c._show = out);
 }
-const GRP_DECO = { halloween: '🎃', bf: '%' };
+const GRP_DECO = { halloween: gi('pumpkin'), bf: '%' };
 function caseArt(c, size = '360fx360f') {
   if (c.kind === 'official') return `<img src="${img(c.img, size)}" alt="${esc(c.name)}" loading="lazy">`;
   const [a, b, d] = showcase(c);
@@ -538,7 +666,7 @@ function caseArt(c, size = '360fx360f') {
 const saleOf = c => c.old ? Math.round((1 - c.price / c.old) * 100) : 0;
 const priceHTML = c => c.old ? `<s>${money(c.old)}</s>${money(c.price)}` : money(c.price);
 function caseCard(c, i) {
-  const badge = c.grp === 'halloween' ? '<span class="badge hw">🎃 Хэллоуин</span>'
+  const badge = c.grp === 'halloween' ? `<span class="badge hw">${gi('pumpkin')} Хэллоуин</span>`
     : c.grp === 'bf' ? `<span class="badge bf">−${saleOf(c)}% Black Friday</span>`
     : c.reveal ? '<span class="badge knife">100% ★</span>'
     : c.kind === 'custom' ? '<span class="badge custom">Авторский</span>' : (c.idx < 3 ? '<span class="badge new">New</span>' : '');
@@ -558,7 +686,7 @@ function itemCard(it, o = {}) {
 }
 const pct = p => p >= .1 ? (p * 100).toFixed(2) + '%' : p >= .001 ? (p * 100).toFixed(3) + '%' : (p * 100).toFixed(4) + '%';
 const loadingHTML = '<div class="empty-state"><div class="spinner"></div></div>';
-const onlineOnly = t => `<div class="empty-state"><div class="ill">🌐</div><h3>${t}</h3>Работает, когда сайт подключён к серверу (онлайн-режим).</div>`;
+const onlineOnly = t => `<div class="empty-state"><div class="ill">${gi('globe')}</div><h3>${t}</h3>Работает, когда сайт подключён к серверу (онлайн-режим).</div>`;
 
 /* ================= router ================= */
 const main = $('#view');
@@ -613,7 +741,7 @@ const tintEl = $('#tint');
 function setTint(col) { tintEl.style.background = col ? `radial-gradient(70% 55% at 50% 30%, ${col}, transparent 70%)` : 'transparent'; tintEl.style.opacity = col ? .45 : 0; }
 
 /* ================= live ticker ================= */
-const SRC_ICO = { upgrade: '↑', battle: '⚔', gift: '🎁' };
+const SRC_ICO = { upgrade: gi('upgrade'), battle: gi('swords'), gift: gi('gift') };
 function tkHTML(h, isNew) {
   const s = SK[h.s];
   const who = h.nick ? `${h.nick}: ` : '';
@@ -623,7 +751,7 @@ function tkHTML(h, isNew) {
 }
 function tickerHTML() {
   const list = ONLINE ? FEED : S.hist;
-  return `<section class="ticker glass-flat" id="ticker"><div class="lbl"><b>Live</b>${ONLINE ? 'все игроки' : 'ваши дропы'}</div>${list.length ? list.slice(0, 24).map(h => tkHTML(h)).join('') : '<div class="empty">Тут появятся последние дропы — откройте первый кейс ✨</div>'}</section>`;
+  return `<section class="ticker glass-flat" id="ticker"><div class="lbl"><b>Live</b>${ONLINE ? 'все игроки' : 'ваши дропы'}</div>${list.length ? list.slice(0, 24).map(h => tkHTML(h)).join('') : '<div class="empty">Тут появятся последние дропы — откройте первый кейс</div>'}</section>`;
 }
 function pushTicker(h) {
   const t = $('#ticker');
@@ -636,11 +764,11 @@ function pushTicker(h) {
 /* ================= HOME ================= */
 const H = { tab: 'all', q: '', sort: 'def' };
 const GROUPS = [
-  ['halloween', '🎃 Хэллоуин', 'жуткие коллекции сезона'],
-  ['stickers', '🏷 Наклейки и граффити', 'кейсы за копейки — от $0.04'],
-  ['bf', '🖤 Black Friday', 'сниженная наценка — больше возврат'],
-  ['knives', '🔪 Ножи и перчатки', '100% редкий предмет из каждого кейса'],
-  ['custom', '✦ Авторские', 'выдуманные коллекции из реальных скинов'],
+  ['halloween', gi('pumpkin') + ' Хэллоуин', 'жуткие коллекции сезона'],
+  ['stickers', gi('sticker') + ' Наклейки и граффити', 'кейсы за копейки — от $0.04'],
+  ['bf', gi('bf') + ' Black Friday', 'сниженная наценка — больше возврат'],
+  ['knives', gi('knife') + ' Ножи и перчатки', '100% редкий предмет из каждого кейса'],
+  ['custom', gi('sparkle') + ' Авторские', 'выдуманные коллекции из реальных скинов'],
   ['official', 'Кейсы CS2', 'официальные, с реальным содержимым'],
 ];
 const grpOf = c => c.kind === 'official' ? 'official' : c.grp || 'custom';
@@ -668,13 +796,13 @@ function viewHome() {
   <section class="hero season-hero glass edge">
     ${webSVG()}
     <div>
-      <div class="season-chip"><span>🎃 Halloween</span><i>×</i><span>🖤 Black Friday</span></div>
+      <div class="season-chip"><span>${gi('pumpkin')} Halloween</span><i>×</i><span>${gi('bf')} Black Friday</span></div>
       <h1>Чёрная пятница<br><span class="grad">в мире кейсов</span></h1>
       <p>Хэллоуинские коллекции, кейсы со сниженной наценкой и кейсы, где 100% выпадает нож. ${ONLINE ? 'Баттлы с друзьями, топ и подарки — ' : ''}всё на виртуальном балансе.</p>
       <div class="sale-timer" id="saleTimer">${countdown() ? `<span>До конца распродажи</span><div class="cd">${countdown()}</div>` : ''}</div>
       <div class="actions">
-        <button class="btn primary big" data-go="#/case/${feat.id}">🎃 Открыть ${esc(feat.name)}</button>
-        <button class="btn big" data-act="toGrp" data-g="bf">🖤 Распродажа</button>
+        <button class="btn primary big" data-go="#/case/${feat.id}">${gi('pumpkin')} Открыть ${esc(feat.name)}</button>
+        <button class="btn big" data-act="toGrp" data-g="bf">${gi('bf')} Распродажа</button>
       </div>
     </div>
     <div class="hero-case" data-go="#/case/${feat.id}">
@@ -717,7 +845,7 @@ function drawCaseGrid() {
   if (H.sort === 'nm') list.sort((a, b) => a.name.localeCompare(b.name));
   $('#caseCount').textContent = list.length;
   const g = $('#caseGrid');
-  if (!list.length) { g.innerHTML = `<div class="empty-state"><div class="ill">🔍</div><h3>Ничего не нашлось</h3>Попробуйте другой запрос</div>`; return; }
+  if (!list.length) { g.innerHTML = `<div class="empty-state"><div class="ill">${gi('search')}</div><h3>Ничего не нашлось</h3>Попробуйте другой запрос</div>`; return; }
   if (H.tab === 'all' && !q && H.sort === 'def') {
     g.innerHTML = GROUPS.map(([k, l, sub]) => {
       const cs = list.filter(c => grpOf(c) === k);
@@ -751,7 +879,7 @@ function viewCase(id) {
       ${seg('n', [1, 2, 3, 4, 5].map(n => [String(n), '×' + n]), String(C.n))}
       <button class="btn primary big" id="openBtn" data-act="open"></button>
       <label class="toggle" data-act="fast"><span class="switch ${SET.fast ? 'on' : ''}" id="fastSw"></span>Быстро</label>
-      ${ONLINE ? `<button class="btn" data-go="#/battles?case=${c.id}">⚔ Баттл</button>` : ''}
+      ${ONLINE ? `<button class="btn" data-go="#/battles?case=${c.id}">${gi('swords')} Баттл</button>` : ''}
     </div>
   </section>
   <div class="section-head">
@@ -1062,8 +1190,8 @@ function drawInv() {
   $('#selBtn').textContent = I.select ? 'Готово' : 'Выбрать';
   $('#selBtn').classList.toggle('primary', I.select);
   const l = invList(), g = $('#invGrid');
-  if (!S.inv.length) g.innerHTML = `<div class="empty-state"><div class="ill">🎒</div><h3>Инвентарь пуст</h3>Откройте пару кейсов — дропы появятся здесь.<br><button class="btn primary" data-go="#/">К кейсам</button></div>`;
-  else if (!l.length) g.innerHTML = `<div class="empty-state"><div class="ill">🔍</div><h3>Нет предметов</h3>Под фильтр ничего не подходит</div>`;
+  if (!S.inv.length) g.innerHTML = `<div class="empty-state"><div class="ill">${gi('bag')}</div><h3>Инвентарь пуст</h3>Откройте пару кейсов — дропы появятся здесь.<br><button class="btn primary" data-go="#/">К кейсам</button></div>`;
+  else if (!l.length) g.innerHTML = `<div class="empty-state"><div class="ill">${gi('search')}</div><h3>Нет предметов</h3>Под фильтр ничего не подходит</div>`;
   else g.innerHTML = `<div class="grid-items stagger">${l.slice(0, I.limit).map((it, i) => itemCard(it, { i: Math.min(i, 30), check: I.select, sel: I.sel.has(it.u), attr: `data-act="item" data-u="${it.u}"` })).join('')}</div>${l.length > I.limit ? `<div style="text-align:center;margin-top:20px"><button class="btn" data-act="more">Показать ещё (${l.length - I.limit})</button></div>` : ''}`;
   drawBar();
 }
@@ -1169,7 +1297,7 @@ function drawUpList() {
   const q = U.q.trim().toLowerCase();
   if (U.tab === 'inv') {
     const l = S.inv.filter(i => !q || SK[i.s].name.toLowerCase().includes(q)).slice().sort((a, b) => b.p - a.p).slice(0, 200);
-    g.innerHTML = l.length ? `<div class="grid-items">${l.map(it => itemCard(it, { check: true, sel: U.sel.has(it.u), attr: `data-act="pickIn" data-u="${it.u}"` })).join('')}</div>` : `<div class="empty-state"><div class="ill">🎒</div><h3>Нет предметов</h3>Откройте кейсы, чтобы было что апгрейдить<br><button class="btn primary" data-go="#/">К кейсам</button></div>`;
+    g.innerHTML = l.length ? `<div class="grid-items">${l.map(it => itemCard(it, { check: true, sel: U.sel.has(it.u), attr: `data-act="pickIn" data-u="${it.u}"` })).join('')}</div>` : `<div class="empty-state"><div class="ill">${gi('bag')}</div><h3>Нет предметов</h3>Откройте кейсы, чтобы было что апгрейдить<br><button class="btn primary" data-go="#/">К кейсам</button></div>`;
   } else {
     const m = market(), min = selTotal();
     const l = [];
@@ -1213,7 +1341,7 @@ async function doUpgrade() {
     notify({ title: 'Апгрейд успешен!', sub: fullName(got), icon: thumbIco(got.s), amt: money(got.p), amtColor: '#5ee07f', tall: true });
   } else {
     SFX.fail();
-    notify({ title: 'Не повезло', sub: 'Предметы сгорели в апгрейде', icon: '✕', color: 'rgba(255,69,58,.35)' });
+    notify({ title: 'Не повезло', sub: 'Предметы сгорели в апгрейде', icon: ICON.x, color: 'rgba(255,69,58,.35)' });
   }
   if (!$('#ring')) return;
   ring.classList.add(win ? 'win' : 'lose');
@@ -1327,7 +1455,7 @@ async function viewBattle(id) {
   };
   await fetchAll_();
   if (tk !== viewToken) return;
-  if (!b) { main.innerHTML = `<div class="empty-state"><div class="ill">⚔</div><h3>Баттл не найден</h3><button class="btn" data-go="#/battles">К баттлам</button></div>`; return; }
+  if (!b) { main.innerHTML = `<div class="empty-state"><div class="ill">${gi('swords')}</div><h3>Баттл не найден</h3><button class="btn" data-go="#/battles">К баттлам</button></div>`; return; }
   const c = caseById(b.case_id);
   setTint(c.glow);
   const mine = () => players.some(p => p.user_id === ME.id);
@@ -1371,10 +1499,10 @@ async function viewBattle(id) {
     $$('.bt-col').forEach(col => col.classList.toggle(+col.dataset.slot === b.winner_slot ? 'winner' : 'loser', true));
     $$('.bt-roll').forEach(r => r.remove());
     const iWon = w && w.user_id === ME.id;
-    $('#btResult').innerHTML = `<div class="bt-win">${iWon ? '🏆 Ты победил!' : `🏆 Победил ${esc(w ? w.nickname : '?')}`}<span>Банк: ${money(b.total)}${iWon ? ' — все предметы уже в твоём инвентаре' : ''}</span></div>
+    $('#btResult').innerHTML = `<div class="bt-win">${gi('trophy')} ${iWon ? 'Ты победил!' : `Победил ${esc(w ? w.nickname : '?')}`}<span>Банк: ${money(b.total)}${iWon ? ' — все предметы уже в твоём инвентаре' : ''}</span></div>
       <div class="acts"><button class="btn primary" data-act="again">Ещё такой же баттл</button><button class="btn" data-go="#/battles">Все баттлы</button></div>`;
     if (fx) {
-      if (iWon) { SFX.win('covert'); notify({ title: 'Победа в баттле!', sub: 'Предметы в инвентаре', amt: '+' + money(b.total), amtColor: '#5ee07f', icon: '🏆', color: 'rgba(255,214,10,.3)', tall: true }); }
+      if (iWon) { SFX.win('covert'); notify({ title: 'Победа в баттле!', sub: 'Предметы в инвентаре', amt: '+' + money(b.total), amtColor: '#5ee07f', icon: gi('trophy'), color: 'rgba(255,214,10,.3)', tall: true }); }
       else SFX.fail();
     }
   };
@@ -1450,10 +1578,10 @@ function levelOf(xp) {
   return { lvl: L, cur: xp - base, need: next - base, k: (xp - base) / (next - base) };
 }
 const QUESTS = {
-  open: { t: [5, 25, 75, 200, 500, 1000, 2500], m: [10, 30, 75, 150, 300, 500, 1000], x: [50, 100, 200, 350, 500, 750, 1000], icon: '📦', title: n => `Открой ${n} ${plural(n, 'кейс', 'кейса', 'кейсов')}`, cur: () => S.stats.opened },
-  upgrades: { t: [1, 5, 15, 40, 100, 250], m: [10, 50, 120, 300, 700, 1500], x: [50, 120, 250, 450, 700, 1100], icon: '⬆️', title: n => `Сделай ${n} ${plural(n, 'удачный апгрейд', 'удачных апгрейда', 'удачных апгрейдов')}`, cur: () => S.stats.upW },
-  battles: { t: [1, 5, 15, 40, 100, 250], m: [15, 60, 150, 350, 800, 1500], x: [60, 150, 300, 500, 800, 1200], icon: '⚔️', title: n => `Выиграй ${n} ${plural(n, 'баттл', 'баттла', 'баттлов')}`, cur: () => S.stats.bw, online: true },
-  spent: { t: [50, 250, 1000, 5000, 20000, 100000], m: [5, 25, 100, 400, 1500, 6000], x: [40, 100, 250, 500, 900, 1500], icon: '💸', title: n => `Потрать ${money(n)} на кейсы`, cur: () => S.stats.spent },
+  open: { t: [5, 25, 75, 200, 500, 1000, 2500], m: [10, 30, 75, 150, 300, 500, 1000], x: [50, 100, 200, 350, 500, 750, 1000], icon: gi('crate'), title: n => `Открой ${n} ${plural(n, 'кейс', 'кейса', 'кейсов')}`, cur: () => S.stats.opened },
+  upgrades: { t: [1, 5, 15, 40, 100, 250], m: [10, 50, 120, 300, 700, 1500], x: [50, 120, 250, 450, 700, 1100], icon: gi('upgrade'), title: n => `Сделай ${n} ${plural(n, 'удачный апгрейд', 'удачных апгрейда', 'удачных апгрейдов')}`, cur: () => S.stats.upW },
+  battles: { t: [1, 5, 15, 40, 100, 250], m: [15, 60, 150, 350, 800, 1500], x: [60, 150, 300, 500, 800, 1200], icon: gi('swords'), title: n => `Выиграй ${n} ${plural(n, 'баттл', 'баттла', 'баттлов')}`, cur: () => S.stats.bw, online: true },
+  spent: { t: [50, 250, 1000, 5000, 20000, 100000], m: [5, 25, 100, 400, 1500, 6000], x: [40, 100, 250, 500, 900, 1500], icon: gi('coins'), title: n => `Потрать ${money(n)} на кейсы`, cur: () => S.stats.spent },
 };
 function plural(n, a, b, c) { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? a : m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? b : c; }
 function questDef(type, tier) {
@@ -1486,7 +1614,7 @@ async function claimDaily(btn) {
   try {
     const r = await API.daily();
     setBal(r.balance); SFX.win(r.amount >= 200 ? 'rare' : 'covert');
-    notify({ title: `Ежедневный бонус · день ${r.streak} 🔥`, sub: r.streak >= 7 ? 'Стрик держится — так держать!' : `С 8-го дня подряд — по $70`, icon: '📅', color: 'rgba(255,159,10,.4)', amt: '+' + money(r.amount), amtColor: '#ffd60a', tall: true, ms: 4000 });
+    notify({ title: `Ежедневный бонус · день ${r.streak}`, sub: r.streak >= 7 ? 'Стрик держится — так держать!' : `С 8-го дня подряд — по $70`, icon: gi('calendar'), color: 'rgba(255,159,10,.4)', amt: '+' + money(r.amount), amtColor: '#ffd60a', tall: true, ms: 4000 });
   } catch (e) { notifyErr(e); }
   drawLevel(); VIEW.refresh && VIEW.refresh();
 }
@@ -1508,7 +1636,7 @@ function viewQuests() {
       const done = day < st || (!ready && day === st);
       return `<div class="dday ${done ? 'done' : ''} ${day === st ? 'today' : ''}"><span>день ${day}</span><b>${money(dailyAmount(day)).replace('.00', '')}</b></div>`;
     }).join('');
-    const pk = Array.from({ length: PK_TOTAL }, (_, i) => `<i class="${S.pumpkins.includes(i + 1) ? 'on' : ''}">🎃</i>`).join('');
+    const pk = Array.from({ length: PK_TOTAL }, (_, i) => `<i class="${S.pumpkins.includes(i + 1) ? 'on' : ''}">${gi('pumpkin')}</i>`).join('');
     main.innerHTML = `
     <section class="lvl-card glass edge">
       <div class="lvl-big"><b>${L.lvl}</b><span>уровень</span></div>
@@ -1520,13 +1648,13 @@ function viewQuests() {
     </section>
     <div class="q-top">
       <section class="q-card daily glass-flat">
-        <div class="q-head"><span class="q-ico">📅</span><div><h3>Ежедневный бонус</h3><div class="ev-note">🔥 Стрик: ${S.dailyLast === utcDay(0) || S.dailyLast === utcDay(-1) ? S.dailyStreak : 0} ${plural(S.dailyStreak, 'день', 'дня', 'дней')} подряд</div></div></div>
+        <div class="q-head"><span class="q-ico">${gi('calendar')}</span><div><h3>Ежедневный бонус</h3><div class="ev-note">${gi('flame')} Стрик: ${S.dailyLast === utcDay(0) || S.dailyLast === utcDay(-1) ? S.dailyStreak : 0} ${plural(S.dailyStreak, 'день', 'дня', 'дней')} подряд</div></div></div>
         <div class="days">${days}</div>
         <div class="ev-note rules">Дни 1–7: $50 · с 8-го дня: $70 · с 31-го: $200 · каждый следующий месяц +$25. Пропустил день — стрик с начала.</div>
         ${ready ? `<button class="btn primary big" data-act="daily">Забрать ${money(dailyAmount(st))}</button>` : `<button class="btn big" disabled>Следующий через <span id="dailyCd">${hms(msToUtcMidnight())}</span></button>`}
       </section>
       <section class="q-card pumpkin glass-flat">
-        <div class="q-head"><span class="q-ico">🎃</span><div><h3>Охота на тыквы</h3><div class="ev-note">${S.pumpkins.length} из ${PK_TOTAL} найдено</div></div></div>
+        <div class="q-head"><span class="q-ico">${gi('pumpkin')}</span><div><h3>Охота на тыквы</h3><div class="ev-note">${S.pumpkins.length} из ${PK_TOTAL} найдено</div></div></div>
         <div class="pk-grid">${pk}</div>
         <div class="ev-note rules">По всему сайту спрятано ${PK_TOTAL} маленьких тыкв — на разных страницах, в углах и за заголовками. Нажми на тыкву, чтобы забрать её. Найдёшь все — получишь <b>$1000</b> и 500 XP.</div>
         <div class="q-reward ${S.pumpkinDone ? 'done' : ''}">${S.pumpkinDone ? '✓ Награда $1000 получена' : 'Награда: $1000 + 500 XP'}</div>
@@ -1591,7 +1719,7 @@ function placePumpkins() {
     const el = document.querySelector(sel);
     if (!el || el.querySelector(`:scope > .pk[data-pk="${id}"]`)) continue;
     if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
-    el.insertAdjacentHTML('beforeend', `<button class="pk" data-pk="${id}" style="${css}" aria-label="тыква">🎃</button>`);
+    el.insertAdjacentHTML('beforeend', `<button class="pk" data-pk="${id}" style="${css}" aria-label="тыква">${gi('pumpkin')}</button>`);
   }
 }
 const schedulePk = () => { if (!pkRaf) pkRaf = requestAnimationFrame(placePumpkins); };
@@ -1608,10 +1736,10 @@ document.addEventListener('click', async e => {
     pk.classList.add('got'); setTimeout(() => pk.remove(), 600);
     if (r.reward) {
       setBal(r.balance); SFX.win('rare');
-      notify({ title: '🎃 Все 20 тыкв найдены!', sub: 'Награда за охоту на тыквы + 500 XP', icon: '🎃', color: 'rgba(255,138,31,.5)', amt: '+' + money(r.reward), amtColor: '#ffd60a', tall: true, ms: 6000 });
+      notify({ title: 'Все 20 тыкв найдены!', sub: 'Награда за охоту на тыквы + 500 XP', icon: gi('pumpkin'), color: 'rgba(255,138,31,.5)', amt: '+' + money(r.reward), amtColor: '#ffd60a', tall: true, ms: 6000 });
     } else {
       SFX.ping();
-      notify({ title: `Тыква найдена! ${r.found}/${PK_TOTAL}`, sub: r.found >= PK_TOTAL ? 'Все найдены' : `Осталось ${PK_TOTAL - r.found} — ищи на других страницах`, icon: '🎃', color: 'rgba(255,138,31,.4)' });
+      notify({ title: `Тыква найдена! ${r.found}/${PK_TOTAL}`, sub: r.found >= PK_TOTAL ? 'Все найдены' : `Осталось ${PK_TOTAL - r.found} — ищи на других страницах`, icon: gi('pumpkin'), color: 'rgba(255,138,31,.4)' });
     }
     drawLevel(); VIEW.refresh && location.hash.startsWith('#/quests') && VIEW.refresh();
   } catch (err) { delete pk.dataset.busy; notifyErr(err); }
@@ -1705,7 +1833,7 @@ async function viewProfile() {
     ${ME.guest ? '<button class="btn" data-act="rename">Сменить ник</button><button class="btn primary" data-act="saveAcc">Сохранить аккаунт</button>' : ''}
     <button class="btn danger" data-act="logout">Выйти</button>
   </section>
-  ${ME.guest ? '<div class="hint glass-flat">👋 Ты играешь как гость — прогресс привязан к этому браузеру. Задай пароль («Сохранить аккаунт»), чтобы заходить с других устройств и ничего не потерять.</div>' : ''}` : ''}
+  ${ME.guest ? '<div class="hint glass-flat">Ты играешь как гость — прогресс привязан к этому браузеру. Задай пароль («Сохранить аккаунт»), чтобы заходить с других устройств и ничего не потерять.</div>' : ''}` : ''}
   <div class="stats stagger">
     <div class="stat-tile glass-flat" style="--i:0"><span>Баланс</span><b>${money(S.bal)}</b></div>
     <div class="stat-tile glass-flat" style="--i:1"><span>Стоимость инвентаря</span><b>${money(invValue())}</b></div>
@@ -1735,7 +1863,7 @@ async function viewProfile() {
       });
       if (a === 'rename') renameSheet();
       if (a === 'saveAcc') saveAccountSheet();
-      if (a === 'logout') openSheet(`<h2>Выйти?</h2><div class="subtitle">${ME.guest ? '⚠️ Ты гость без пароля — после выхода вернуться в этот аккаунт будет невозможно. Сначала сохрани аккаунт.' : 'Войти обратно можно по нику и паролю.'}</div><div class="acts"><button class="btn" data-sact="close">Отмена</button><button class="btn danger" data-sact="ok">Выйти</button></div>`, {
+      if (a === 'logout') openSheet(`<h2>Выйти?</h2><div class="subtitle">${ME.guest ? 'Ты гость без пароля — после выхода вернуться в этот аккаунт будет невозможно. Сначала сохрани аккаунт.' : 'Войти обратно можно по нику и паролю.'}</div><div class="acts"><button class="btn" data-sact="close">Отмена</button><button class="btn danger" data-sact="ok">Выйти</button></div>`, {
         narrow: true,
         acts: { async ok() { await sb.auth.signOut(); location.hash = '#/'; location.reload(); } },
       });
@@ -1861,7 +1989,7 @@ async function startOnline() {
     }
     if (h.uid === ME.id) return;
     const s = SK[h.s];
-    if (h.src === 'battle') notify({ title: `${h.nick} выиграл баттл`, sub: `Банк ${money(h.p)}`, icon: '⚔', color: 'rgba(255,214,10,.3)' });
+    if (h.src === 'battle') notify({ title: `${h.nick} выиграл баттл`, sub: `Банк ${money(h.p)}`, icon: gi('swords'), color: 'rgba(255,214,10,.3)' });
     else if (s.star || h.p >= 25) { SFX.ping(); notify({ title: `${h.nick} выбил${h.src === 'upgrade' ? ' апгрейдом' : ''}`, sub: fullName(h), icon: thumbIco(h.s), amt: money(h.p), tall: true, ms: 4000 }); }
   }).subscribe();
   sb.auth.onAuthStateChange((ev) => { if (ev === 'SIGNED_OUT') location.reload(); });
@@ -1873,7 +2001,7 @@ async function startOnline() {
   if (ONLINE) {
     main.innerHTML = loadingHTML;
     try { await startOnline(); }
-    catch (e) { console.error(e); main.innerHTML = `<div class="empty-state"><div class="ill">⚠️</div><h3>Не удалось подключиться к серверу</h3>${esc(errText(e))}<br><button class="btn primary" onclick="location.reload()">Обновить</button></div>`; return; }
+    catch (e) { console.error(e); main.innerHTML = `<div class="empty-state"><div class="ill">${gi('warn')}</div><h3>Не удалось подключиться к серверу</h3>${esc(errText(e))}<br><button class="btn primary" onclick="location.reload()">Обновить</button></div>`; return; }
     route(); drawLevel();
     notify({ title: `Привет, ${esc(ME.nick)}!`, sub: ME.guest ? 'Ты играешь как гость' : 'С возвращением', icon: ICON.gift, color: 'rgba(10,132,255,.35)' });
   } else {
