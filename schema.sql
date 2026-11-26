@@ -24,6 +24,15 @@ create table if not exists profiles (
 );
 create unique index if not exists profiles_nick_uq on profiles (lower(nickname));
 alter table profiles add column if not exists bonus_n int not null default 0;
+alter table profiles add column if not exists xp int not null default 0;
+alter table profiles add column if not exists quests jsonb not null default '{}';
+alter table profiles add column if not exists daily_last date;
+alter table profiles add column if not exists daily_streak int not null default 0;
+alter table profiles add column if not exists pumpkin_done boolean not null default false;
+
+-- pumpkin hunt: which of the 20 hidden pumpkins each player found
+create table if not exists pumpkins (owner uuid not null references profiles on delete cascade, pid int not null, found_at timestamptz not null default now(), primary key (owner, pid));
+alter table pumpkins enable row level security;
 
 -- unique visitors per day (for the traffic counter)
 create table if not exists visits (day date not null default current_date, uid uuid not null, hits int not null default 1, primary key (day, uid));
@@ -75,6 +84,7 @@ end $$;
 create or replace view leaderboard with (security_invoker = on) as
 select p.id, p.nickname, p.balance, coalesce(i.v, 0)::numeric(14,2) as inv_value, (p.balance + coalesce(i.v, 0))::numeric(14,2) as networth,
        p.best_price, p.best_skin, p.best_float, p.best_st, p.opened, p.up_w, p.up_l, p.battles_w, p.battles_l
+, p.xp, p.daily_streak
 from profiles p left join (select owner, sum(price) v from inventory group by owner) i on i.owner = p.id;
 
 -- realtime
@@ -358,6 +368,72 @@ begin
   update battles set status = 'cancelled', finished_at = now() where id = p_id;
 end $$;
 
+-- ============ quests, levels, daily bonus, pumpkins ============
+-- quest tiers: reach the target (lifetime counter) -> claim money + xp -> next tier
+create or replace function quest_def(p_type text, p_tier int, out target numeric, out money numeric, out xp int) language plpgsql immutable as $$
+declare t numeric[]; m numeric[]; x int[]; n int;
+begin
+  case p_type
+    when 'open'     then t := '{5,25,75,200,500,1000,2500}'; m := '{10,30,75,150,300,500,1000}'; x := '{50,100,200,350,500,750,1000}';
+    when 'battles'  then t := '{1,5,15,40,100,250}';         m := '{15,60,150,350,800,1500}';      x := '{60,150,300,500,800,1200}';
+    when 'upgrades' then t := '{1,5,15,40,100,250}';         m := '{10,50,120,300,700,1500}';      x := '{50,120,250,450,700,1100}';
+    when 'spent'    then t := '{50,250,1000,5000,20000,100000}'; m := '{5,25,100,400,1500,6000}';  x := '{40,100,250,500,900,1500}';
+    else raise exception 'BAD_QUEST';
+  end case;
+  n := array_length(t, 1);
+  if p_tier < n then target := t[p_tier + 1]; money := m[p_tier + 1]; xp := x[p_tier + 1];
+  else target := t[n] * power(2, p_tier - n + 1); money := m[n]; xp := x[n]; end if;
+end $$;
+
+create or replace function claim_quest(p_type text) returns jsonb language plpgsql security definer set search_path = public as $$
+declare v_uid uuid := auth.uid(); p profiles; tier int; d record; cur numeric; bal numeric;
+begin
+  select * into p from profiles where id = v_uid for update;
+  if not found then raise exception 'NO_PROFILE'; end if;
+  tier := coalesce((p.quests ->> p_type)::int, 0);
+  select * into d from quest_def(p_type, tier);
+  cur := case p_type when 'open' then p.opened when 'battles' then p.battles_w when 'upgrades' then p.up_w when 'spent' then p.spent end;
+  if cur < d.target then raise exception 'QUEST_NOT_DONE'; end if;
+  update profiles set balance = balance + d.money, xp = xp + d.xp, quests = jsonb_set(quests, array[p_type], to_jsonb(tier + 1))
+   where id = v_uid returning balance into bal;
+  return jsonb_build_object('balance', bal, 'money', d.money, 'xp', d.xp, 'tier', tier + 1);
+end $$;
+
+-- daily bonus: $50, from day 8 of the streak $70, from day 31 $200, +$25 for every further month
+create or replace function daily_amount(p_streak int) returns numeric language sql immutable as $$
+  select (case when p_streak >= 31 then 200 + 25 * ((p_streak - 31) / 30) when p_streak >= 8 then 70 else 50 end)::numeric $$;
+
+create or replace function claim_daily() returns jsonb language plpgsql security definer set search_path = public as $$
+declare v_uid uuid := auth.uid(); p profiles; st int; amt numeric; bal numeric; today date := current_date;
+begin
+  select * into p from profiles where id = v_uid for update;
+  if not found then raise exception 'NO_PROFILE'; end if;
+  if p.daily_last = today then raise exception 'DAILY_DONE:%', ceil(extract(epoch from ((today + 1)::timestamptz - now()))); end if;
+  st := case when p.daily_last = today - 1 then p.daily_streak + 1 else 1 end;
+  amt := daily_amount(st);
+  update profiles set balance = balance + amt, xp = xp + 25, daily_last = today, daily_streak = st where id = v_uid returning balance into bal;
+  return jsonb_build_object('balance', bal, 'amount', amt, 'streak', st, 'xp', 25, 'day', today);
+end $$;
+
+create or replace function my_pumpkins() returns int[] language sql stable security definer set search_path = public as $$
+  select coalesce(array_agg(pid order by pid), '{}') from pumpkins where owner = auth.uid() $$;
+
+create or replace function find_pumpkin(p_id int) returns jsonb language plpgsql security definer set search_path = public as $$
+declare v_uid uuid := auth.uid(); p profiles; n int; reward numeric := 0; bal numeric;
+begin
+  if p_id < 1 or p_id > 20 then raise exception 'BAD_PUMPKIN'; end if;
+  select * into p from profiles where id = v_uid for update;
+  if not found then raise exception 'NO_PROFILE'; end if;
+  insert into pumpkins (owner, pid) values (v_uid, p_id) on conflict do nothing;
+  select count(*) into n from pumpkins where owner = v_uid;
+  bal := p.balance;
+  if n >= 20 and not p.pumpkin_done then
+    reward := 1000;
+    update profiles set balance = balance + 1000, xp = xp + 500, pumpkin_done = true where id = v_uid returning balance into bal;
+  end if;
+  return jsonb_build_object('found', n, 'reward', reward, 'balance', bal, 'list', my_pumpkins());
+end $$;
+
 -- ============ traffic ============
 create or replace function site_stats() returns jsonb language sql stable security definer set search_path = public as $$
   select jsonb_build_object(
@@ -381,7 +457,8 @@ do $$ declare f text; begin
   -- player API: signed-in users only (guests are signed in anonymously)
   foreach f in array array['ensure_profile(text)','set_nickname(text)','claim_bonus()','open_case(text,int)','sell_items(bigint[])',
                            'upgrade_items(bigint[],int,text)','gift_item(bigint,text)','create_battle(text,int,int)','join_battle(bigint)',
-                           'add_bot(bigint)','cancel_battle(bigint)','track_visit()'] loop
+                           'add_bot(bigint)','cancel_battle(bigint)','track_visit()','claim_quest(text)','claim_daily()',
+                           'find_pumpkin(int)','my_pumpkins()'] loop
     execute format('revoke all on function %s from public, anon', f);
     execute format('grant execute on function %s to authenticated', f);
   end loop;
