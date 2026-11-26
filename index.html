@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#05060c">
+  <title>GlassDrop — симулятор кейсов CS2</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://community.akamai.steamstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%230a84ff'/><stop offset='.5' stop-color='%23bf5af2'/><stop offset='1' stop-color='%23ff375f'/></linearGradient></defs><rect width='100' height='100' rx='26' fill='url(%23g)'/><path d='M30 38h40v34H30z M26 30h48v10H26z' fill='white' opacity='.92'/></svg>">
+</head>
+<body>
+  <div class="bg">
+    <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div><div class="blob b4"></div>
+    <div class="tint" id="tint"></div>
+    <div class="grain"></div>
+  </div>
+
+  <div id="island"></div>
+
+  <header class="topbar glass edge">
+    <div class="logo" data-go="#/">
+      <div class="logo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linejoin="round"><path d="M3 8h18v12H3z"/><path d="M2 4h20v4H2zM10 12h4"/></svg></div>
+      <span class="word">GlassDrop</span><small>CS2</small>
+    </div>
+    <nav class="seg" id="nav"></nav>
+    <div class="top-right">
+      <button class="icon-btn" id="soundBtn" title="Звук"></button>
+      <div class="balance" id="balance">
+        <span><span class="cur">$</span><span id="balVal">0.00</span></span>
+        <button class="plus" id="bonusBtn" title="Бонус"></button>
+      </div>
+    </div>
+  </header>
+
+  <main id="view"></main>
+
+  <div class="dock glass edge"><nav class="seg" id="dockNav"></nav></div>
+
+  <footer>Неофициальный фан-симулятор. Валюта и предметы виртуальные, вывода нет — только ради удовольствия.<br>Изображения скинов и кейсов © Valve Corporation. Данные: ByMykel/CSGO-API.</footer>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
