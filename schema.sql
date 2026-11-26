@@ -606,12 +606,12 @@ begin
 end $$;
 
 create or replace function claim_steam_quest(p_code text) returns jsonb language plpgsql security definer set search_path = public as $$
-declare uid uuid := auth.uid(); q steam_quests; sl jsonb; bal numeric;
+declare uid uuid := auth.uid(); q steam_quests; sl jsonb; bal numeric; got text[];
 begin
   select * into q from steam_quests where code = p_code;
   if not found then raise exception 'BAD_QUEST'; end if;
-  perform 1 from profiles where id = uid for update;
-  if p_code = any((select steam_q from profiles where id = uid)) then raise exception 'ALREADY_CLAIMED'; end if;
+  select steam_q into got from profiles where id = uid for update;
+  if p_code = any(got) then raise exception 'ALREADY_CLAIMED'; end if;
   for sl in select value from jsonb_array_elements(q.slots) loop
     if not exists (select 1 from steam_items si join skins k on k.id = si.skin_id
                     where si.owner = uid and si.price >= q.min
