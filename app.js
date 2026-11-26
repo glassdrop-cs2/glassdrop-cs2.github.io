@@ -39,6 +39,7 @@ const ICON = {
   check: svg('<path d="m5 12 5 5 9-10"/>', 3.5),
   gift: svg('<rect x="3" y="8" width="18" height="13" rx="2"/><path d="M12 8v13M3 12h18M12 8S10.5 3 7.5 3a2.5 2.5 0 0 0 0 5M12 8s1.5-5 4.5-5a2.5 2.5 0 0 1 0 5"/>'),
   quest: svg('<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>'),
+  climb: svg('<path d="M3 20h4v-4h4v-4h4V8h4V4h2"/>'),
   bot: svg('<rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V4M9 13h.01M15 13h.01M9 17h6"/>'),
 };
 
@@ -56,6 +57,7 @@ const GI_SPRITE = `<svg width="0" height="0" style="position:absolute" aria-hidd
 <linearGradient id="gd-red" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff9e8f"/><stop offset=".5" stop-color="#ff453a"/><stop offset="1" stop-color="#b3161b"/></linearGradient>
 <linearGradient id="gd-dark" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3d3546"/><stop offset="1" stop-color="#141118"/></linearGradient>
 <linearGradient id="gd-fire" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd23f"/><stop offset=".5" stop-color="#ff7a1a"/><stop offset="1" stop-color="#e0302a"/></linearGradient>
+<linearGradient id="gd-steamb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1e4f8f"/><stop offset="1" stop-color="#0b1a2e"/></linearGradient>
 <linearGradient id="gd-holo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7ad7ff"/><stop offset=".35" stop-color="#b79bff"/><stop offset=".7" stop-color="#ff8ad8"/><stop offset="1" stop-color="#ffe08a"/></linearGradient>
 </defs>
 <symbol id="gi-pumpkin" viewBox="0 0 32 32">
@@ -162,6 +164,28 @@ const GI_SPRITE = `<svg width="0" height="0" style="position:absolute" aria-hidd
   <circle cx="25" cy="25" r="5" fill="url(#gd-red)" stroke="#1b1020" stroke-width="1.4"/>
   <path d="M23.2 23.2l3.6 3.6M26.8 23.2l-3.6 3.6" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
 </symbol>
+<symbol id="gi-potion" viewBox="0 0 32 32">
+  <rect x="12.2" y="2.5" width="7.6" height="4" rx="1.4" fill="#a0673a"/>
+  <path d="M13 6.5h6v5.2c4.6 1.6 7.8 5.8 7.8 10.6A10.8 10.8 0 0 1 5.2 22.3c0-4.8 3.2-9 7.8-10.6z" fill="#cfe8ff" fill-opacity=".28" stroke="#e9f4ff" stroke-opacity=".75" stroke-width="1.1"/>
+  <path d="M6.6 20.5c3.2-1.6 6.4 1.4 9.4 0s6.2-1.6 9.4 0c.4 1 .5 1.8.5 2.6a10 10 0 0 1-19.8 0c0-.9.2-1.7.5-2.6z" fill="url(#gd-green)"/>
+  <circle cx="12" cy="24" r="1.4" fill="#fff" fill-opacity=".7"/><circle cx="18.5" cy="26" r="1" fill="#fff" fill-opacity=".6"/><circle cx="20" cy="22.6" r=".8" fill="#fff" fill-opacity=".6"/>
+  <path d="M9 16.5c.6-1.4 1.6-2.3 2.8-2.8" stroke="#fff" stroke-opacity=".8" stroke-width="1.3" stroke-linecap="round" fill="none"/>
+  <path d="M24.5 4.5l.7 1.6 1.7.2-1.3 1.1.4 1.7-1.5-.9-1.5.9.4-1.7-1.3-1.1 1.7-.2z" fill="#ffe08a"/>
+</symbol>
+<symbol id="gi-ticket" viewBox="0 0 32 32">
+  <path d="M3.5 9A2.5 2.5 0 0 1 6 6.5h20A2.5 2.5 0 0 1 28.5 9v3.2a3.8 3.8 0 0 0 0 7.6V23a2.5 2.5 0 0 1-2.5 2.5H6A2.5 2.5 0 0 1 3.5 23v-3.2a3.8 3.8 0 0 0 0-7.6z" fill="url(#gd-gold)"/>
+  <path d="M21 7v18" stroke="#7a4a00" stroke-opacity=".55" stroke-width="1.2" stroke-dasharray="2 2"/>
+  <path d="M12.5 10.5l1.6 3.3 3.6.5-2.6 2.5.6 3.6-3.2-1.7-3.2 1.7.6-3.6-2.6-2.5 3.6-.5z" fill="#fff8d6"/>
+  <path d="M6.5 9.5h4" stroke="#fff" stroke-opacity=".7" stroke-width="1.2" stroke-linecap="round"/>
+</symbol>
+<symbol id="gi-steam" viewBox="0 0 32 32">
+  <circle cx="16" cy="16" r="14" fill="url(#gd-steamb)"/>
+  <circle cx="20.6" cy="12.2" r="4.9" fill="none" stroke="#fff" stroke-width="2.2"/>
+  <circle cx="20.6" cy="12.2" r="2.4" fill="#fff"/>
+  <path d="M3 18.2l7.2 3" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/>
+  <circle cx="11.8" cy="21.9" r="3.3" fill="#fff"/><circle cx="11.8" cy="21.9" r="1.4" fill="#1b2838"/>
+  <path d="M14.6 20.4l3.6-5.2" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>
+</symbol>
 <symbol id="gi-warn" viewBox="0 0 32 32">
   <path d="M14 5.2a2.3 2.3 0 0 1 4 0l10.8 19.2a2.3 2.3 0 0 1-2 3.4H5.2a2.3 2.3 0 0 1-2-3.4z" fill="url(#gd-org)"/>
   <path d="M16 12v7.5" stroke="#2a1300" stroke-width="3" stroke-linecap="round"/><circle cx="16" cy="23.4" r="1.8" fill="#2a1300"/>
@@ -254,7 +278,8 @@ const ERR = {
   NO_FUNDS: 'Недостаточно средств', NICK_TAKEN: 'Этот ник уже занят', BAD_NICK: 'Ник: 3–16 символов — буквы, цифры, пробел, _ . -',
   NOT_OPEN: 'Баттл уже начался или отменён', FULL: 'Мест уже нет', ALREADY_IN: 'Ты уже в этом баттле', NO_USER: 'Игрок с таким ником не найден',
   SELF: 'Нельзя подарить самому себе', NOT_OWNER: 'Этот предмет уже не твой', TARGET_TOO_CHEAP: 'Цель должна быть дороже ставки',
-  NOT_CREATOR: 'Это может только создатель баттла', QUEST_NOT_DONE: 'Квест ещё не выполнен', 'Invalid login credentials': 'Неверный ник или пароль', NO_PROFILE: 'Профиль не найден',
+  NOT_CREATOR: 'Это может только создатель баттла', QUEST_NOT_DONE: 'Квест ещё не выполнен', LEVEL_LOCKED: 'Этот уровень ещё не открыт', ALREADY_CLAIMED: 'Награда уже получена',
+  NO_TICKETS: 'Бесплатных открытий не осталось', NO_PERK: 'Зелья уже нет', BAD_TARGET: 'Цель: от 1.01x до 1000x', BAD_BET: 'Минимальная ставка — $0.10', ONLINE_ONLY: 'Работает только онлайн', 'Invalid login credentials': 'Неверный ник или пароль', NO_PROFILE: 'Профиль не найден',
   'Anonymous sign-ins are disabled': 'Гостевой вход выключен на сервере', 'Password should be at least': 'Пароль — минимум 6 символов',
   'already registered': 'Этот ник уже зарегистрирован', 'Failed to fetch': 'Нет связи с сервером',
 };
@@ -293,7 +318,7 @@ function nickEmail(nick) {
 const KEY = 'glassdrop.v1', SKEY = 'glassdrop.settings';
 const BONUS_CD = 120e3, BONUS_AMT = 15;
 const freshStats = () => ({ opened: 0, spent: 0, sold: 0, upW: 0, upL: 0, bw: 0, bl: 0, best: null });
-const fresh = () => ({ bal: 100, inv: [], hist: [], uid: 1, lastBonus: 0, bonusN: 0, xp: 0, quests: {}, dailyLast: null, dailyStreak: 0, pumpkins: [], pumpkinDone: false, stats: freshStats() });
+const fresh = () => ({ bal: 100, inv: [], hist: [], uid: 1, lastBonus: 0, bonusN: 0, xp: 0, quests: {}, perks: [], steam: [], luckUntil: 0, bpClaimed: [], dailyLast: null, dailyStreak: 0, pumpkins: [], pumpkinDone: false, stats: freshStats() });
 const bonusAmt = n => n % 100 === 0 ? 1000 : n % 10 === 0 ? 100 : BONUS_AMT;
 let SET = { sound: true, fast: false };
 try { SET = Object.assign(SET, JSON.parse(localStorage.getItem(SKEY) || '{}')); } catch {}
@@ -311,6 +336,7 @@ function applyProfile(p) {
   S.bal = +p.balance;
   S.lastBonus = p.last_bonus ? Date.parse(p.last_bonus) : 0;
   S.bonusN = p.bonus_n || 0;
+  S.bpClaimed = p.bp_claimed || []; S.luckUntil = p.luck_until ? Date.parse(p.luck_until) : 0;
   S.xp = p.xp || 0; S.quests = p.quests || {}; S.dailyLast = p.daily_last; S.dailyStreak = p.daily_streak || 0; S.pumpkinDone = !!p.pumpkin_done;
   S.stats = { opened: p.opened, spent: +p.spent, sold: +p.sold, upW: p.up_w, upL: p.up_l, bw: p.battles_w, bl: p.battles_l, best: p.best_skin != null ? { s: p.best_skin, f: p.best_float, st: p.best_st, p: +p.best_price } : null };
   if (ME) ME.nick = p.nickname;
@@ -324,7 +350,21 @@ async function refreshProfile() {
 async function refreshInventory() {
   const rows = await fetchAll(() => sb.from('inventory').select('id,skin_id,float,st,price,src,created_at').eq('owner', ME.id).order('id', { ascending: false }));
   S.inv = rows.map(fromInv);
+  await refreshPerks();
 }
+async function refreshPerks() {
+  const [pk, st] = await Promise.all([
+    fetchAll(() => sb.from('perks').select('id,kind,case_id,mins').eq('owner', ME.id).order('id')),
+    fetchAll(() => sb.from('steam_items').select('*').eq('owner', ME.id).order('id', { ascending: false })),
+  ]);
+  S.perks = pk;
+  S.steam = st.map(r => ({ u: r.id, s: r.skin_id, f: r.float, st: r.st, p: +r.price, t: Date.parse(r.withdrawn_at), src: r.src }));
+}
+// server adds XP for opening/upgrading/climbing — pull the new total (debounced)
+let xpT;
+const syncXp = () => { if (!ONLINE || !ME) return; clearTimeout(xpT); xpT = setTimeout(async () => { const { data } = await sb.from('profiles').select('xp').eq('id', ME.id).single(); if (data) { S.xp = data.xp; drawLevel(); } }, 500); };
+const luckOn = () => S.luckUntil > Date.now();
+const ticketsFor = id => S.perks.filter(p => p.kind === 'case' && p.case_id === id).length;
 
 /* ---- game actions: same interface for online & offline ---- */
 const API = {
@@ -372,7 +412,7 @@ const API = {
   },
   async upgrade(uids, tgt) {
     if (ONLINE) {
-      const r = await rpc('upgrade_items', { p_ids: uids, p_skin: tgt.s, p_code: tgt.code });
+      const r = await rpc('upgrade_items', { p_ids: uids, p_skin: tgt.s, p_code: tgt.code }); syncXp();
       S.inv = S.inv.filter(i => !uids.includes(i.u));
       let got = null;
       if (r.win) { got = fromDrop(r.item); got.src = 'upgrade'; S.inv.unshift(got); bumpBest(got); S.stats.upW++; } else S.stats.upL++;
@@ -391,6 +431,38 @@ const API = {
     } else S.stats.upL++;
     save();
     return { win, chance: ch, item: got, balance: S.bal };
+  },
+  async claimLevel(lv) {
+    if (!ONLINE) throw new Error('ONLINE_ONLY');
+    const r = await rpc('claim_level', { p_level: lv });
+    S.bpClaimed = [...S.bpClaimed, lv];
+    let item = null;
+    if (r.item) { item = fromDrop(r.item); item.src = 'pass'; S.inv.unshift(item); bumpBest(item); }
+    if (r.kind === 'case' || r.kind === 'luck') await refreshPerks();
+    return { balance: +r.balance, kind: r.kind, item };
+  },
+  async useLuck(id) {
+    const r = await rpc('use_luck', { p_id: id });
+    S.perks = S.perks.filter(p => p.id !== id); S.luckUntil = Date.parse(r.luck_until);
+  },
+  async openFree(c, n) {
+    const r = await rpc('open_free', { p_case: c.id, p_n: n });
+    const items = r.items.map(fromDrop);
+    S.inv.unshift(...items); items.forEach(bumpBest); S.stats.opened += n;
+    let k = n; S.perks = S.perks.filter(p => !(p.kind === 'case' && p.case_id === c.id && k-- > 0));
+    return { items, balance: +r.balance };
+  },
+  async withdraw(uids) {
+    const r = await rpc('withdraw_items', { p_ids: uids });
+    const set = new Set(uids), moved = S.inv.filter(i => set.has(i.u));
+    S.inv = S.inv.filter(i => !set.has(i.u));
+    S.steam.unshift(...moved.map(i => ({ ...i, t: Date.now() })));
+    return { n: r.n, sum: +r.sum };
+  },
+  async climb(uids, amount, target) {
+    const r = await rpc('play_climb', { p_ids: uids, p_amount: amount, p_target: target });
+    if (uids.length) { const set = new Set(uids); S.inv = S.inv.filter(i => !set.has(i.u)); }
+    return { crash: +r.crash, win: r.win, payout: +r.payout, bet: +r.bet, balance: +r.balance };
   },
   async claimQuest(type) {
     if (ONLINE) {
@@ -589,10 +661,10 @@ window.addEventListener('resize', () => layoutPills());
 function segSelect(sg, v) { $$('button', sg).forEach(b => b.classList.toggle('on', b.dataset.v === v)); placePill(sg, false); }
 
 const NAV = ONLINE
-  ? [['', 'Кейсы', ICON.cases], ['battles', 'Баттлы', ICON.swords], ['inventory', 'Инвентарь', ICON.inv], ['upgrade', 'Апгрейд', ICON.up], ['quests', 'Квесты', ICON.quest], ['top', 'Топ', ICON.trophy], ['profile', 'Профиль', ICON.user]]
+  ? [['', 'Кейсы', ICON.cases], ['battles', 'Баттлы', ICON.swords], ['climb', 'Подъём', ICON.climb], ['inventory', 'Инвентарь', ICON.inv], ['upgrade', 'Апгрейд', ICON.up], ['quests', 'Квесты', ICON.quest], ['top', 'Топ', ICON.trophy], ['profile', 'Профиль', ICON.user]]
   : [['', 'Кейсы', ICON.cases], ['inventory', 'Инвентарь', ICON.inv], ['upgrade', 'Апгрейд', ICON.up], ['quests', 'Квесты', ICON.quest], ['profile', 'Профиль', ICON.user]];
-const navHTML = `<span class="pill"></span>` + NAV.map(([r, l, i]) => `<button data-go="#/${r}" data-r="${r}">${i}<span>${l}</span></button>`).join('');
-$('#nav').innerHTML = navHTML; $('#dockNav').innerHTML = navHTML;
+const navHTML = list => `<span class="pill"></span>` + list.map(([r, l, i]) => `<button data-go="#/${r}" data-r="${r}">${i}<span>${l}</span></button>`).join('');
+$('#nav').innerHTML = navHTML(NAV); $('#dockNav').innerHTML = navHTML(ONLINE ? NAV.filter(n => n[0] !== 'quests') : NAV);
 const NAV_KEY = { case: '', battle: 'battles', u: 'top' };
 function updateNav(r) {
   const key = r in NAV_KEY ? NAV_KEY[r] : r;
@@ -692,7 +764,7 @@ const onlineOnly = t => `<div class="empty-state"><div class="ill">${gi('globe')
 const main = $('#view');
 let VIEW = {};
 let viewToken = 0;
-const ROUTES = { quests: viewQuests, '': viewHome, case: viewCase, inventory: viewInventory, upgrade: viewUpgrade, profile: viewProfile, battles: viewBattles, battle: viewBattle, top: viewTop, u: viewUser };
+const ROUTES = { climb: viewClimb, quests: viewQuests, '': viewHome, case: viewCase, inventory: viewInventory, upgrade: viewUpgrade, profile: viewProfile, battles: viewBattles, battle: viewBattle, top: viewTop, u: viewUser };
 let firstRender = true;
 async function route() {
   if (ONLINE && !ME) return;
@@ -741,7 +813,7 @@ const tintEl = $('#tint');
 function setTint(col) { tintEl.style.background = col ? `radial-gradient(70% 55% at 50% 30%, ${col}, transparent 70%)` : 'transparent'; tintEl.style.opacity = col ? .45 : 0; }
 
 /* ================= live ticker ================= */
-const SRC_ICO = { upgrade: gi('upgrade'), battle: gi('swords'), gift: gi('gift') };
+const SRC_ICO = { upgrade: gi('upgrade'), battle: gi('swords'), gift: gi('gift'), pass: gi('ticket') };
 function tkHTML(h, isNew) {
   const s = SK[h.s];
   const who = h.nick ? `${h.nick}: ` : '';
@@ -878,6 +950,7 @@ function viewCase(id) {
     <div class="open-bar">
       ${seg('n', [1, 2, 3, 4, 5].map(n => [String(n), '×' + n]), String(C.n))}
       <button class="btn primary big" id="openBtn" data-act="open"></button>
+      <button class="btn green big" id="freeBtn" data-act="free" hidden></button>
       <label class="toggle" data-act="fast"><span class="switch ${SET.fast ? 'on' : ''}" id="fastSw"></span>Быстро</label>
       ${ONLINE ? `<button class="btn" data-go="#/battles?case=${c.id}">${gi('swords')} Баттл</button>` : ''}
     </div>
@@ -893,12 +966,18 @@ function viewCase(id) {
   </div>
   ${rare.length ? `<div class="section-head" id="rareHead"><h2 style="color:var(--gold)">★ Редкие предметы</h2><span class="sub">${pct(c.odds.rare)} на весь список</span></div>
   <div class="grid-items">${rare.map(s => card(s, 'rare', 0)).join('')}</div>` : ''}`;
-  const drawBtn = () => { const b = $('#openBtn'); if (b) b.innerHTML = `Открыть ${C.n > 1 ? C.n + ' шт. ' : ''}за ${money(r2(c.price * C.n))}`; };
+  const drawBtn = () => {
+    const b = $('#openBtn'); if (b) b.innerHTML = `Открыть ${C.n > 1 ? C.n + ' шт. ' : ''}за ${money(r2(c.price * C.n))}`;
+    const f = $('#freeBtn'), k = ticketsFor(c.id);
+    if (f) { f.hidden = !k; f.innerHTML = `${gi('ticket')} Бесплатно ×${Math.min(k, C.n)} <small>(есть ${k})</small>`; }
+  };
   drawBtn();
   VIEW = {
     onSeg(n, v) { if (n === 'n') { C.n = +v; drawBtn(); } },
+    refreshBtns: drawBtn,
     act(a, el, e) {
       if (a === 'open') openCase(c, C.n);
+      if (a === 'free') openCase(c, Math.min(C.n, ticketsFor(c.id)), true);
       if (a === 'fast') { e.preventDefault(); SET.fast = !SET.fast; saveSet(); $('#fastSw').classList.toggle('on', SET.fast); SFX.click(); }
       if (a === 'toRare') $('#rareHead').scrollIntoView({ behavior: 'smooth', block: 'start' });
     },
@@ -928,10 +1007,10 @@ function rcHTML(d, c) {
 }
 const shake = el => el && el.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(-8px)' }, { transform: 'translateX(8px)' }, { transform: 'translateX(-4px)' }, { transform: 'translateX(0)' }], { duration: 380 });
 
-async function openCase(c, n) {
-  if (busy) return;
+async function openCase(c, n, free) {
+  if (busy || n < 1) return;
   const cost = r2(c.price * n);
-  if (S.bal < cost) {
+  if (!free && S.bal < cost) {
     SFX.fail();
     notify({ title: 'Недостаточно средств', sub: `Нужно ${money(cost)} — заберите бонус или продайте предметы`, icon: '!', color: 'rgba(255,69,58,.35)' });
     shake($('#openBtn'));
@@ -939,14 +1018,14 @@ async function openCase(c, n) {
   }
   busy = true;
   const token = viewToken;
-  $('#openBtn').disabled = true;
+  $('#openBtn').disabled = true; if ($('#freeBtn')) $('#freeBtn').disabled = true;
   SFX.open();
   const stage = $('#stage'), rolls = $('#rolls');
   stage.classList.add('out');
   let res;
-  try { [res] = await Promise.all([API.openCase(c, n), sleep(380)]); }
+  try { [res] = await Promise.all([free ? API.openFree(c, n) : API.openCase(c, n), sleep(380)]); }
   catch (e) { busy = false; notifyErr(e); if (token === viewToken) resetStage(); return; }
-  setBal(res.balance); drawLevel();
+  setBal(res.balance); drawLevel(); syncXp();
   const its = res.items;
   if (token !== viewToken) { busy = false; announce(its); return; }
   stage.hidden = true;
@@ -1055,6 +1134,8 @@ function resetStage() {
   rolls.hidden = true; rolls.innerHTML = '';
   stage.hidden = false; stage.classList.remove('out');
   if (b) b.disabled = false;
+  if ($('#freeBtn')) $('#freeBtn').disabled = false;
+  VIEW.refreshBtns && VIEW.refreshBtns();
 }
 
 /* ================= item detail ================= */
@@ -1076,12 +1157,38 @@ function showItem(it, { onChange, readonly } = {}) {
       <button class="btn green" data-sact="sell">Продать за ${money(it.p)}</button>
       <button class="btn" data-sact="upg">В апгрейд</button>
       ${ONLINE ? `<button class="btn" data-sact="gift">${ICON.gift.replace('<svg', '<svg width="16" height="16"')} Подарить</button>` : ''}
+      ${ONLINE ? `<button class="btn steam" data-sact="steam">${gi('steam')} Вывести в Steam</button>` : ''}
     </div>`}`, {
     narrow: true,
     acts: {
       async sell(b, close) { b.disabled = true; await sellWithFx([it.u], 'Продано: ' + s.pat); close(); onChange && onChange(); },
       upg(b, close) { U.sel = new Set([it.u]); U.target = null; close(); location.hash = '#/upgrade'; },
       gift(b, close) { close(); setTimeout(() => giftSheet(it, onChange), 300); },
+      steam(b, close) { close(); setTimeout(() => steamSheet([it.u], onChange), 300); },
+    },
+  });
+}
+function steamSheet(uids, onDone) {
+  const its = S.inv.filter(i => uids.includes(i.u)), sum = r2(its.reduce((a, i) => a + i.p, 0));
+  if (!its.length) return;
+  const s = SK[its[0].s];
+  openSheet(`
+    <div class="steam-badge">${gi('steam')}</div>
+    <h2>Вывести в Steam?</h2>
+    <div class="subtitle">${its.length > 1 ? `${its.length} предм.` : esc(fullName(its[0]))} · ${money(sum)}<br>Предмет${its.length > 1 ? 'ы уйдут' : ' уйдёт'} из инвентаря насовсем и появ${its.length > 1 ? 'я' : 'и'}тся во вкладке «Steam» в профиле. Это понарошку — в настоящий Steam ничего не отправляется.</div>
+    ${its.length === 1 ? `<div class="detail-art" style="--rc:${colOf(s)};height:140px"><div class="glow"></div><img src="${img(s.img)}" alt=""></div>` : ''}
+    <div class="acts"><button class="btn" data-sact="close">Отмена</button><button class="btn steam" data-sact="ok">${gi('steam')} Вывести</button></div>`, {
+    narrow: true,
+    acts: {
+      async ok(b, close) {
+        b.disabled = true;
+        try {
+          const r = await API.withdraw(uids);
+          SFX.coin(); close();
+          notify({ title: 'Выведено в Steam', sub: `${r.n} предм. · смотри в профиле`, icon: gi('steam'), color: 'rgba(30,79,143,.5)', amt: money(r.sum), tall: true });
+          onDone && onDone();
+        } catch (e) { b.disabled = false; notifyErr(e); }
+      },
     },
   });
 }
@@ -1136,6 +1243,7 @@ function viewInventory() {
     <button class="btn" data-act="selMode" id="selBtn">Выбрать</button>
     <button class="btn green" data-act="sellAll">Продать всё</button>
   </section>
+  <div id="perkRow"></div>
   <div class="section-head">
     ${seg('f', INV_FILTERS, I.f, 'sm')}
     <div class="grow"></div>
@@ -1145,7 +1253,7 @@ function viewInventory() {
     </div>
   </div>
   <div id="invGrid"></div>
-  <div class="actionbar glass edge" id="abar"><span class="n" id="abarT"></span><button class="btn sm" data-act="selClear">Отмена</button><button class="btn green sm" data-act="sellSel">Продать</button></div>`;
+  <div class="actionbar glass edge" id="abar"><span class="n" id="abarT"></span><button class="btn sm" data-act="selClear">Отмена</button>${ONLINE ? `<button class="btn steam sm" data-act="steamSel">${gi('steam')} В Steam</button>` : ''}<button class="btn green sm" data-act="sellSel">Продать</button></div>`;
   drawInv();
   VIEW = {
     onSeg(n, v) { if (n === 'f') { I.f = v; I.limit = 120; drawInv(); } },
@@ -1159,6 +1267,15 @@ function viewInventory() {
         else { const it = S.inv.find(x => x.u === u); if (it) showItem(it, { onChange: () => $('#invGrid') && drawInv() }); }
       }
       if (a === 'selMode') { I.select = !I.select; I.sel.clear(); drawInv(); }
+      if (a === 'steamSel') steamSheet([...I.sel], () => { I.sel.clear(); I.select = false; if ($('#invGrid')) drawInv(); });
+      if (a === 'useLuck') {
+        el.disabled = true;
+        try {
+          await API.useLuck(+el.dataset.id); SFX.win('classified'); drawLuck();
+          notify({ title: 'Зелье удачи выпито!', sub: `Действует до ${new Date(S.luckUntil).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`, icon: gi('potion'), color: 'rgba(52,199,89,.4)', tall: true });
+        } catch (e) { notifyErr(e); }
+        drawInv();
+      }
       if (a === 'selClear') { I.select = false; I.sel.clear(); drawInv(); }
       if (a === 'more') { I.limit += 240; drawInv(); }
       if (a === 'sellSel') {
@@ -1184,7 +1301,19 @@ function drawBar() {
   $('#abarT').textContent = `Выбрано ${I.sel.size} · ${money(sum)}`;
   bar.classList.toggle('show', I.select && I.sel.size > 0);
 }
+function drawPerks() {
+  const row = $('#perkRow'); if (!row) return;
+  const lucks = S.perks.filter(p => p.kind === 'luck');
+  const tix = {}; S.perks.filter(p => p.kind === 'case').forEach(p => { tix[p.case_id] = (tix[p.case_id] || 0) + 1; });
+  if (!lucks.length && !Object.keys(tix).length && !luckOn()) { row.innerHTML = ''; return; }
+  row.innerHTML = `<div class="section-head"><h2 style="font-size:19px">Бонусы</h2><span class="sub">награды боевого пропуска</span></div><div class="perk-row">
+    ${luckOn() ? `<div class="perk glass-flat on">${gi('potion')}<div class="t"><b>Удача активна</b><span>ещё <i data-luckleft>${hms(S.luckUntil - Date.now()).slice(3)}</i> · дропы и апгрейды лучше</span></div></div>` : ''}
+    ${lucks.map(p => `<div class="perk glass-flat">${gi('potion')}<div class="t"><b>Зелье удачи · ${p.mins} мин</b><span title="40% открытий делают второй бросок и берут лучший предмет, шанс апгрейда ×1.1">дропы лучше · апгрейд ×1.1</span></div><button class="btn primary sm" data-act="useLuck" data-id="${p.id}">Использовать</button></div>`).join('')}
+    ${Object.entries(tix).map(([id, n]) => { const c = caseById(id); return c ? `<div class="perk glass-flat">${gi('ticket')}<div class="t"><b>${esc(c.name)} ×${n}</b><span>бесплатн${n > 1 ? 'ые открытия' : 'ое открытие'}</span></div><button class="btn green sm" data-go="#/case/${id}">Открыть</button></div>` : ''; }).join('')}
+  </div>`;
+}
 function drawInv() {
+  drawPerks();
   $('#invN').textContent = S.inv.length;
   $('#invV').textContent = money(invValue());
   $('#selBtn').textContent = I.select ? 'Готово' : 'Выбрать';
@@ -1218,7 +1347,7 @@ function market() {
   return MARKET;
 }
 const selTotal = () => r2(S.inv.filter(i => U.sel.has(i.u)).reduce((a, i) => a + i.p, 0));
-const chanceOf = () => U.target && U.sel.size ? Math.min(.9, selTotal() / U.target.p * .92) : 0;
+const chanceOf = () => U.target && U.sel.size ? Math.min(.9, selTotal() / U.target.p * .92 * (luckOn() ? 1.1 : 1)) : 0;
 function viewUpgrade() {
   for (const u of [...U.sel]) if (!S.inv.some(i => i.u === u)) U.sel.delete(u);
   main.innerHTML = `
@@ -1307,7 +1436,7 @@ function drawUpList() {
     if (tk >= 0 && !show.includes(tk)) show.unshift(tk);
     g.innerHTML = `<div class="grid-items">${show.map(k => {
       const x = m[k];
-      const ch = min ? Math.min(.9, min / x.p * .92) : 0;
+      const ch = min ? Math.min(.9, min / x.p * .92 * (luckOn() ? 1.1 : 1)) : 0;
       return itemCard({ s: x.s, p: x.p, f: null }, { sel: U.target === x, wearText: x.code || '★', chance: ch ? (ch * 100).toFixed(1) + '%' : '', attr: `data-act="pickOut" data-k="${k}"` });
     }).join('')}</div>`;
   }
@@ -1596,9 +1725,37 @@ const hms = ms => { const t = Math.max(0, Math.floor(ms / 1000)), p = n => Strin
 const dailyAmount = st => st >= 31 ? 200 + 25 * Math.floor((st - 31) / 30) : st >= 8 ? 70 : 50;
 const dailyReady = () => S.dailyLast !== utcDay(0);
 const nextStreak = () => S.dailyLast === utcDay(-1) || S.dailyLast === utcDay(0) ? S.dailyStreak + (dailyReady() ? 1 : 0) : 1;
-const anythingToClaim = () => dailyReady() || activeQuests().some(questReady);
+const BPMAP = Object.fromEntries((window.BP || []).map(r => [r.level, r]));
+function bpReward(lv) {
+  if (BPMAP[lv]) return BPMAP[lv];
+  return lv % 10 === 0 ? { level: lv, kind: 'case', case_id: 'c-knife-budget', n: 1 } : lv % 5 === 0 ? { level: lv, kind: 'luck', mins: 30 } : { level: lv, kind: 'money', amount: 100 };
+}
+const bpReadyList = () => { if (!ONLINE) return []; const L = levelOf(S.xp || 0).lvl, out = []; for (let l = 2; l <= L; l++) if (!S.bpClaimed.includes(l)) out.push(l); return out; };
+function bpName(r) {
+  if (r.kind === 'money') return money(r.amount);
+  if (r.kind === 'luck') return `Зелье удачи · ${r.mins} мин`;
+  if (r.kind === 'case') { const c = caseById(r.case_id); return `${c ? esc(c.name) : 'Кейс'}${r.n > 1 ? ' ×' + r.n : ''}`; }
+  const sk = SK[r.skin_id]; return sk ? `${esc(wpnLabel(sk))} | ${esc(sk.pat)} <small>(${r.code})</small>` : 'Скин';
+}
+function bpArt(r) {
+  if (r.kind === 'money') return `<div class="bp-ico">${gi('coins')}</div>`;
+  if (r.kind === 'luck') return `<div class="bp-ico">${gi('potion')}</div>`;
+  if (r.kind === 'case') { const c = caseById(r.case_id); return c ? `<div class="bp-case">${caseArt(c, '256fx192f')}${r.n > 1 ? `<span class="bp-n">×${r.n}</span>` : ''}</div>` : ''; }
+  const sk = SK[r.skin_id]; return sk ? `<div class="bp-skin" style="--rc:${colOf(sk)}"><img src="${img(sk.img, '256fx192f')}" alt="" loading="lazy"></div>` : '';
+}
+const bpSub = r => r.kind === 'case' ? 'бесплатн' + (r.n > 1 ? 'ые открытия' : 'ое открытие') : r.kind === 'skin' ? 'скин в инвентарь' : r.kind === 'luck' ? 'кладётся в инвентарь' : 'на баланс';
+const anythingToClaim = () => dailyReady() || activeQuests().some(questReady) || bpReadyList().length > 0;
 
 const lvlEl = $('#lvlBadge');
+const luckEl = $('#luckChip');
+function drawLuck() {
+  if (!luckEl) return;
+  const on = luckOn();
+  luckEl.hidden = !on;
+  if (on) luckEl.innerHTML = `${gi('potion')}<b>${hms(S.luckUntil - Date.now()).slice(3)}</b>`;
+  $$('[data-luckleft]').forEach(e => { e.textContent = hms(S.luckUntil - Date.now()).slice(3); });
+}
+setInterval(drawLuck, 1000);
 function drawLevel() {
   const L = levelOf(S.xp || 0);
   if (lvlEl) {
@@ -1617,6 +1774,30 @@ async function claimDaily(btn) {
     notify({ title: `Ежедневный бонус · день ${r.streak}`, sub: r.streak >= 7 ? 'Стрик держится — так держать!' : `С 8-го дня подряд — по $70`, icon: gi('calendar'), color: 'rgba(255,159,10,.4)', amt: '+' + money(r.amount), amtColor: '#ffd60a', tall: true, ms: 4000 });
   } catch (e) { notifyErr(e); }
   drawLevel(); VIEW.refresh && VIEW.refresh();
+}
+async function claimLevels(levels, btn) {
+  if (btn) btn.disabled = true;
+  let money_ = 0, got = [], other = [];
+  for (const lv of levels) {
+    try {
+      const r = await API.claimLevel(lv), rw = bpReward(lv);
+      setBal(r.balance);
+      if (r.kind === 'money') money_ += +rw.amount; else if (r.item) got.push(r.item); else other.push(rw);
+    } catch (e) { notifyErr(e); break; }
+  }
+  drawLevel();
+  if (got.length) {
+    const best = got.reduce((a, b) => b.p > a.p ? b : a);
+    SFX.win(SK[best.s].star ? 'rare' : 'covert');
+    notify({ title: fullName(best), sub: 'Награда боевого пропуска — в инвентаре', icon: thumbIco(best.s), amt: money(best.p), tall: true, ms: 4000 });
+  } else if (other.length) {
+    SFX.win('classified');
+    const r = other[other.length - 1];
+    notify({ title: 'Награда получена!', sub: other.length > 1 ? `${other.length} наград — смотри в инвентаре` : bpName(r).replace(/<[^>]+>/g, '') + ' — в инвентаре', icon: gi(r.kind === 'luck' ? 'potion' : 'ticket'), color: 'rgba(255,214,10,.3)', amt: money_ ? '+' + money(money_) : '', amtColor: '#5ee07f', tall: true });
+  } else if (money_) {
+    SFX.coin();
+    notify({ title: 'Награда боевого пропуска', icon: gi('coins'), color: 'rgba(48,209,88,.3)', amt: '+' + money(money_), amtColor: '#5ee07f', tall: true });
+  }
 }
 async function claimQuest(type, btn) {
   if (btn) btn.disabled = true;
@@ -1637,6 +1818,15 @@ function viewQuests() {
       return `<div class="dday ${done ? 'done' : ''} ${day === st ? 'today' : ''}"><span>день ${day}</span><b>${money(dailyAmount(day)).replace('.00', '')}</b></div>`;
     }).join('');
     const pk = Array.from({ length: PK_TOTAL }, (_, i) => `<i class="${S.pumpkins.includes(i + 1) ? 'on' : ''}">${gi('pumpkin')}</i>`).join('');
+    const bpReady = bpReadyList(), maxLv = Math.max(50, L.lvl + 10);
+    const bpCards = ONLINE ? Array.from({ length: maxLv - 1 }, (_, i) => {
+      const lv = i + 2, r = bpReward(lv), done = S.bpClaimed.includes(lv), can = !done && lv <= L.lvl;
+      return `<div class="bp-card ${done ? 'done' : can ? 'ready' : 'locked'} k-${r.kind}" data-lv="${lv}">
+        <div class="bp-lv">${lv}</div>${bpArt(r)}
+        <div class="bp-name">${bpName(r)}</div><div class="bp-sub">${bpSub(r)}</div>
+        ${done ? `<span class="bp-state">${ICON.check} получено</span>` : can ? `<button class="btn green sm" data-act="bp" data-lv="${lv}">Забрать</button>` : `<span class="bp-state">с ${lv} уровня</span>`}
+      </div>`;
+    }).join('') : '';
     main.innerHTML = `
     <section class="lvl-card glass edge">
       <div class="lvl-big"><b>${L.lvl}</b><span>уровень</span></div>
@@ -1646,6 +1836,8 @@ function viewQuests() {
         <div class="ev-note">${L.cur} / ${L.need} XP до ${L.lvl + 1} уровня · всего ${S.xp || 0} XP</div>
       </div>
     </section>
+    ${ONLINE ? `<div class="section-head"><h2>${gi('ticket')} Боевой пропуск</h2><span class="sub">награда за каждый уровень · XP дают кейсы, апгрейды, баттлы, подъём и квесты</span><div class="grow"></div>${bpReady.length > 1 ? `<button class="btn green sm" data-act="bpAll">Забрать всё (${bpReady.length})</button>` : ''}</div>
+    <div class="bp-track glass-flat" id="bpTrack">${bpCards}</div>` : ''}
     <div class="q-top">
       <section class="q-card daily glass-flat">
         <div class="q-head"><span class="q-ico">${gi('calendar')}</span><div><h3>Ежедневный бонус</h3><div class="ev-note">${gi('flame')} Стрик: ${S.dailyLast === utcDay(0) || S.dailyLast === utcDay(-1) ? S.dailyStreak : 0} ${plural(S.dailyStreak, 'день', 'дня', 'дней')} подряд</div></div></div>
@@ -1673,7 +1865,8 @@ function viewQuests() {
       </div>`;
     }).join('')}</div>`;
   };
-  draw();
+  const scrollBp = () => { const tr = $('#bpTrack'); if (!tr) return; const L = levelOf(S.xp || 0).lvl, first = bpReadyList()[0] || L + 1; const card = $(`.bp-card[data-lv="${first}"]`, tr); if (card) tr.scrollLeft = card.offsetLeft - tr.offsetLeft - 16; };
+  draw(); scrollBp();
   const t = setInterval(() => { const e = $('#dailyCd'); if (e) e.textContent = hms(msToUtcMidnight()); if (!dailyReady() || !e) return; draw(); }, 1000);
   VIEW = {
     destroy() { clearInterval(t); },
@@ -1681,6 +1874,8 @@ function viewQuests() {
     act(a, el) {
       if (a === 'daily') claimDaily(el);
       if (a === 'quest') claimQuest(el.dataset.q, el);
+      if (a === 'bp') claimLevels([+el.dataset.lv], el).then(() => { const k = $('#bpTrack') && $('#bpTrack').scrollLeft; draw(); if ($('#bpTrack')) $('#bpTrack').scrollLeft = k; });
+      if (a === 'bpAll') claimLevels(bpReadyList(), el).then(() => { draw(); scrollBp(); });
     },
   };
 }
@@ -1745,6 +1940,242 @@ document.addEventListener('click', async e => {
   } catch (err) { delete pk.dataset.busy; notifyErr(err); }
 }, true);
 
+/* ================= CLIMB: the operator runs up the stairs ================= */
+const RUNNER_SVG = `<svg viewBox="0 0 48 64" aria-hidden="true">
+  <g class="leg back"><path d="M22 38l-1 11 1 9" stroke="#262a30" stroke-width="5.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M21 59.5h7.5" stroke="#0f1114" stroke-width="4.2" stroke-linecap="round"/></g>
+  <g class="arm back"><path d="M20 25l-4 8 5 3" stroke="#3a472e" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/></g>
+  <path d="M15.5 22.5h14.5l2.2 17H14.6z" fill="#4c5c3d"/>
+  <rect x="15" y="23" width="17.4" height="13.6" rx="3.2" fill="#2f3a28"/>
+  <rect x="17" y="29.6" width="4.2" height="5.4" rx="1.1" fill="#43523a"/><rect x="22.6" y="29.6" width="4.2" height="5.4" rx="1.1" fill="#43523a"/>
+  <path d="M15.5 38.8h16.6" stroke="#1c1f17" stroke-width="2.2"/>
+  <rect x="22" y="19" width="5" height="4.5" rx="1.5" fill="#22252b"/>
+  <circle cx="25" cy="14.6" r="7.1" fill="#1d1f24"/>
+  <rect x="25.2" y="12.4" width="7.4" height="3.4" rx="1.7" fill="#e2b48a"/><circle cx="30.4" cy="14.1" r=".95" fill="#111"/>
+  <path d="M17.4 13.2a7.7 7.7 0 0 1 15.3 0v1.2H17.4z" fill="#5a6e32"/>
+  <path d="M16.2 14.6h17.8" stroke="#3e4f22" stroke-width="2.1" stroke-linecap="round"/>
+  <path d="M19.5 9.6c1.4-1.8 3.4-2.6 5.6-2.6" stroke="#fff" stroke-opacity=".35" stroke-width="1.1" stroke-linecap="round" fill="none"/>
+  <path d="M20 29.6h24.5v2.8H31.4l-2.2 5.2h-3.1l1.1-5.2H20z" fill="#18191b"/>
+  <path d="M30.4 32.4h3.2l-1.3 5.4h-3.2z" fill="#8a5424"/>
+  <rect x="41" y="28.2" width="6.6" height="1.6" rx=".6" fill="#18191b"/>
+  <rect x="24" y="27.8" width="9" height="1.9" rx=".8" fill="#2c2e31"/>
+  <g class="arm front"><path d="M21 25.4l5.6 5.4 7.6-.6" stroke="#4c5c3d" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="34.4" cy="30.2" r="2.1" fill="#1a1a1a"/></g>
+  <g class="leg front"><path d="M23 38l1 11-1 9" stroke="#33383f" stroke-width="5.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M22 59.5h8" stroke="#0f1114" stroke-width="4.4" stroke-linecap="round"/></g>
+</svg>`;
+const CL = { mode: 'bal', amt: 1, target: 2, sel: new Set(), busy: false, live: [], pend: [] };
+const CK = .22, CSTEP = .45;
+const mAt = t => Math.exp(CK * t), tAt = m => Math.log(m) / CK;
+const crashCol = m => m < 1.5 ? '#ff453a' : m < 2 ? '#ff9f0a' : m < 10 ? '#30d158' : '#ffd60a';
+function niceStep(range) { for (const s of [.1, .25, .5, 1, 2, 5, 10, 25, 50, 100, 250]) if (range / s <= 5) return s; return 500; }
+
+// draws the staircase up to time t; returns where the runner stands
+function drawClimb(cv, t, target, crashed) {
+  const dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
+  if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+  const pl = 44, pb = 28, pt = 26, pr = 30;
+  const tMax = Math.max(6, t * 1.28), mNow = mAt(t);
+  let mMax = Math.max(2, mNow * 1.4);
+  if (target && target < mMax * 1.7) mMax = Math.max(mMax, target * 1.14);
+  const X = tt => pl + tt / tMax * (W - pl - pr), Y = m => H - pb - (m - 1) / (mMax - 1) * (H - pb - pt);
+  // grid
+  const st = niceStep(mMax - 1);
+  g.font = '600 11px system-ui, sans-serif'; g.textAlign = 'right'; g.textBaseline = 'middle';
+  for (let m = 1; m <= mMax + 1e-9; m += st) {
+    const y = Y(m);
+    g.strokeStyle = 'rgba(255,255,255,.06)'; g.lineWidth = 1; g.beginPath(); g.moveTo(pl, y); g.lineTo(W - pr / 2, y); g.stroke();
+    g.fillStyle = 'rgba(255,255,255,.38)'; g.fillText((+m.toFixed(2)) + 'x', pl - 8, y);
+  }
+  // stairs
+  const pts = [[X(0), Y(1)]];
+  let ts = 0;
+  for (; ts < t; ts += CSTEP) {
+    const m = mAt(ts), te = Math.min(ts + CSTEP, t);
+    pts.push([X(ts), Y(m)], [X(te), Y(m)]);
+  }
+  const cur = mAt(Math.max(0, ts - CSTEP));
+  const grad = g.createLinearGradient(0, pt, 0, H - pb);
+  grad.addColorStop(0, crashed ? 'rgba(255,69,58,.55)' : 'rgba(255,138,31,.55)'); grad.addColorStop(1, 'rgba(124,58,237,.08)');
+  g.beginPath(); g.moveTo(X(0), H - pb);
+  pts.forEach(([x, y]) => g.lineTo(x, y));
+  g.lineTo(pts[pts.length - 1][0], H - pb); g.closePath(); g.fillStyle = grad; g.fill();
+  // step faces (risers) a bit darker
+  g.strokeStyle = 'rgba(0,0,0,.25)'; g.lineWidth = 1;
+  for (let i = 2; i < pts.length; i += 2) { g.beginPath(); g.moveTo(pts[i][0], pts[i][1]); g.lineTo(pts[i][0], H - pb); g.stroke(); }
+  g.beginPath(); pts.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y));
+  g.strokeStyle = crashed ? '#ff6b5e' : '#ffb347'; g.lineWidth = 3; g.lineJoin = 'round'; g.shadowColor = crashed ? '#ff453a' : '#ff8a1f'; g.shadowBlur = 14; g.stroke(); g.shadowBlur = 0;
+  // target line
+  if (target && Y(target) > pt - 4) {
+    const y = Y(target), ok = mNow >= target;
+    g.setLineDash([7, 6]); g.strokeStyle = ok ? '#30d158' : 'rgba(255,255,255,.55)'; g.lineWidth = 1.6;
+    g.beginPath(); g.moveTo(pl, y); g.lineTo(W - pr / 2, y); g.stroke(); g.setLineDash([]);
+    g.textAlign = 'right'; g.fillStyle = ok ? '#30d158' : 'rgba(255,255,255,.75)'; g.font = '800 12px system-ui, sans-serif';
+    g.fillText(`цель ${target.toFixed(2)}x`, W - pr / 2, y - 10);
+  }
+  // runner: standing on the current stair, hopping up near the end of each step
+  const frac = (t % CSTEP) / CSTEP, yCur = Y(cur), yNext = Y(mAt(Math.max(0, ts)));
+  let ry = yCur;
+  if (t > 0 && frac > .62) { const k = (frac - .62) / .38; ry = yCur + (yNext - yCur) * k - Math.sin(k * Math.PI) * 9; }
+  return { x: X(t), y: ry, W, H };
+}
+
+function viewClimb() {
+  if (!ONLINE) { main.innerHTML = onlineOnly('Подъём доступен онлайн'); return; }
+  const tk = viewToken;
+  main.innerHTML = `
+  <section class="climb glass edge">
+    <div class="climb-top"><h1>${gi('flame')} Подъём</h1><span class="ev-note">Боец бежит по ступенькам вверх, множитель растёт — и в любой момент он может споткнуться. Дошёл до твоей цели — забираешь ставку × цель.</span></div>
+    <div class="cl-hist" id="clHist"></div>
+    <div class="climb-stage" id="clStage">
+      <canvas id="clCv"></canvas>
+      <div class="cl-mult" id="clMult">1.00x</div>
+      <div class="cl-msg" id="clMsg">Сделай ставку</div>
+      <div class="runner idle" id="clRunner">${RUNNER_SVG}</div>
+      <button class="btn sm cl-skip" id="clSkip" data-act="skip" hidden>Пропустить ⏩</button>
+    </div>
+  </section>
+  <div class="climb-form">
+    <section class="glass-flat cl-box">
+      <div class="cl-head"><b>Ставка</b>${seg('clmode', [['bal', 'Баланс'], ['skins', 'Скины']], CL.mode, 'sm')}</div>
+      <div id="clBet"></div>
+    </section>
+    <section class="glass-flat cl-box">
+      <div class="cl-head"><b>Цель</b><span class="ev-note">где боец должен быть, чтобы ты выиграл</span></div>
+      <label class="cl-target"><input id="clTarget" type="number" min="1.01" max="1000" step="0.01" value="${CL.target}"><span>x</span></label>
+      <div class="cl-chips">${[1.2, 1.5, 2, 3, 5, 10, 25, 100].map(m => `<button class="btn sm" data-act="tg" data-m="${m}">${m}x</button>`).join('')}</div>
+      <div class="cl-info" id="clInfo"></div>
+      <button class="btn primary big" id="clGo" data-act="go">Поставить</button>
+    </section>
+  </div>
+  <div class="section-head"><h2>Последние подъёмы</h2><span class="sub">все игроки, в реальном времени</span></div>
+  <div class="list glass-flat" id="clLive"></div>`;
+  const stage = $('#clStage'), cv = $('#clCv'), runner = $('#clRunner');
+  const place = (pos, rot = 0, dy = 0) => { runner.style.transform = `translate(${pos.x - 24}px, ${pos.y - 62 + dy}px) rotate(${rot}deg)`; };
+  const idle = () => place(drawClimb(cv, 0, +CL.target || 0, false));
+  idle();
+  const betTotal = () => CL.mode === 'skins' ? r2(S.inv.filter(i => CL.sel.has(i.u)).reduce((a, i) => a + i.p, 0)) : r2(+CL.amt || 0);
+  const drawInfo = () => {
+    const t = +CL.target, b = betTotal(), ok = t >= 1.01 && t <= 1000;
+    $('#clInfo').innerHTML = ok ? `<div><span>Шанс дойти</span><b>${Math.min(96, 96 / t).toFixed(2)}%</b></div><div><span>Ставка</span><b>${money(b)}</b></div><div><span>Выигрыш</span><b class="g">${money(r2(b * t))}</b></div>` : '<div><span>Цель: от 1.01x до 1000x</span></div>';
+    if (!CL.busy) idle();
+  };
+  const drawBet = () => {
+    const box = $('#clBet'); if (!box) return;
+    if (CL.mode === 'bal') {
+      box.innerHTML = `<label class="cl-amt"><span>$</span><input id="clAmt" type="number" min="0.1" step="0.01" value="${CL.amt}"></label>
+      <div class="cl-chips">${[['h', '½'], ['d', '×2'], ['p1', '+1'], ['p10', '+10'], ['p100', '+100'], ['max', 'Всё']].map(([k, l]) => `<button class="btn sm" data-act="amt" data-k="${k}">${l}</button>`).join('')}</div>`;
+    } else {
+      const list = S.inv.slice().sort((a, b) => b.p - a.p).slice(0, 80);
+      box.innerHTML = list.length ? `<div class="ev-note">Выбрано ${CL.sel.size} из 20 · ${money(betTotal())}</div><div class="cl-skins">${list.map(it => itemCard(it, { check: true, sel: CL.sel.has(it.u), attr: `data-act="pick" data-u="${it.u}"` })).join('')}</div>`
+        : `<div class="ev-note">Инвентарь пуст — открой кейс или ставь баланс.</div>`;
+    }
+    drawInfo();
+  };
+  const drawHist = () => { const h = $('#clHist'); if (h) h.innerHTML = CL.live.slice(0, 16).map(r => `<span style="--c:${crashCol(+r.crash)}">${(+r.crash).toFixed(2)}x</span>`).join(''); };
+  const drawLive = () => {
+    const l = $('#clLive'); if (!l) return;
+    l.innerHTML = CL.live.length ? CL.live.slice(0, 15).map(r => `<div class="li cl-row ${r.win ? 'w' : 'l'}"><div class="t"><b>${esc(r.nickname)}</b><span>${r.skins ? `${r.skins} скин.` : 'баланс'} · цель ${(+r.target).toFixed(2)}x · упал на <i style="color:${crashCol(+r.crash)}">${(+r.crash).toFixed(2)}x</i></span></div><div class="p">${r.win ? '+' + money(+r.payout) : '−' + money(+r.bet)}</div></div>`).join('')
+      : '<div class="li"><div class="t"><span>Пока никто не бегал — будь первым</span></div></div>';
+  };
+  const loadLive = async () => {
+    const { data } = await sb.from('climbs').select('*').order('id', { ascending: false }).limit(30);
+    if (tk !== viewToken) return;
+    CL.live = data || []; drawHist(); drawLive();
+  };
+  loadLive();
+  const ch = sb.channel('climbs-' + Date.now()).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'climbs' }, ({ new: row }) => {
+    if (CL.busy && ME && row.user_id === ME.id) { CL.pend.push(row); return; }
+    CL.live.unshift(row); CL.live = CL.live.slice(0, 30); drawHist(); drawLive();
+  }).subscribe();
+  drawBet();
+  const ro = new ResizeObserver(() => { if (!CL.busy) idle(); }); ro.observe(stage);
+
+  let skip = false;
+  function animate(r, target) {
+    return new Promise(done => {
+      const msg = $('#clMsg'), mult = $('#clMult'), tEnd = tAt(Math.max(1, r.crash)), tWin = r.win ? tAt(target) : Infinity;
+      let t = 0, last = performance.now(), won = false, crashed = false, fallT = 0, lastStep = -1, crashPos = null;
+      runner.className = 'runner run'; stage.classList.remove('crashed', 'won');
+      msg.textContent = ''; $('#clSkip').hidden = false; skip = false;
+      const frame = now => {
+        if (tk !== viewToken) return done();
+        const dt = Math.min(.05, (now - last) / 1000) * (skip ? 14 : 1); last = now;
+        if (!crashed) {
+          t = Math.min(tEnd, t + dt);
+          const step = Math.floor(t / CSTEP); if (step !== lastStep) { lastStep = step; if (step > 0) SFX.tick(); }
+          const pos = drawClimb(cv, t, target, false); place(pos);
+          mult.textContent = mAt(t).toFixed(2) + 'x';
+          if (!won && t >= tWin) {
+            won = true; stage.classList.add('won'); SFX.win('covert');
+            msg.innerHTML = `Цель ${target.toFixed(2)}x взята! <b>+${money(r.payout)}</b>`;
+          }
+          if (t >= tEnd) {
+            crashed = true; crashPos = pos; stage.classList.add('crashed'); SFX.fail();
+            runner.className = 'runner fall'; mult.textContent = r.crash.toFixed(2) + 'x';
+            drawClimb(cv, t, target, true);
+            msg.innerHTML = won ? `Забрал на ${target.toFixed(2)}x, а он споткнулся на ${r.crash.toFixed(2)}x <b>+${money(r.payout)}</b>` : `Споткнулся на ${r.crash.toFixed(2)}x · ставка сгорела`;
+          }
+        } else {
+          fallT += dt / (skip ? 14 : 1);
+          place({ x: crashPos.x + fallT * 60, y: crashPos.y }, Math.min(105, fallT * 320), 900 * fallT * fallT / 2);
+          if (fallT > 1.3) { $('#clSkip').hidden = true; return done(); }
+        }
+        requestAnimationFrame(frame);
+      };
+      requestAnimationFrame(frame);
+    });
+  }
+
+  async function go() {
+    if (CL.busy) return;
+    const target = +(+CL.target).toFixed(2);
+    if (!(target >= 1.01 && target <= 1000)) { shake($('#clTarget')); return notifyErr(new Error('BAD_TARGET')); }
+    let uids = [], amount = null;
+    if (CL.mode === 'skins') { uids = [...CL.sel]; if (!uids.length) { shake($('#clBet')); return notify({ title: 'Выбери скины для ставки', icon: '!', color: 'rgba(255,69,58,.35)' }); } }
+    else { amount = r2(+CL.amt); if (!(amount >= .1)) return notifyErr(new Error('BAD_BET')); if (amount > S.bal) { shake($('#clGo')); return notifyErr(new Error('NO_FUNDS')); } }
+    CL.busy = true; $('#clGo').disabled = true;
+    let r;
+    try { r = await API.climb(uids, amount, target); }
+    catch (e) { CL.busy = false; $('#clGo').disabled = false; return notifyErr(e); }
+    setBal(r2(r.balance - r.payout));
+    CL.sel.clear(); drawBet();
+    await animate(r, target);
+    CL.busy = false;
+    if (tk !== viewToken) { setBal(r.balance); return; }
+    setBal(r.balance); syncXp();
+    $('#clGo').disabled = false;
+    runner.className = 'runner idle';
+    if (r.win) notify({ title: `Дошёл до ${target.toFixed(2)}x!`, sub: `Упал только на ${r.crash.toFixed(2)}x`, icon: gi('flame'), color: 'rgba(48,209,88,.35)', amt: '+' + money(r.payout), amtColor: '#5ee07f', tall: true });
+    CL.live.unshift(...CL.pend.reverse()); CL.pend = []; CL.live = CL.live.slice(0, 30); drawHist(); drawLive();
+    setTimeout(() => { if (CL.busy || tk !== viewToken) return; stage.classList.remove('crashed', 'won'); $('#clMult').textContent = '1.00x'; idle(); runner.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 500 }); }, 3000);
+  }
+
+  VIEW = {
+    destroy() { sb.removeChannel(ch); ro.disconnect(); CL.busy = false; CL.pend = []; },
+    onSeg(n, v) { if (n === 'clmode' && !CL.busy) { CL.mode = v; CL.sel.clear(); drawBet(); } },
+    onInput(t) {
+      if (t.id === 'clTarget') { CL.target = t.value; drawInfo(); }
+      if (t.id === 'clAmt') { CL.amt = t.value; drawInfo(); }
+    },
+    act(a, el) {
+      if (a === 'go') go();
+      if (a === 'skip') skip = true;
+      if (CL.busy) return;
+      if (a === 'tg') { CL.target = +el.dataset.m; $('#clTarget').value = CL.target; drawInfo(); }
+      if (a === 'amt') {
+        const v = +CL.amt || 0, k = el.dataset.k;
+        CL.amt = r2(Math.max(.1, k === 'h' ? v / 2 : k === 'd' ? v * 2 : k === 'p1' ? v + 1 : k === 'p10' ? v + 10 : k === 'p100' ? v + 100 : S.bal));
+        $('#clAmt').value = CL.amt; drawInfo();
+      }
+      if (a === 'pick') {
+        const u = +el.dataset.u;
+        if (CL.sel.has(u)) CL.sel.delete(u); else if (CL.sel.size < 20) CL.sel.add(u); else return notify({ title: 'Максимум 20 скинов', icon: '!' });
+        el.classList.toggle('sel', CL.sel.has(u)); SFX.click();
+        $('#clBet .ev-note').textContent = `Выбрано ${CL.sel.size} из 20 · ${money(betTotal())}`; drawInfo();
+      }
+    },
+  };
+}
+
 /* ================= TOP ================= */
 const T = { by: 'networth' };
 async function viewTop() {
@@ -1808,7 +2239,7 @@ function histList(list) {
   if (!list.length) return '<div class="list glass-flat"><div class="li"><div class="t"><span>Пока ничего</span></div></div></div>';
   return `<div class="list glass-flat">${list.map(h => {
     const s = SK[h.s], c = caseById(h.c);
-    const what = h.src === 'battle' ? `Победа в баттле · банк ${money(h.p)}` : h.src === 'upgrade' ? `Апгрейд (${h.extra}%)` : h.src === 'gift' ? `Подарок → ${esc(h.extra)}` : (c ? esc(c.name) : 'Кейс');
+    const what = h.src === 'battle' ? `Победа в баттле · банк ${money(h.p)}` : h.src === 'upgrade' ? `Апгрейд (${h.extra}%)` : h.src === 'gift' ? `Подарок → ${esc(h.extra)}` : h.src === 'pass' ? `Боевой пропуск · ур. ${esc(h.extra)}` : (c ? esc(c.name) : 'Кейс');
     return `<div class="li" style="--rc:${colOf(s)}"><div class="dot"></div><img src="${img(s.img, '128fx128f')}" alt="" loading="lazy"><div class="t"><b>${esc(fullName(h))}</b><span>${what} · ${new Date(h.t).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span></div><div class="p">${money(h.src === 'battle' ? h.p : h.p)}</div></div>`;
   }).join('')}</div>`;
 }
@@ -1826,6 +2257,8 @@ async function viewProfile() {
   }
   const st = S.stats, b = st.best;
   main.innerHTML = `
+  ${ONLINE ? `<div class="ptabs">${seg('ptab', [['main', ICON.user + '<span>Профиль</span>'], ['steam', gi('steam') + '<span>Steam</span>']], 'main')}</div>` : ''}
+  <div id="ptabBody">
   ${ONLINE ? `<section class="inv-head glass edge">
     <div class="avatar">${esc(ME.nick.slice(0, 2))}</div>
     <div class="stat"><span>${ME.guest ? 'Гость' : 'Аккаунт'}</span><b>${esc(ME.nick)}</b></div>
@@ -1852,8 +2285,16 @@ async function viewProfile() {
     <div class="li"><div class="t"><b>Звуки</b><span>Щелчки рулетки, звук выигрыша</span></div><span class="switch ${SET.sound ? 'on' : ''}" data-act="snd"></span></div>
     <div class="li"><div class="t"><b>Быстрое открытие</b><span>Рулетка крутится ~1.5 секунды</span></div><span class="switch ${SET.fast ? 'on' : ''}" data-act="fast"></span></div>
     ${ONLINE ? '' : '<div class="li"><div class="t"><b>Сбросить прогресс</b><span>Баланс $100, пустой инвентарь и статистика</span></div><button class="btn danger sm" data-act="reset">Сбросить</button></div>'}
+  </div>
   </div>`;
+  const mainHTML = $('#ptabBody').innerHTML;
   VIEW = {
+    onSeg(n, v) {
+      if (n !== 'ptab') return;
+      const body = $('#ptabBody');
+      body.innerHTML = v === 'steam' ? steamHTML() : mainHTML;
+      body.animate([{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 260, easing: 'ease-out' });
+    },
     act(a, el) {
       if (a === 'snd') { SET.sound = !SET.sound; saveSet(); el.classList.toggle('on', SET.sound); drawSound(); SFX.click(); }
       if (a === 'fast') { SET.fast = !SET.fast; saveSet(); el.classList.toggle('on', SET.fast); SFX.click(); }
@@ -1869,6 +2310,21 @@ async function viewProfile() {
       });
     },
   };
+}
+function steamHTML() {
+  const list = S.steam.slice().sort((a, b) => b.p - a.p), sv = r2(list.reduce((a, i) => a + i.p, 0));
+  return `
+  <section class="steam-head glass edge">
+    <div class="steam-logo">${gi('steam')}</div>
+    <div class="steam-title"><h2>Steam</h2><span>Инвентарь ${esc(ME.nick)} · скины, выведенные с GlassDrop</span></div>
+    <div class="grow"></div>
+    <div class="stat"><span>Предметов</span><b>${list.length}</b></div>
+    <div class="stat"><span>Стоимость в Steam</span><b class="steam-v">${money(sv)}</b></div>
+    <div class="stat"><span>Всего с инвентарём сайта</span><b>${money(r2(sv + invValue()))}</b></div>
+  </section>
+  <div class="hint glass-flat">Это симуляция: «вывод» убирает предмет из инвентаря сайта и кладёт сюда. В настоящий Steam ничего не уходит.</div>
+  ${list.length ? `<div class="grid-items stagger">${list.map((it, i) => itemCard(it, { i: Math.min(i, 30), wearText: new Date(it.t).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }) })).join('')}</div>`
+    : `<div class="empty-state"><div class="ill">${gi('steam')}</div><h3>В Steam пока пусто</h3>Открой предмет в инвентаре и нажми «Вывести в Steam».<br><button class="btn primary" data-go="#/inventory">В инвентарь</button></div>`}`;
 }
 function renameSheet() {
   openSheet(`<h2>Новый ник</h2><label class="field"><span>Ник</span><input id="newNick" maxlength="16" value="${esc(ME.nick)}" autocomplete="off"></label><div class="acts"><button class="btn" data-sact="close">Отмена</button><button class="btn primary" data-sact="ok">Сохранить</button></div>`, {
@@ -2002,11 +2458,11 @@ async function startOnline() {
     main.innerHTML = loadingHTML;
     try { await startOnline(); }
     catch (e) { console.error(e); main.innerHTML = `<div class="empty-state"><div class="ill">${gi('warn')}</div><h3>Не удалось подключиться к серверу</h3>${esc(errText(e))}<br><button class="btn primary" onclick="location.reload()">Обновить</button></div>`; return; }
-    route(); drawLevel();
+    route(); drawLevel(); drawLuck();
     notify({ title: `Привет, ${esc(ME.nick)}!`, sub: ME.guest ? 'Ты играешь как гость' : 'С возвращением', icon: ICON.gift, color: 'rgba(10,132,255,.35)' });
   } else {
     startStats();
-    route(); drawLevel();
+    route(); drawLevel(); drawLuck();
     if (!localStorage.getItem(KEY)) { save(); setTimeout(() => notify({ title: 'Добро пожаловать!', sub: 'На балансе $100 — открывайте кейсы', icon: ICON.gift, color: 'rgba(10,132,255,.35)' }), 900); }
   }
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => layoutPills(document));
