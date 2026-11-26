@@ -1427,3 +1427,15 @@ body.chat-on { padding-right: 344px; }
   .case-stage > img { width: min(240px, 64vw); }
   .case-stage .halo { width: 220px; height: 220px; }
 }
+
+/* ===== v22: battle pass — rewards not taken yet are bright, taken ones are crossed out ===== */
+.bp-card.locked { background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.12); }
+.bp-card.locked > :not(.bp-lv):not(.bp-state) { opacity: .9; filter: none; }
+.bp-card.prem-lock > :is(.bp-ico, .bp-skin, .bp-case, .bp-name, .bp-sub) { opacity: 1; }
+.bp-card.done { opacity: 1; background: rgba(255,255,255,.02); border-color: rgba(48,209,88,.22); overflow: hidden; }
+.bp-card.done > :is(.bp-ico, .bp-skin, .bp-case, .bp-sub, .bp-tag) { opacity: .35; filter: grayscale(.85); }
+.bp-card.done .bp-name { color: var(--text-3); text-decoration: line-through; text-decoration-color: rgba(48,209,88,.85); text-decoration-thickness: 2px; }
+.bp-card.done .bp-state { color: #5ee07f; }
+.bp-card.done::after { content: ""; position: absolute; z-index: 3; left: -12%; right: -12%; top: 34%; height: 3px; border-radius: 3px; pointer-events: none;
+  background: linear-gradient(90deg, transparent, #30d158 18%, #8af5a5 50%, #30d158 82%, transparent);
+  box-shadow: 0 0 12px rgba(48,209,88,.55); transform: rotate(-28deg); }
