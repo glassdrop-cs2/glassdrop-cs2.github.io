@@ -312,6 +312,7 @@ const CFG = window.GD_CONFIG || {};
 const ONLINE = !!(CFG.url && CFG.key && window.supabase);
 const sb = ONLINE ? window.supabase.createClient(CFG.url, CFG.key, { auth: { persistSession: true, autoRefreshToken: true } }) : null;
 const ERR = {
+  BAD_FRAME: 'Такой рамки нет',
   CHAT_RATE: 'Не так быстро — подожди секунду', BAD_MSG: 'Сообщение: от 1 до 300 символов',
   NO_RL_FUNDS: 'Не хватает реальных денег', BAD_ITEM: 'Этот предмет нельзя купить', BAD_AMOUNT: 'Неверная сумма', BAD_QUEST: 'Нет такого задания',
   NO_FUNDS: 'Недостаточно средств', NICK_TAKEN: 'Этот ник уже занят', BAD_NICK: 'Ник: 3–16 символов — буквы, цифры, пробел, _ . -',
@@ -377,6 +378,7 @@ function applyProfile(p) {
   S.lastBonus = p.last_bonus ? Date.parse(p.last_bonus) : 0;
   S.bonusN = p.bonus_n || 0;
   S.bpClaimed = p.bp_claimed || []; S.bpPremium = !!p.bp_premium; S.steamQ = p.steam_q || []; S.rlBal = +(p.rl_balance || 0); S.luckUntil = p.luck_until ? Date.parse(p.luck_until) : 0;
+  S.frame = p.frame || null; S.s1lvl = p.bp_s1_lvl || 0; S.created = p.created_at ? Date.parse(p.created_at) : Date.now();
   S.xp = p.xp || 0; S.quests = p.quests || {}; S.dailyLast = p.daily_last; S.dailyStreak = p.daily_streak || 0; S.pumpkinDone = !!p.pumpkin_done;
   S.stats = { opened: p.opened, spent: +p.spent, sold: +p.sold, upW: p.up_w, upL: p.up_l, bw: p.battles_w, bl: p.battles_l, best: p.best_skin != null ? { s: p.best_skin, f: p.best_float, st: p.best_st, p: +p.best_price } : null };
   if (ME) ME.nick = p.nickname;
@@ -1874,10 +1876,118 @@ const dailyAmount = st => st >= 31 ? 200 + 25 * Math.floor((st - 31) / 30) : st 
 const dailyReady = () => S.dailyLast !== utcDay(0);
 const nextStreak = () => S.dailyLast === utcDay(-1) || S.dailyLast === utcDay(0) ? S.dailyStreak + (dailyReady() ? 1 : 0) : 1;
 const BPMAP = Object.fromEntries((window.BP || []).map(r => [r.level, r]));
+/* ================= SEASON FRAMES & MEDALS ================= */
+const FRAMES = [
+  { id: 's1-ember', n: 'Тлеющие угли', lvl: 10, free: true },
+  { id: 's1-neon', n: 'Ночной неон', lvl: 25 },
+  { id: 's1-obsidian', n: 'Обсидиан', lvl: 50 },
+  { id: 's1-crown', n: 'Корона сезона', lvl: 100 },
+];
+const FRM = Object.fromEntries(FRAMES.map(f => [f.id, f]));
+// season level: follows XP while the season runs, then stays as the server froze it
+const s1Lvl = () => bpEnded() ? (S.s1lvl || 0) : Math.max(S.s1lvl || 0, levelOf(S.xp || 0).lvl);
+const frameOwned = f => s1Lvl() >= f.lvl && (f.free || S.bpPremium);
+const avatarHTML = (nick, fr, attr = '') => `<div class="avatar ${FRM[fr] ? 'fr fr-' + fr : ''}" ${attr}>${esc((nick || '?').slice(0, 2))}</div>`;
+async function wearFrame(id, el) {
+  if (el) el.disabled = true;
+  try {
+    S.frame = (await rpc('set_frame', { p_frame: id || null })) || null; SFX.ping();
+    notify({ title: id ? 'Рамка надета' : 'Рамка снята', sub: id ? FRM[id].n : 'Обычная аватарка', icon: '✓', color: 'rgba(191,90,242,.35)' });
+  } catch (e) { notifyErr(e); }
+  if (el) el.disabled = false;
+}
+
+// metals: dark, mid, light, ribbon colours
+const MT = [
+  { n: 'Бронза', d: '#4a2410', m: '#b8662f', l: '#ffc995', r1: '#5e2a10', r2: '#c9692e' },
+  { n: 'Серебро', d: '#38414b', m: '#9aa6b2', l: '#ffffff', r1: '#27323f', r2: '#8a9bb0' },
+  { n: 'Золото', d: '#5c3a05', m: '#d39b22', l: '#fff0a8', r1: '#7d1414', r2: '#d33b2c' },
+  { n: 'Платина', d: '#1d4350', m: '#7fc4d3', l: '#f0fdff', r1: '#123a66', r2: '#2f86d9' },
+  { n: 'Алмаз', d: '#24127a', m: '#6f8cff', l: '#e4fcff', r1: '#3d1491', r2: '#9b46ff' },
+];
+const CASE_STEPS = [1e5, 1e6, 1e7, 1e8, 1e9];
+const caseTier = n => CASE_STEPS.reduce((t, v, i) => n >= v ? i : t, -1);
+const fmtBig = v => v >= 1e9 ? v / 1e9 + 'B' : v >= 1e6 ? v / 1e6 + 'M' : v / 1e3 + 'K';
+const YEAR = 365.25 * 864e5;
+let mdN = 0;
+const mdMetal = (id, t) => `<linearGradient id="${id}m" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${t.l}"/><stop offset=".35" stop-color="${t.m}"/><stop offset=".62" stop-color="${t.d}"/><stop offset=".85" stop-color="${t.m}"/><stop offset="1" stop-color="${t.l}"/></linearGradient>
+  <linearGradient id="${id}i" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="${t.l}"/><stop offset=".55" stop-color="${t.m}"/><stop offset="1" stop-color="${t.d}"/></linearGradient>`;
+const mdRibbon = (id, a, b) => `<linearGradient id="${id}r"><stop offset=".3" stop-color="${a}"/><stop offset=".3" stop-color="${b}"/><stop offset=".7" stop-color="${b}"/><stop offset=".7" stop-color="${a}"/></linearGradient>
+  <linearGradient id="${id}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-opacity=".45"/><stop offset=".6" stop-opacity="0"/></linearGradient>`;
+const mdStrap = id => `<path d="M32 0h36l-5 47-13-7-13 7z" fill="url(#${id}r)"/><path d="M32 0h36l-5 47-13-7-13 7z" fill="url(#${id}s)"/>`;
+const mdSpark = (x, y, r) => `<path d="M${x} ${y - r}l${r * .25} ${r * .75} ${r * .75} ${r * .25}-${r * .75} ${r * .25}-${r * .25} ${r * .75}-${r * .25}-${r * .75}-${r * .75}-${r * .25} ${r * .75}-${r * .25}z" fill="#fff"/>`;
+// premium pass medal: hexagon with the season level
+function medalSeason(lvl) {
+  const id = 'md' + (++mdN);
+  return `<svg class="md" viewBox="0 0 100 126" aria-hidden="true"><defs>
+  <linearGradient id="${id}g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff3b8"/><stop offset=".4" stop-color="#e2a93a"/><stop offset=".7" stop-color="#8a5a12"/><stop offset="1" stop-color="#f6d27a"/></linearGradient>
+  <linearGradient id="${id}f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3d1d6b"/><stop offset="1" stop-color="#130924"/></linearGradient>
+  ${mdRibbon(id, '#2b0f55', '#ff8a1f')}</defs>${mdStrap(id)}
+  <path d="M50 40l36 20.5v41L50 122 14 101.5v-41z" fill="url(#${id}f)" stroke="url(#${id}g)" stroke-width="3.5" stroke-linejoin="round"/>
+  <path d="M50 48l29 16.5v33L50 114 21 97.5v-33z" fill="none" stroke="#e2a93a" stroke-opacity=".35"/>
+  <text x="50" y="66" text-anchor="middle" font-size="7" font-weight="800" letter-spacing="1.4" fill="#e9c46a">СЕЗОН 1</text>
+  <text x="50" y="96" text-anchor="middle" font-size="${lvl >= 100 ? 23 : 28}" font-weight="900" fill="url(#${id}g)">${lvl}</text>
+  <text x="50" y="107" text-anchor="middle" font-size="6.2" font-weight="800" letter-spacing="1.2" fill="#b9a6d8">УРОВЕНЬ</text></svg>`;
+}
+// opened-cases medal: a coin with a crate, metal grows with the step
+function medalCases(ti) {
+  const t = MT[ti], id = 'md' + (++mdN);
+  return `<svg class="md" viewBox="0 0 100 126" aria-hidden="true"><defs>${mdMetal(id, t)}${mdRibbon(id, t.r1, t.r2)}</defs>${mdStrap(id)}
+  <circle cx="50" cy="82" r="40" fill="url(#${id}m)" stroke="${t.d}" stroke-width="1.5"/>
+  <circle cx="50" cy="82" r="36.5" fill="none" stroke="${t.d}" stroke-width="2.5" stroke-dasharray="1.2 2.6" opacity=".55"/>
+  <circle cx="50" cy="82" r="31" fill="url(#${id}i)" stroke="${t.l}" stroke-opacity=".7"/>
+  <path d="M38 69l12-6 12 6v13l-12 6-12-6z" fill="${t.d}" opacity=".9"/>
+  <path d="M38 69l12 6 12-6M50 75v13" fill="none" stroke="${t.l}" stroke-width="1.2" opacity=".75"/>
+  <text x="50" y="104" text-anchor="middle" font-size="10" font-weight="900" letter-spacing=".5" fill="${t.d}">${fmtBig(CASE_STEPS[ti])}</text>
+  ${ti === 4 ? mdSpark(82, 52, 7) + mdSpark(20, 108, 4.5) : ti === 3 ? mdSpark(82, 52, 5) : ''}</svg>`;
+}
+// years-on-site medal: eight-pointed star
+function medalYears(y) {
+  const t = MT[Math.min(4, Math.max(1, y) - 1)], id = 'md' + (++mdN);
+  const pts = Array.from({ length: 16 }, (_, i) => { const a = Math.PI * i / 8 - Math.PI / 2, r = i % 2 ? 31 : 42; return (50 + r * Math.cos(a)).toFixed(1) + ',' + (82 + r * Math.sin(a)).toFixed(1); }).join(' ');
+  return `<svg class="md" viewBox="0 0 100 126" aria-hidden="true"><defs>${mdMetal(id, t)}${mdRibbon(id, t.r1, t.r2)}</defs>${mdStrap(id)}
+  <polygon points="${pts}" fill="url(#${id}m)" stroke="${t.d}" stroke-width="1.2" stroke-linejoin="round"/>
+  <circle cx="50" cy="82" r="22" fill="${t.d}" stroke="${t.l}" stroke-opacity=".8" stroke-width="1.5"/>
+  <text x="50" y="87" text-anchor="middle" font-size="19" font-weight="900" fill="${t.l}">${y}</text>
+  <text x="50" y="96" text-anchor="middle" font-size="5.6" font-weight="800" letter-spacing="1" fill="${t.l}" opacity=".85">${y === 1 ? 'ГОД' : y < 5 ? 'ГОДА' : 'ЛЕТ'}</text></svg>`;
+}
+const pubMedal = p => ({ prem: !!p.bp_premium, lvl: p.bp_s1_lvl || levelOf(p.xp || 0).lvl, opened: p.opened || 0, created: p.created_at ? Date.parse(p.created_at) : Date.now() });
+// one medal per kind; the case medal replaces itself with the next metal
+function medalsOf(p, mine) {
+  const out = [];
+  if (p.prem) out.push({ svg: medalSeason(p.lvl), t: `Сезон 1 · ${p.lvl} уровень`, s: bpEnded() ? 'уровень зафиксирован' : 'премиум-пропуск · уровень растёт до конца сезона' });
+  else if (mine) out.push({ svg: medalSeason(p.lvl), lock: true, t: 'Медаль сезона 1', s: bpEnded() ? 'выдавалась за премиум-пропуск' : 'за покупку премиума · покажет твой уровень' });
+  const ct = caseTier(p.opened);
+  if (ct >= 0) out.push({ svg: medalCases(ct), t: `${fmtBig(CASE_STEPS[ct])} кейсов · ${MT[ct].n}`, s: ct < 4 ? `дальше ${MT[ct + 1].n.toLowerCase()} за ${fmtBig(CASE_STEPS[ct + 1])}` : 'высший ранг' });
+  else if (mine) out.push({ svg: medalCases(0), lock: true, t: 'Медаль за кейсы', s: `${p.opened.toLocaleString('ru-RU')} / 100 000 открыто` });
+  const y = Math.floor((Date.now() - p.created) / YEAR);
+  if (y >= 1) out.push({ svg: medalYears(y), t: `Выслуга · ${y} ${plural(y, 'год', 'года', 'лет')}`, s: `на сайте с ${new Date(p.created).toLocaleDateString('ru-RU')}` });
+  else if (mine) out.push({ svg: medalYears(1), lock: true, t: 'Выслуга лет', s: `первая через ${Math.ceil((p.created + YEAR - Date.now()) / 864e5)} дн.` });
+  return out;
+}
+const medalsHTML = (p, mine) => medalsOf(p, mine).map(x => `<div class="medal ${x.lock ? 'locked' : ''}">${x.svg}<div><b>${esc(x.t)}</b><span>${esc(x.s)}</span></div></div>`).join('');
+const medalsMini = p => medalsOf(p, false).map(x => `<span class="medal-mini" title="${esc(x.t)}">${x.svg}</span>`).join('');
+const cosmHTML = () => `<div class="medals">${medalsHTML({ prem: S.bpPremium, lvl: s1Lvl(), opened: (S.stats && S.stats.opened) || 0, created: S.created || Date.now() }, true)}</div>
+  <div class="fr-pick">${[{ id: '', n: 'Без рамки', lvl: 0, free: true }, ...FRAMES].map(f => {
+    const own = !f.id || frameOwned(f), on = (S.frame || '') === f.id;
+    return `<button class="fr-opt ${on ? 'on' : ''} ${own ? '' : 'locked'}" ${own && !on ? `data-act="wearFrame" data-fr="${f.id}"` : 'disabled'}>${avatarHTML(ME.nick, f.id)}<b>${f.n}</b><span>${on ? 'надета' : own ? 'надеть' : `${f.lvl} ур.${f.free ? '' : ' · премиум'}`}</span></button>`;
+  }).join('')}</div>`;
+// a frame card sits in the pass track right after its level
+function frameCardHTML(lv) {
+  const f = FRAMES.find(x => x.lvl === lv); if (!f) return '';
+  const own = frameOwned(f), reached = s1Lvl() >= lv && !bpEnded(), on = S.frame === f.id;
+  return `<div class="bp-card bp-fr ${own ? 'owned' : reached ? 'prem-lock' : 'locked'} ${f.free ? 'is-free' : 'is-prem'}">
+    <div class="bp-lv">${lv}</div><span class="bp-tag ex">ЭКСКЛЮЗИВ</span>
+    <div class="bp-fr-art">${avatarHTML(ME.nick, f.id)}</div>
+    <div class="bp-name">Рамка «${f.n}»</div><div class="bp-sub">${f.free ? 'бесплатно' : 'премиум'} · только сезон 1</div>
+    ${on ? `<span class="bp-state">${ICON.check} надета</span>` : own ? `<button class="btn sm primary" data-act="wearFrame" data-fr="${f.id}">Надеть</button>` : reached ? `<button class="btn sm prem" data-act="buyPass">Премиум</button>` : `<span class="bp-state">с ${lv} уровня</span>`}
+  </div>`;
+}
+
 function bpReward(lv) {
   if (BPMAP[lv]) return BPMAP[lv];
   const free = lv % 7 === 0;
-  return lv % 10 === 0 ? { level: lv, kind: 'case', case_id: 'c-knife-budget', n: 1, free } : lv % 5 === 0 ? { level: lv, kind: 'luck', mins: 30, free } : { level: lv, kind: 'money', amount: 100, free };
+  return { level: lv, kind: 'money', amount: lv % 10 === 0 ? 250 : lv % 5 === 0 ? 150 : 50 * (lv % 5), free };
 }
 const BP_END = new Date('2026-12-02T23:59:59+02:00'), BP_PRICE = 200;
 const bpEnded = () => Date.now() >= BP_END;
@@ -1993,14 +2103,14 @@ function viewQuests() {
       return `<div class="dday ${done ? 'done' : ''} ${day === st ? 'today' : ''}"><span>день ${day}</span><b>${money(dailyAmount(day)).replace('.00', '')}</b></div>`;
     }).join('');
     const pk = Array.from({ length: PK_TOTAL }, (_, i) => `<i class="${S.pumpkins.includes(i + 1) ? 'on' : ''}">${gi('pumpkin')}</i>`).join('');
-    const bpReady = bpReadyList(), maxLv = Math.max(50, L.lvl + 10);
+    const bpReady = bpReadyList(), maxLv = Math.max(100, L.lvl + 10);
     const bpCards = ONLINE ? Array.from({ length: maxLv - 1 }, (_, i) => {
       const lv = i + 2, r = bpReward(lv), done = S.bpClaimed.includes(lv), reached = !done && lv <= L.lvl && !bpEnded(), can = reached && bpOpen(lv);
       return `<div class="bp-card ${done ? 'done' : can ? 'ready' : reached ? 'prem-lock' : 'locked'} k-${r.kind} ${r.free ? 'is-free' : 'is-prem'}" data-lv="${lv}">
         <div class="bp-lv">${lv}</div><span class="bp-tag">${r.free ? 'FREE' : 'PREMIUM'}</span>${bpArt(r)}
         <div class="bp-name">${bpName(r)}</div><div class="bp-sub">${bpSub(r)}</div>
         ${done ? `<span class="bp-state">${ICON.check} получено</span>` : can ? `<button class="btn green sm" data-act="bp" data-lv="${lv}">Забрать</button>` : reached ? `<button class="btn sm prem" data-act="buyPass">${ICON.lock || ''}Премиум</button>` : `<span class="bp-state">с ${lv} уровня</span>`}
-      </div>`;
+      </div>` + frameCardHTML(lv);
     }).join('') : '';
     main.innerHTML = `
     <section class="lvl-card glass edge">
@@ -2014,9 +2124,10 @@ function viewQuests() {
     ${ONLINE ? `<div class="section-head"><h2>${gi('ticket')} Боевой пропуск</h2><span class="sub">награда за каждый уровень · XP дают кейсы, апгрейды, баттлы, подъём и квесты</span></div>
     <div class="bp-head glass-flat ${S.bpPremium ? 'premium' : ''}">
       <div class="bp-season"><span>Сезон 1 · ${bpEnded() ? 'завершён' : 'до ' + BP_END.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}</span><b>${bpEnded() ? 'Скоро зимний сезон' : `осталось ${Math.ceil((BP_END - Date.now()) / 864e5)} дн.`}</b></div>
-      <div class="bp-plan"><span>Дальше</span><b>${gi('sparkle')} зимний сезон</b></div>
+      <div class="bp-plan"><span>Эксклюзив сезона</span><b>${gi('sparkle')} 4 рамки и медаль</b></div>
       <div class="bp-plan"><span>Бесплатно</span><b>${(window.BP || []).filter(r => r.free).length} из ${(window.BP || []).length} наград</b></div>
       <div class="bp-plan prem"><span>Премиум</span><b>${S.bpPremium ? `${ICON.check} активен` : `все награды · ${money(BP_PRICE)}`}</b></div>
+      <div class="bp-medal ${S.bpPremium ? '' : 'locked'}">${medalSeason(s1Lvl())}<div><span>${S.bpPremium ? 'Твоя медаль сезона' : 'Медаль за премиум'}</span><b>${S.bpPremium ? (bpEnded() ? 'уровень зафиксирован' : 'уровень растёт до конца сезона') : 'покажет твой уровень'}</b></div></div>
       <div class="grow"></div>${bpReady.length > 1 ? `<button class="btn green sm" data-act="bpAll">Забрать всё (${bpReady.length})</button>` : ''}
       ${!S.bpPremium && !bpEnded() ? `<button class="btn primary sm" data-act="buyPass">Купить премиум${bpLockedList().length ? ` · ${bpLockedList().length} наград ждут` : ''}</button>` : ''}</div>
     <div class="bp-track glass-flat" id="bpTrack">${bpCards}</div>` : ''}
@@ -2060,6 +2171,7 @@ function viewQuests() {
       if (a === 'bp') claimLevels([+el.dataset.lv], el).then(() => { const k = $('#bpTrack') && $('#bpTrack').scrollLeft; draw(); if ($('#bpTrack')) $('#bpTrack').scrollLeft = k; });
       if (a === 'bpAll') claimLevels(bpReadyList(), el).then(() => { draw(); scrollBp(); });
       if (a === 'buyPass') buyPassSheet(() => { draw(); scrollBp(); });
+      if (a === 'wearFrame') wearFrame(el.dataset.fr, el).then(() => { const k = $('#bpTrack') && $('#bpTrack').scrollLeft; draw(); if ($('#bpTrack')) $('#bpTrack').scrollLeft = k; });
       if (a === 'sqClaim') claimSteamQuest(el, draw);
     },
   };
@@ -2385,7 +2497,7 @@ async function viewTop() {
       return `<div class="li top-li ${r.id === ME.id ? 'me' : ''}" style="--i:${i};--rc:${bs ? colOf(bs) : 'transparent'}" data-go="#/u/${r.id}">
         <div class="rank r${i + 1}">${i + 1}</div>
         ${bs ? `<img src="${img(bs.img, '128fx128f')}" alt="">` : '<div style="width:64px"></div>'}
-        <div class="t"><b>${esc(r.nickname)}${r.id === ME.id ? ' <em class="me-tag">ты</em>' : ''}</b><span>${sub(r)}</span></div>
+        <div class="t"><b>${esc(r.nickname)}${medalsMini(pubMedal(r))}${r.id === ME.id ? ' <em class="me-tag">ты</em>' : ''}</b><span>${sub(r)}</span></div>
         <div class="p">${val(r)}${T.by === 'networth' ? uah(r.networth) : T.by === 'best_price' ? uah(r.best_price) : ''}</div></div>`;
     }).join('')}</div>`;
   };
@@ -2440,7 +2552,7 @@ async function viewUser(id) {
   };
   main.innerHTML = `
   <section class="inv-head glass edge">
-    <div class="avatar">${esc(p.nickname.slice(0, 2))}</div>
+    ${avatarHTML(p.nickname, p.frame)}
     <div class="stat"><span>Игрок</span><b>${esc(p.nickname)}</b></div>
     <div class="stat"><span>Состояние</span><b>${money(p.networth)}</b>${uah(p.networth)}</div>
     <div class="stat"><span>Кейсов</span><b>${p.opened}</b></div>
@@ -2450,6 +2562,7 @@ async function viewUser(id) {
     <button class="btn primary" data-act="dm">${CHAT_ICO.replace('<svg', '<svg width="16" height="16"')} Написать</button>
     <button class="btn" data-go="#/top">${ICON.trophy.replace('<svg', '<svg width="16" height="16"')} Топ</button>
   </section>
+  ${(m => m ? `<div class="section-head"><h2>Медали</h2></div><section class="cosm glass-flat"><div class="medals">${m}</div></section>` : '')(medalsHTML(pubMedal(p), false))}
   ${p.best_skin != null ? `<div class="section-head"><h2>Лучший дроп</h2></div><div style="max-width:340px">${itemCard({ s: p.best_skin, f: p.best_float, st: p.best_st, p: +p.best_price })}</div>` : ''}
   <div class="section-head">${seg('utab', [['inv', `${ICON.inv} Инвентарь · ${inv.length}`], ['steam', `${gi('steam')} Steam`], ['life', `${ICON.home} Жизнь`]], U2.tab, 'utabs')}
     <span class="sub">${money(p.inv_value)} на сайте</span></div>
@@ -2490,7 +2603,7 @@ async function viewProfile() {
   main.innerHTML = `
   ${ptabsHTML('profile')}
   ${ONLINE ? `<section class="inv-head glass edge">
-    <div class="avatar">${esc(ME.nick.slice(0, 2))}</div>
+    ${avatarHTML(ME.nick, S.frame, 'id="myAv"')}
     <div class="stat"><span>${ME.guest ? 'Гость' : 'Аккаунт'}</span><b>${esc(ME.nick)}</b></div>
     <div class="grow"></div>
     ${ME.guest ? '<button class="btn" data-act="rename">Сменить ник</button><button class="btn primary" data-act="saveAcc">Сохранить аккаунт</button>' : ''}
@@ -2507,6 +2620,8 @@ async function viewProfile() {
     ${ONLINE ? `<div class="stat-tile glass-flat" style="--i:6"><span>Баттлы (победы / поражения)</span><b><span style="color:var(--green)">${st.bw}</span> / <span style="color:var(--red)">${st.bl}</span></b></div>
     <div class="stat-tile glass-flat" style="--i:7"><span>Время на сайте</span><b data-mytime>${fmtTime(myTime())}</b></div>` : ''}
   </div>
+  ${ONLINE ? `<div class="section-head"><h2>Медали и рамки</h2><span class="sub">${bpEnded() ? 'рамки сезона 1 больше не выдаются' : 'рамки сезона 1 выдаются только до ' + BP_END.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}</span></div>
+  <section class="cosm glass-flat" id="cosm">${cosmHTML()}</section>` : ''}
   <div class="section-head"><h2>Лучший дроп</h2></div>
   ${b ? `<div style="max-width:340px">${itemCard(b)}</div>` : '<div class="ev-note" style="margin-left:4px">Пока пусто</div>'}
   <div class="section-head"><h2>История</h2><span class="sub">последние ${hist.length}</span></div>
@@ -2519,6 +2634,7 @@ async function viewProfile() {
   </div>`;
   VIEW = {
     act(a, el) {
+      if (a === 'wearFrame') wearFrame(el.dataset.fr, el).then(() => { const c = $('#cosm'); if (c) c.innerHTML = cosmHTML(); const av = $('#myAv'); if (av) av.outerHTML = avatarHTML(ME.nick, S.frame, 'id="myAv"'); });
       if (a === 'snd') { SET.sound = !SET.sound; saveSet(); el.classList.toggle('on', SET.sound); drawSound(); SFX.click(); }
       if (a === 'fast') { SET.fast = !SET.fast; saveSet(); el.classList.toggle('on', SET.fast); SFX.click(); }
       if (a === 'reset') openSheet(`<h2>Сбросить всё?</h2><div class="subtitle">Инвентарь, баланс и статистика будут удалены без возможности восстановления.</div><div class="acts"><button class="btn" data-sact="close">Отмена</button><button class="btn danger" data-sact="ok">Сбросить</button></div>`, {
