@@ -47,6 +47,17 @@ alter table profiles add column if not exists steam_q text[] not null default '{
 create table if not exists rl_catalog (id text primary key, cat text not null, price numeric not null, buy boolean not null, sell numeric not null, rent numeric not null default 0, starter boolean not null default false);
 alter table profiles add column if not exists rl_balance numeric(14,2) not null default 0;
 alter table profiles add column if not exists rl_init boolean not null default false;
+-- needs: satiety / water / health (0..100), decay is applied lazily by rl_tick(); bills are charged the same way
+alter table profiles add column if not exists nd_food numeric not null default 100;
+alter table profiles add column if not exists nd_water numeric not null default 100;
+alter table profiles add column if not exists nd_hp numeric not null default 100;
+alter table profiles add column if not exists nd_at timestamptz not null default now();
+alter table profiles add column if not exists nd_junk timestamptz;
+alter table profiles add column if not exists bills_at timestamptz not null default now();
+alter table rl_catalog add column if not exists fill numeric not null default 0;
+alter table rl_catalog add column if not exists water numeric not null default 0;
+alter table rl_catalog add column if not exists hp numeric not null default 0;
+alter table rl_catalog add column if not exists junk boolean not null default false;
 create table if not exists rl_inv (
   id bigserial primary key, owner uuid not null references profiles on delete cascade,
   item text not null references rl_catalog, paid numeric(14,2) not null, rent_from timestamptz, created_at timestamptz not null default now()
@@ -279,7 +290,7 @@ begin
   if p_n < 1 or p_n > max_open(c.price) then raise exception 'BAD_N'; end if;
   cost := round(case_price(c) * p_n, 2);
   update profiles set balance = balance - cost, opened = opened + p_n, spent = spent + cost,
-         xp = xp + floor(cost)::int + case when c.price >= 1 then 2 * p_n else 0 end
+         xp = xp + floor((floor(cost) + case when c.price >= 1 then 2 * p_n else 0 end) * nd_mult(nd_hp, nd_junk))::int
    where id = uid and balance >= cost returning nickname, balance into nick, bal;
   if not found then raise exception 'NO_FUNDS'; end if;
   return jsonb_build_object('items', do_open(uid, nick, p_case, p_n), 'balance', bal);
@@ -365,7 +376,7 @@ begin
   select * into c from cases where id = p_case;
   if not found then raise exception 'NO_CASE'; end if;
   cost := round(case_price(c) * p_rounds, 2);
-  update profiles set balance = balance - cost, opened = opened + p_rounds, spent = spent + cost, xp = xp + floor(cost)::int + 2 * p_rounds
+  update profiles set balance = balance - cost, opened = opened + p_rounds, spent = spent + cost, xp = xp + floor((floor(cost) + 2 * p_rounds) * nd_mult(nd_hp, nd_junk))::int
    where id = uid and balance >= cost returning nickname into nick;
   if not found then raise exception 'NO_FUNDS'; end if;
   insert into battles (case_id, rounds, max_players, cost, creator, creator_nick) values (p_case, p_rounds, p_players, cost, uid, nick) returning id into bid;
@@ -411,7 +422,7 @@ begin
   if exists (select 1 from battle_players where battle_id = p_id and user_id = uid) then raise exception 'ALREADY_IN'; end if;
   select count(*) into cnt from battle_players where battle_id = p_id;
   if cnt >= b.max_players then raise exception 'FULL'; end if;
-  update profiles set balance = balance - b.cost, opened = opened + b.rounds, spent = spent + b.cost, xp = xp + floor(b.cost)::int + 2 * b.rounds
+  update profiles set balance = balance - b.cost, opened = opened + b.rounds, spent = spent + b.cost, xp = xp + floor((floor(b.cost) + 2 * b.rounds) * nd_mult(nd_hp, nd_junk))::int
    where id = uid and balance >= b.cost returning nickname into nick;
   if not found then raise exception 'NO_FUNDS'; end if;
   insert into battle_players (battle_id, user_id, nickname, slot)
@@ -630,16 +641,63 @@ create or replace function rl_accrued(p_item text, p_from timestamptz) returns n
   select case when p_from is null then 0
               else round((select rent from rl_catalog where id = p_item) * least(extract(epoch from now() - p_from) / 86400, 7)::numeric, 2) end $$;
 
-create or replace function rl_state() returns jsonb language plpgsql security definer set search_path = public as $$
-declare uid uuid := auth.uid(); p profiles;
+-- a home you live in = own flat/house that is NOT rented out
+create or replace function rl_home(p_uid uuid) returns text language sql stable as $$
+  select r.item from rl_inv r join rl_catalog c on c.id = r.item
+   where r.owner = p_uid and r.rent_from is null and (c.cat = 'home' or r.item = 'st-flat') order by c.price desc limit 1 $$;
+-- daily spending: $2 phone/transport + utilities 0.02%/day of the home you live in + 0.03%/day per car (fuel, insurance)
+create or replace function rl_bill_day(p_uid uuid) returns numeric language sql stable as $$
+  select round(2 + coalesce(sum(case when c.cat = 'car' then c.price * .0003
+                                     when r.rent_from is null and (c.cat = 'home' or r.item = 'st-flat') then c.price * .0002 else 0 end), 0), 2)
+    from rl_inv r join rl_catalog c on c.id = r.item where r.owner = p_uid $$;
+-- sickness and junk food slow down XP
+create or replace function nd_mult(p_hp numeric, p_junk timestamptz) returns numeric language sql stable as $$
+  select (case when p_hp < 30 then .4 when p_hp < 60 then .7 else 1 end) * (case when p_junk > now() then .85 else 1 end) $$;
+
+-- applies everything that happened since the last visit: hunger, thirst, health, bills (bills pile up for 7 days max)
+create or replace function rl_tick(p_uid uuid) returns void language plpgsql security definer set search_path = public as $$
+declare p profiles; h numeric; fz numeric; wz numeric; home boolean; ok numeric; d numeric;
 begin
-  select * into p from profiles where id = uid for update;
-  if not found then raise exception 'NO_PROFILE'; end if;
+  select * into p from profiles where id = p_uid for update;
+  if not found then return; end if;
   if not p.rl_init then
-    insert into rl_inv (owner, item, paid) select uid, id, price from rl_catalog where starter order by id;
-    update profiles set rl_init = true where id = uid;
+    insert into rl_inv (owner, item, paid) select p_uid, id, price from rl_catalog where starter order by id;
+    update profiles set rl_init = true, nd_at = now(), bills_at = now() where id = p_uid;
+    return;
   end if;
+  h := least(extract(epoch from now() - p.nd_at) / 3600, 24 * 14);
+  if h < .01 then return; end if;
+  home := rl_home(p_uid) is not null;
+  fz := greatest(0, h - p.nd_food / 2);    -- satiety: -2 per hour
+  wz := greatest(0, h - p.nd_water / 3);   -- water: -3 per hour
+  ok := case when home then greatest(0, h - greatest(fz, wz)) else 0 end;
+  d := least(extract(epoch from now() - p.bills_at) / 86400, 7);
+  update profiles set
+    nd_food = greatest(0, nd_food - 2 * h), nd_water = greatest(0, nd_water - 3 * h),
+    nd_hp = least(100, greatest(5, nd_hp - fz - 1.5 * wz - case when home then 0 else .7 * h end + ok)),
+    nd_at = now(), rl_balance = rl_balance - round(rl_bill_day(p_uid) * d, 2), bills_at = now()
+  where id = p_uid;
+end $$;
+
+create or replace function rl_needs_json(p_uid uuid) returns jsonb language sql stable as $$
+  select jsonb_build_object('food', round(nd_food, 2), 'water', round(nd_water, 2), 'hp', round(nd_hp, 2), 'junk', nd_junk,
+                            'home', rl_home(p_uid), 'bill', rl_bill_day(p_uid), 'rl', rl_balance, 'now', now())
+    from profiles where id = p_uid $$;
+
+create or replace function rl_needs() returns jsonb language plpgsql security definer set search_path = public as $$
+begin
+  perform rl_tick(auth.uid());
+  return rl_needs_json(auth.uid());
+end $$;
+
+create or replace function rl_state() returns jsonb language plpgsql security definer set search_path = public as $$
+declare uid uuid := auth.uid();
+begin
+  perform 1 from profiles where id = uid;
+  if not found then raise exception 'NO_PROFILE'; end if;
+  perform rl_tick(uid);
   return jsonb_build_object(
+    'needs', rl_needs_json(uid),
     'balance', (select rl_balance from profiles where id = uid),
     'items', coalesce((select jsonb_agg(jsonb_build_object('id', r.id, 'item', r.item, 'paid', r.paid, 'rent_from', r.rent_from, 'acc', rl_accrued(r.item, r.rent_from)) order by r.id)
                        from rl_inv r where r.owner = uid), '[]'::jsonb));
@@ -651,7 +709,7 @@ declare p profiles;
 begin
   select * into p from profiles where id = p_uid;
   if not found then raise exception 'NO_USER'; end if;
-  return jsonb_build_object('balance', p.rl_balance, 'items',
+  return jsonb_build_object('balance', p.rl_balance, 'hp', round(p.nd_hp), 'items',
     case when p.rl_init then coalesce((select jsonb_agg(jsonb_build_object('item', r.item, 'paid', r.paid, 'rent', r.rent_from is not null) order by r.id) from rl_inv r where r.owner = p_uid), '[]'::jsonb)
          else coalesce((select jsonb_agg(jsonb_build_object('item', c.id, 'paid', c.price, 'rent', false) order by c.id) from rl_catalog c where c.starter), '[]'::jsonb) end);
 end $$;
@@ -661,7 +719,8 @@ declare uid uuid := auth.uid(); c rl_catalog; cost numeric; lim int;
 begin
   select * into c from rl_catalog where id = p_item;
   if not found or not c.buy then raise exception 'BAD_ITEM'; end if;
-  lim := case when c.cat = 'food' then 20 else 1 end;  -- food can be bought in packs
+  lim := case when c.cat in ('food', 'med') then 20 else 1 end;  -- food and pills can be bought in packs
+  perform rl_tick(uid);
   if p_n is null or p_n < 1 or p_n > lim then raise exception 'BAD_N'; end if;
   cost := round(c.price * p_n, 2);
   update profiles set rl_balance = rl_balance - cost where id = uid and rl_balance >= cost;
@@ -673,7 +732,7 @@ end $$;
 create or replace function rl_sell(p_ids bigint[]) returns jsonb language plpgsql security definer set search_path = public as $$
 declare uid uuid := auth.uid(); n int; v numeric; rent numeric; bal numeric;
 begin
-  perform 1 from profiles where id = uid for update;
+  perform rl_tick(uid);
   select count(*), coalesce(sum(round(r.paid * c.sell, 2)), 0), coalesce(sum(rl_accrued(r.item, r.rent_from)), 0) into n, v, rent
     from rl_inv r join rl_catalog c on c.id = r.item where r.owner = uid and r.id = any(p_ids);
   if n = 0 then raise exception 'NOT_OWNER'; end if;
@@ -685,7 +744,7 @@ end $$;
 create or replace function rl_rent(p_id bigint, p_on boolean) returns jsonb language plpgsql security definer set search_path = public as $$
 declare uid uuid := auth.uid(); r rl_inv; got numeric := 0;
 begin
-  perform 1 from profiles where id = uid for update;
+  perform rl_tick(uid);
   select * into r from rl_inv where id = p_id and owner = uid;
   if not found then raise exception 'NOT_OWNER'; end if;
   if (select rent from rl_catalog where id = r.item) <= 0 then raise exception 'BAD_ITEM'; end if;
@@ -710,10 +769,16 @@ begin
 end $$;
 
 create or replace function rl_eat(p_id bigint) returns jsonb language plpgsql security definer set search_path = public as $$
-declare uid uuid := auth.uid();
+declare uid uuid := auth.uid(); c rl_catalog;
 begin
-  delete from rl_inv r using rl_catalog c where r.id = p_id and r.owner = uid and c.id = r.item and c.cat = 'food';
+  perform rl_tick(uid);
+  select c2.* into c from rl_inv r join rl_catalog c2 on c2.id = r.item where r.id = p_id and r.owner = uid and c2.cat in ('food', 'med');
   if not found then raise exception 'NOT_OWNER'; end if;
+  delete from rl_inv where id = p_id;
+  update profiles set nd_food = least(100, greatest(0, nd_food + c.fill)), nd_water = least(100, greatest(0, nd_water + c.water)),
+         nd_hp = least(100, greatest(5, nd_hp + c.hp)),
+         nd_junk = case when c.junk then now() + interval '3 hours' else nd_junk end
+   where id = uid;
   return rl_state();
 end $$;
 
@@ -722,6 +787,7 @@ create or replace function rl_deposit(p_amount numeric) returns jsonb language p
 declare uid uuid := auth.uid(); amt numeric := round(p_amount, 2); bal numeric; rl numeric;
 begin
   if amt is null or amt < .01 then raise exception 'BAD_AMOUNT'; end if;
+  perform rl_tick(uid);
   update profiles set rl_balance = rl_balance - amt, balance = balance + amt
    where id = uid and rl_balance >= amt returning balance, rl_balance into bal, rl;
   if not found then raise exception 'NO_RL_FUNDS'; end if;
@@ -772,7 +838,7 @@ begin
   crash := least(1000, greatest(1, floor(96 / (1 - random())) / 100));
   win := crash >= p_target;
   if win then pay := round(bet * p_target, 2); end if;
-  update profiles set balance = balance + pay, xp = xp + 2 + least(floor(bet / 4), 500)::int
+  update profiles set balance = balance + pay, xp = xp + floor((2 + least(floor(bet / 4), 500)) * nd_mult(nd_hp, nd_junk))::int
    where id = uid returning nickname, balance into nick, bal;
   insert into climbs (user_id, nickname, bet, skins, target, crash, win, payout) values (uid, nick, bet, k, p_target, crash, win, pay);
   return jsonb_build_object('crash', crash, 'win', win, 'payout', pay, 'bet', bet, 'balance', bal, 'target', p_target);
@@ -795,7 +861,7 @@ end $$;
 -- ============ permissions ============
 do $$ declare f text; begin
   -- internal helpers: not callable from the API
-  foreach f in array array['roll_float(int)','roll_drop(text)','grant_item(uuid,jsonb,text)','resolve_battle(bigint)','do_open(uuid,text,text,int)','roll_code_float(int,text)','bp_reward(int)','rl_accrued(text,timestamptz)'] loop
+  foreach f in array array['roll_float(int)','roll_drop(text)','grant_item(uuid,jsonb,text)','resolve_battle(bigint)','do_open(uuid,text,text,int)','roll_code_float(int,text)','bp_reward(int)','rl_accrued(text,timestamptz)','rl_tick(uuid)','rl_home(uuid)','rl_bill_day(uuid)','rl_needs_json(uuid)'] loop
     execute format('revoke all on function %s from public, anon, authenticated', f);
   end loop;
   -- player API: signed-in users only (guests are signed in anonymously)
@@ -805,7 +871,7 @@ do $$ declare f text; begin
                            'find_pumpkin(int)','my_pumpkins()','claim_level(int)','use_luck(bigint)','open_free(text,int)',
                            'withdraw_items(bigint[])','play_climb(bigint[],numeric,numeric)','buy_pass()','steam_deposit(bigint[])',
                            'claim_steam_quest(text)','rl_state()','rl_buy(text,int)','rl_sell(bigint[])','rl_rent(bigint,boolean)',
-                           'rl_collect()','rl_eat(bigint)','rl_deposit(numeric)','steam_sell_rl(bigint[])'] loop
+                           'rl_collect()','rl_eat(bigint)','rl_deposit(numeric)','steam_sell_rl(bigint[])','rl_needs()'] loop
     execute format('revoke all on function %s from public, anon', f);
     execute format('grant execute on function %s to authenticated', f);
   end loop;
