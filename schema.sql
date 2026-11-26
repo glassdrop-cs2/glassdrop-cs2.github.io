@@ -54,6 +54,9 @@ alter table profiles add column if not exists nd_hp numeric not null default 100
 alter table profiles add column if not exists nd_at timestamptz not null default now();
 alter table profiles add column if not exists nd_junk timestamptz;
 alter table profiles add column if not exists bills_at timestamptz not null default now();
+-- time spent on the site (seconds), counted by time_ping() once a minute while the tab is open
+alter table profiles add column if not exists time_sec int not null default 0;
+alter table profiles add column if not exists time_ping timestamptz;
 alter table rl_catalog add column if not exists fill numeric not null default 0;
 alter table rl_catalog add column if not exists water numeric not null default 0;
 alter table rl_catalog add column if not exists hp numeric not null default 0;
@@ -135,7 +138,7 @@ end $$;
 create or replace view leaderboard with (security_invoker = on) as
 select p.id, p.nickname, p.balance, coalesce(i.v, 0)::numeric(14,2) as inv_value, (p.balance + coalesce(i.v, 0) + coalesce(sv.v, 0))::numeric(14,2) as networth,
        p.best_price, p.best_skin, p.best_float, p.best_st, p.opened, p.up_w, p.up_l, p.battles_w, p.battles_l
-, p.xp, p.daily_streak, coalesce(sv.v, 0)::numeric(14,2) as steam_value
+, p.xp, p.daily_streak, coalesce(sv.v, 0)::numeric(14,2) as steam_value, p.time_sec
 from profiles p left join (select owner, sum(price) v from inventory group by owner) i on i.owner = p.id
 left join (select owner, sum(price) v from steam_items group by owner) sv on sv.owner = p.id;
 
@@ -684,6 +687,16 @@ create or replace function rl_needs_json(p_uid uuid) returns jsonb language sql 
                             'home', rl_home(p_uid), 'bill', rl_bill_day(p_uid), 'rl', rl_balance, 'now', now())
     from profiles where id = p_uid $$;
 
+-- called every minute by an open tab; a gap longer than 2.5 min (tab closed / hidden) is not counted
+create or replace function time_ping() returns int language plpgsql security definer set search_path = public as $$
+declare t int;
+begin
+  update profiles set time_sec = time_sec + case when time_ping > now() - interval '150 seconds' then least(extract(epoch from now() - time_ping), 75)::int else 0 end,
+                      time_ping = now()
+   where id = auth.uid() returning time_sec into t;
+  return t;
+end $$;
+
 create or replace function rl_needs() returns jsonb language plpgsql security definer set search_path = public as $$
 begin
   perform rl_tick(auth.uid());
@@ -871,7 +884,7 @@ do $$ declare f text; begin
                            'find_pumpkin(int)','my_pumpkins()','claim_level(int)','use_luck(bigint)','open_free(text,int)',
                            'withdraw_items(bigint[])','play_climb(bigint[],numeric,numeric)','buy_pass()','steam_deposit(bigint[])',
                            'claim_steam_quest(text)','rl_state()','rl_buy(text,int)','rl_sell(bigint[])','rl_rent(bigint,boolean)',
-                           'rl_collect()','rl_eat(bigint)','rl_deposit(numeric)','steam_sell_rl(bigint[])','rl_needs()'] loop
+                           'rl_collect()','rl_eat(bigint)','rl_deposit(numeric)','steam_sell_rl(bigint[])','rl_needs()','time_ping()'] loop
     execute format('revoke all on function %s from public, anon', f);
     execute format('grant execute on function %s to authenticated', f);
   end loop;
