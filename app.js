@@ -583,6 +583,8 @@ function notify({ title, sub = '', icon = '', amt = '', tall = false, color = ''
   const thumb = icon.startsWith('<img');
   island.innerHTML = `${icon ? `<div class="ico ${thumb ? 'thumb' : ''}" style="${color ? `background:${color}` : ''}">${icon}</div>` : ''}<div class="txt"><b>${title}</b>${sub ? `<span>${sub}</span>` : ''}</div>${amt ? `<div class="amt" style="color:${amtColor || 'inherit'}">${amt}</div>` : ''}`;
   island.classList.toggle('tall', tall);
+  const tb = $('.topbar');
+  island.style.top = Math.max(10, tb ? Math.round(tb.getBoundingClientRect().bottom + 10) : 10) + 'px';
   island.classList.add('show');
   clearTimeout(islandT);
   islandT = setTimeout(() => island.classList.remove('show'), ms);
@@ -2396,7 +2398,7 @@ async function viewUser(id) {
     const by = {}; items.forEach(x => { const k = x.item + (x.rent ? '+r' : ''); (by[k] = by[k] || { ...x, n: 0 }).n++; });
     const order = ['home', 'car', 'stuff', 'tech', 'mine', 'food', 'organ'];
     const list = Object.values(by).sort((a, b) => (order.indexOf(RLC[a.item].cat) - order.indexOf(RLC[b.item].cat)) || RLC[b.item].p - RLC[a.item].p);
-    return `<div class="ev-note" style="margin:0 0 10px 4px">Реальные деньги: <b>${rlMoney(+U2.rl.balance)}</b> · имущество: <b>${rlMoney(worth)}</b></div>
+    return `<div class="ev-note" style="margin:0 0 10px 4px">Реальные деньги: <b>${rlMoney(+U2.rl.balance)}</b> · имущество: <b>${rlMoney(worth)}</b>${U2.rl.hp != null ? ` · здоровье: <b style="color:${ndCol(+U2.rl.hp)}">${U2.rl.hp}%</b>` : ''}</div>
       <div class="rl-grid">${list.map((x, i) => { const c = RLC[x.item]; return `<div class="rl-card glass-flat" style="--i:${Math.min(i, 24)}">
         <div class="rl-img">${c.img ? `<img loading="lazy" decoding="async" src="${c.img}" alt="">` : ICON.home}</div>
         <div class="rl-body"><b>${esc(c.n)}${x.n > 1 ? ` ×${x.n}` : ''}</b><span class="rl-note">${esc(c.note || '')}</span>
@@ -2600,12 +2602,72 @@ async function claimSteamQuest(el, redraw) {
 
 /* ================= «Реальная жизнь» ================= */
 const RLC = Object.fromEntries((window.RL || []).map(r => [r.id, r]));
-const RL_CATS = [['home', 'Недвижимость'], ['car', 'Машины'], ['tech', 'Гаджеты'], ['food', 'Супермаркет'], ['stuff', 'Всякое']];
+const RL_CATS = [['home', 'Недвижимость'], ['car', 'Машины'], ['tech', 'Гаджеты'], ['food', 'Супермаркет'], ['med', 'Аптека'], ['stuff', 'Всякое']];
 const LIFE = { tab: 'mine', cat: 'home', q: '', sort: 'asc', limit: 60 };
-const rlMoney = v => '$' + (+v).toLocaleString('en-US', { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 });
+/* ---- needs: satiety -2/h, water -3/h; health drops when hungry, thirsty or homeless, heals when all is fine ---- */
+let ndWarned = null;
+function ndApply(n) {
+  if (!n) return;
+  S.nd = { food: +n.food, water: +n.water, hp: +n.hp, junk: n.junk ? Date.parse(n.junk) : 0, home: n.home, bill: +n.bill, at: Date.now() };
+  if (n.rl != null) S.rlBal = +n.rl;
+  drawVitals();
+}
+function ndNow() {
+  const n = S.nd; if (!n) return null;
+  const h = (Date.now() - n.at) / 36e5;
+  return { ...n, food: Math.max(0, n.food - 2 * h), water: Math.max(0, n.water - 3 * h) };
+}
+function ndDebuffs(n) {
+  const d = [];
+  if (n.hp < 30) d.push(['Болезнь', 'XP −60%']); else if (n.hp < 60) d.push(['Простуда', 'XP −30%']);
+  if (n.junk > Date.now()) d.push(['Тяжесть после фастфуда', 'XP −15%']);
+  if (n.food <= 0) d.push(['Голод', 'здоровье падает']);
+  if (n.water <= 0) d.push(['Жажда', 'здоровье падает']);
+  if (!n.home) d.push(['Без дома', 'здоровье падает']);
+  return d;
+}
+const ndCol = v => v < 25 ? '#ff453a' : v < 50 ? '#ff9f0a' : '#30d158';
+const ND_KEYS = [['food', 'Сытость'], ['water', 'Вода'], ['hp', 'Здоровье']];
+const ndBars = (n, big) => `<div class="nd-bars ${big ? 'big' : ''}">${ND_KEYS.map(([k, l]) => `<div class="nd-bar"><span>${l}</span><i><b style="width:${Math.round(n[k])}%;background:${ndCol(n[k])}"></b></i><em>${Math.round(n[k])}%</em></div>`).join('')}</div>`;
+const ndChips = n => ndDebuffs(n).map(([t, d]) => `<span class="nd-chip">${t}<small>${d}</small></span>`).join('');
+function drawVitals() {
+  const el = $('#vitals'); if (!el) return;
+  const n = ONLINE && ME && ndNow();
+  el.hidden = !n; if (!n) return;
+  el.classList.toggle('bad', ndDebuffs(n).length > 0);
+  el.innerHTML = ND_KEYS.map(([k]) => `<i style="--v:${Math.max(4, Math.round(n[k]))}%;--c:${ndCol(n[k])}"></i>`).join('');
+  el.title = ND_KEYS.map(([k, l]) => `${l} ${Math.round(n[k])}%`).join(' · ');
+}
+async function ndPoll() {
+  if (!ONLINE || !ME) return;
+  try { ndApply(await rpc('rl_needs')); } catch { return; }
+  const n = ndNow(), key = ndDebuffs(n).map(d => d[0]).join(', ');
+  if (key && key !== ndWarned) notify({ title: key, sub: 'Загляни во вкладку «Жизнь»', icon: '!', color: 'rgba(255,159,10,.35)', ms: 4000 });
+  ndWarned = key;
+}
+function vitalsSheet() {
+  const n = ndNow(); if (!n) return;
+  openSheet(`
+    <h2>Самочувствие</h2>
+    ${ndBars(n, true)}
+    ${ndDebuffs(n).length ? `<div class="nd-chips">${ndChips(n)}</div>` : '<div class="ev-note" style="text-align:center">Всё хорошо</div>'}
+    <div class="steam-calc"><span>Живёшь</span><b>${n.home ? esc(RLC[n.home] ? RLC[n.home].n : 'дома') : 'на улице'}</b><span>Траты в день</span><b>${rlMoney(n.bill)}</b></div>
+    <div class="subtitle">Сытость и вода понемногу падают. Если голодать, не пить или жить без дома (сданная квартира не считается), здоровье падает, а больной получает меньше XP. Фастфуд даёт тяжесть на 3 часа. Траты за коммуналку, связь и машины списываются с реальных денег.</div>
+    <div class="acts"><button class="btn" data-sact="close">Закрыть</button><button class="btn primary" data-sact="shop">Купить еду</button><button class="btn" data-sact="mine">Моя еда</button></div>`, {
+    narrow: true,
+    acts: {
+      shop(b, close) { LIFE.tab = 'shop'; LIFE.cat = 'food'; close(); if (location.hash === '#/life') VIEW.refresh && VIEW.refresh(); else location.hash = '#/life'; },
+      mine(b, close) { LIFE.tab = 'mine'; close(); if (location.hash === '#/life') VIEW.refresh && VIEW.refresh(); else location.hash = '#/life'; },
+    },
+  });
+}
+const rlFx = c => (c.cat !== 'food' && c.cat !== 'med') ? '' : `<span class="rl-fx ${c.junk ? 'junk' : ''}">${[[c.fill, 'сытость'], [c.water, 'вода'], [c.hp, 'здоровье']].filter(x => x[0]).map(([v, l]) => `${v > 0 ? '+' : ''}${v} ${l}`).join(' · ')}${c.junk ? ' · вредно' : ''}</span>`;
+const rlUse = c => c.cat === 'med' ? 'Принять' : c.water > c.fill ? 'Выпить' : 'Съесть';
+const rlMoney = v => (v < 0 ? '−$' : '$') + Math.abs(+v).toLocaleString('en-US', { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 });
 const rlSellValue = it => r2(it.paid * RLC[it.item].sell);
 function rlApply(r) {
   S.rlBal = +r.balance;
+  if (r.needs) ndApply(r.needs);
   S.rl = r.items.map(x => ({ id: x.id, item: x.item, paid: +x.paid, rent: !!x.rent_from, acc: +x.acc })).filter(x => RLC[x.item]);
 }
 function viewLife() {
@@ -2620,7 +2682,7 @@ function viewLife() {
       <div class="life-ico">${ICON.home}</div>
       <div class="steam-title"><h2>Реальная жизнь</h2><span>Скины из Steam → реальные деньги → квартиры, тачки и шаурма</span></div>
       <div class="grow"></div>
-      <div class="stat"><span>Реальные деньги</span><b class="rl-v">${rlMoney(S.rlBal)}</b></div>
+      <div class="stat"><span>${S.rlBal < 0 ? 'Долг' : 'Реальные деньги'}</span><b class="rl-v ${S.rlBal < 0 ? 'neg' : ''}">${rlMoney(S.rlBal)}</b></div>
       <div class="stat"><span>Имущество</span><b>${rlMoney(worth)}</b></div>
       <div class="stat"><span>Аренда${rentDay ? ` · ${rlMoney(rentDay)}/день` : ''}</span><b>${rlMoney(acc)}</b></div>
       <div class="life-acts">
@@ -2629,7 +2691,11 @@ function viewLife() {
         <button class="btn" disabled title="Скоро">Кредит · скоро</button>
       </div>
     </section>
-    <div class="hint glass-flat">Это игра, всё ненастоящее. Реальные деньги приходят от продажи скинов из Steam (вкладка Steam → «В жизнь», комиссия ${RL_FEE * 100}%) и от продажи своих вещей. Их можно потратить в магазине или задепать обратно на сайт 1:1. Квартиру можно сдать в аренду — деньги капают каждый день (копятся до 7 дней).</div>`;
+    ${(n => n ? `<section class="life-needs glass-flat">${ndBars(n)}
+      <div class="nd-side"><div class="nd-chips">${ndChips(n) || '<span class="nd-chip ok">Всё хорошо</span>'}</div>
+        <span class="nd-info">${n.home ? `Живёшь: ${esc(RLC[n.home] ? RLC[n.home].n : 'дома')}` : 'Без дома'} · траты ${rlMoney(n.bill)}/день</span></div>
+    </section>` : '')(ndNow())}
+    <div class="hint glass-flat">Это игра, всё ненастоящее. Реальные деньги приходят от продажи скинов из Steam (вкладка Steam → «В жизнь», комиссия ${RL_FEE * 100}%) и от продажи своих вещей. Их можно потратить в магазине или задепать обратно на сайт 1:1. Квартиру можно сдать в аренду, но жить в сданной нельзя. Каждый день списываются траты: коммуналка, связь, бензин. Следи за сытостью, водой и здоровьем.</div>`;
   };
   const card = (c, body, i) => `<div class="rl-card glass-flat" style="--i:${Math.min(i, 24)}">
       <div class="rl-img">${c.img ? `<img loading="lazy" decoding="async" src="${c.img}" alt="">` : ICON.home}</div>
@@ -2639,7 +2705,7 @@ function viewLife() {
     if (!S.rl.length) return `<div class="empty-state"><div class="ill">${ICON.home}</div><h3>Ничего нет</h3>Загляни в магазин.</div>`;
     const groups = [['home', 'Недвижимость', it => RLC[it.item].cat === 'home' || it.item === 'st-flat'],
                     ['things', 'Вещи', it => ['mine', 'car', 'tech', 'stuff'].includes(RLC[it.item].cat) && it.item !== 'st-flat'],
-                    ['food', 'Еда', it => RLC[it.item].cat === 'food'],
+                    ['food', 'Еда и аптека', it => RLC[it.item].cat === 'food' || RLC[it.item].cat === 'med'],
                     ['organ', 'Чёрный рынок', it => RLC[it.item].cat === 'organ']];
     let i = 0;
     return groups.map(([g, title, f]) => {
@@ -2648,8 +2714,8 @@ function viewLife() {
       if (g === 'food') {  // same food stacks into one card
         const by = {}; list.forEach(it => (by[it.item] = by[it.item] || []).push(it));
         return `<div class="section-head"><h2>${title}</h2></div><div class="rl-grid">${Object.values(by).map(l => card(RLC[l[0].item], `
-          <span class="rl-price">×${l.length} · продать за ${rlMoney(rlSellValue(l[0]))} шт.</span>
-          <div class="rl-acts"><button class="btn sm" data-act="rlEat" data-id="${l[0].id}">Съесть</button><button class="btn sm green" data-act="rlSell" data-id="${l[0].id}">Продать</button></div>`, i++)).join('')}</div>`;
+          ${rlFx(RLC[l[0].item])}<span class="rl-price">×${l.length} · продать за ${rlMoney(rlSellValue(l[0]))} шт.</span>
+          <div class="rl-acts"><button class="btn sm primary" data-act="rlEat" data-id="${l[0].id}">${rlUse(RLC[l[0].item])}</button><button class="btn sm green" data-act="rlSell" data-id="${l[0].id}">Продать</button></div>`, i++)).join('')}</div>`;
       }
       return `<div class="section-head"><h2>${title}</h2></div><div class="rl-grid">${list.map(it => {
         const c = RLC[it.item];
@@ -2669,7 +2735,7 @@ function viewLife() {
       ${seg('rlsort', [['asc', 'Дешевле'], ['desc', 'Дороже']], LIFE.sort, 'sm')}
       <label class="search">${ICON.search}<input id="lq" placeholder="Поиск: город, марка…" value="${esc(LIFE.q)}" autocomplete="off"></label></div>
       <div class="rl-grid" id="rlShop">${list.map((c, i) => card(c, `
-        <span class="rl-price big">${rlMoney(c.p)}</span>
+        ${rlFx(c)}<span class="rl-price big">${rlMoney(c.p)}</span>
         ${c.rent ? `<span class="rl-rent">аренда +${rlMoney(c.rent)}/день</span>` : ''}
         <div class="rl-acts"><button class="btn sm ${S.rlBal >= c.p ? 'primary' : ''}" data-act="rlBuy" data-item="${c.id}">Купить</button></div>`, i)).join('') || '<div class="ev-note">Ничего не найдено</div>'}</div>`;
   };
@@ -2709,17 +2775,19 @@ function viewLife() {
         if (a === 'rlEat') {
           const c = RLC[S.rl.find(x => x.id === +el.dataset.id).item];
           const r = await rpc('rl_eat', { p_id: +el.dataset.id }); SFX.ping();
-          after(r, { title: 'Вкусно!', sub: c.n + ' съедено', icon: '😋', color: 'rgba(255,159,10,.3)' });
+          after(r, { title: c.cat === 'med' ? 'Полегчало' : c.junk ? 'Вкусно, но тяжело' : 'Вкусно!', sub: c.junk ? 'Тяжесть на 3 часа: XP −15%' : c.n,
+                     icon: c.cat === 'med' ? '💊' : c.water > c.fill ? '🥤' : '😋', color: c.junk ? 'rgba(255,159,10,.3)' : 'rgba(48,209,88,.3)' });
         }
       } catch (e) { el.disabled = false; notifyErr(e); }
     },
   };
 }
 function rlBuySheet(c, onDone) {
-  const many = c.cat === 'food';
+  const many = c.cat === 'food' || c.cat === 'med';
   openSheet(`
     <div class="rl-sheet-img">${c.img ? `<img src="${c.img}" alt="">` : ICON.home}</div>
     <h2>${esc(c.n)}</h2>
+    ${rlFx(c) ? `<div style="text-align:center;margin-bottom:6px">${rlFx(c)}</div>` : ''}
     <div class="subtitle">${esc(c.note || '')}${c.rent ? `<br>Можно сдавать в аренду: +${rlMoney(c.rent)} в день` : ''}<br>Если продать: вернётся ${Math.round(c.sell * 100)}% цены${c.rent ? ' + накопленная аренда' : ''}.</div>
     <div class="steam-calc"><span>Цена</span><b>${rlMoney(c.p)}</b><span>Реальные деньги</span><b class="${S.rlBal >= c.p ? 'g' : 'r'}">${rlMoney(S.rlBal)}</b></div>
     ${many ? seg('rln', [['1', '×1'], ['5', '×5'], ['10', '×10'], ['20', '×20']], '1', 'sm center') : ''}
@@ -2891,6 +2959,8 @@ async function startOnline() {
   await refreshInventory();
   // pumpkins stay hidden if the list can't be loaded: otherwise found ones would show up again
   try { S.pumpkins = await rpc('my_pumpkins'); pkReady = true; schedulePk(); } catch { S.pumpkins = []; }
+  ndPoll(); setInterval(ndPoll, 4 * 60e3); setInterval(drawVitals, 60e3);
+  $('#vitals').onclick = vitalsSheet;
   shownBal = S.bal; balVal.textContent = fmt(S.bal); drawBonus();
   // feed
   const { data: feed } = await sb.from('drops').select('*').order('id', { ascending: false }).limit(24);

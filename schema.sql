@@ -662,7 +662,7 @@ begin
   if not found then return; end if;
   if not p.rl_init then
     insert into rl_inv (owner, item, paid) select p_uid, id, price from rl_catalog where starter order by id;
-    update profiles set rl_init = true, nd_at = now(), bills_at = now() where id = p_uid;
+    update profiles set rl_init = true, rl_balance = rl_balance + 50, nd_at = now(), bills_at = now() where id = p_uid;  -- $50 to start with
     return;
   end if;
   h := least(extract(epoch from now() - p.nd_at) / 3600, 24 * 14);
