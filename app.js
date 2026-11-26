@@ -14,6 +14,19 @@ const IMG_PH = "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://ww
 document.addEventListener('error', e => { const t = e.target; if (t && t.tagName === 'IMG' && !t.dataset.fb) { t.dataset.fb = 1; t.src = IMG_PH; } }, true);
 const fmt = v => (+v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const money = v => '$' + fmt(v);
+let UAH = 45.1;
+try { const c = JSON.parse(localStorage.getItem('gd_uah') || 'null'); if (c && c.r > 10) UAH = c.r; } catch {}
+const fmtUah = v => { const x = Math.abs(v * UAH); return (v < 0 ? '−' : '') + (x >= 10 ? Math.round(x).toLocaleString('uk-UA') : x.toFixed(2).replace('.', ',')) + ' ₴'; };
+const uah = (v, cls = '') => `<small class="uah ${cls}" data-usd="${+v}">≈ ${fmtUah(+v)}</small>`;
+function drawUah(root = document) { root.querySelectorAll('.uah[data-usd]').forEach(e => { e.textContent = '≈ ' + fmtUah(+e.dataset.usd); }); }
+(async () => {
+  try { const c = JSON.parse(localStorage.getItem('gd_uah') || 'null'); if (c && Date.now() - c.t < 12 * 36e5) return; } catch {}
+  try {
+    const r = await (await fetch('https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?valcode=USD&json')).json();
+    const v = +(r && r[0] && r[0].rate);
+    if (v > 10) { UAH = v; localStorage.setItem('gd_uah', JSON.stringify({ r: v, t: Date.now() })); drawUah(); }
+  } catch {}
+})();
 const r2 = v => Math.round(v * 100) / 100;
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -299,6 +312,7 @@ const CFG = window.GD_CONFIG || {};
 const ONLINE = !!(CFG.url && CFG.key && window.supabase);
 const sb = ONLINE ? window.supabase.createClient(CFG.url, CFG.key, { auth: { persistSession: true, autoRefreshToken: true } }) : null;
 const ERR = {
+  CHAT_RATE: 'Не так быстро — подожди секунду', BAD_MSG: 'Сообщение: от 1 до 300 символов',
   NO_RL_FUNDS: 'Не хватает реальных денег', BAD_ITEM: 'Этот предмет нельзя купить', BAD_AMOUNT: 'Неверная сумма', BAD_QUEST: 'Нет такого задания',
   NO_FUNDS: 'Недостаточно средств', NICK_TAKEN: 'Этот ник уже занят', BAD_NICK: 'Ник: 3–16 символов — буквы, цифры, пробел, _ . -',
   NOT_OPEN: 'Баттл уже начался или отменён', FULL: 'Мест уже нет', ALREADY_IN: 'Ты уже в этом баттле', NO_USER: 'Игрок с таким ником не найден',
@@ -575,6 +589,9 @@ const SFX = {
   fail() { tone(300, .4, 'sawtooth', .04, 0, 120); },
   click() { tone(900, .03, 'sine', .03); },
   ping() { tone(1568, .12, 'sine', .05); tone(2093, .3, 'sine', .04, .08); },
+  send() { tone(620, .07, 'sine', .035, 0, 880); tone(1240, .12, 'sine', .018, .05); },
+  msg() { tone(988, .16, 'sine', .028); },
+  dm() { tone(784, .2, 'sine', .05); tone(1175, .32, 'sine', .04, .12); tone(2350, .25, 'sine', .01, .12); },
 };
 
 /* ================= dynamic island ================= */
@@ -603,6 +620,7 @@ function renderBal() {
     const k = Math.min(1, (t - t0) / 750), e = 1 - Math.pow(1 - k, 4);
     shownBal = from + (to - from) * e;
     balVal.textContent = fmt(shownBal);
+    const u = $('#balUah'); if (u) u.textContent = '≈ ' + fmtUah(shownBal);
     if (k < 1) balRAF = requestAnimationFrame(step);
   };
   balRAF = requestAnimationFrame(step);
@@ -778,7 +796,7 @@ function caseCard(c, i) {
     : c.grp === 'halloween' ? `<span class="badge hw">${gi('pumpkin')} Хэллоуин</span>`
     : c.reveal ? `<span class="badge knife">${rareIco(c)} 100%</span>`
     : c.kind === 'custom' ? '<span class="badge custom">Авторский</span>' : (c.idx < 3 ? '<span class="badge new">New</span>' : '');
-  return `<div class="case-card glass-flat ${c.grp ? 'grp-' + c.grp : ''}" style="--i:${i};--glow:${c.glow}" data-go="#/case/${c.id}">${badge}<div class="art">${caseArt(c)}</div><h3>${esc(c.name)}</h3><div class="meta">${c.kind === 'custom' ? esc(c.desc) : c.count + ' предметов · ' + (c.d || '').slice(0, 4)}</div><span class="price-chip ${c.old ? 'sale' : ''}">${priceHTML(c)}</span></div>`;
+  return `<div class="case-card glass-flat ${c.grp ? 'grp-' + c.grp : ''}" style="--i:${i};--glow:${c.glow}" data-go="#/case/${c.id}">${badge}<div class="art">${caseArt(c)}</div><h3>${esc(c.name)}</h3><div class="meta">${c.kind === 'custom' ? esc(c.desc) : c.count + ' предметов · ' + (c.d || '').slice(0, 4)}</div><span class="price-chip ${c.old ? 'sale' : ''}">${priceHTML(c)}</span>${uah(c.price, 'under')}</div>`;
 }
 function itemCard(it, o = {}) {
   const s = SK[it.s], w = wearOf(it.f);
@@ -790,6 +808,7 @@ function itemCard(it, o = {}) {
     <div class="wpn">${esc(wpnLabel(s))}</div>
     <div class="pat">${esc(s.pat)}</div>
     <div class="row"><span class="pr">${o.priceText || money(it.p)}</span><span class="wear">${o.wearText != null ? o.wearText : (w ? w[0] : '')}</span></div>
+    ${o.priceText ? '' : uah(it.p)}
   </div>`;
 }
 const pct = p => p >= .1 ? (p * 100).toFixed(2) + '%' : p >= .001 ? (p * 100).toFixed(3) + '%' : (p * 100).toFixed(4) + '%';
@@ -1013,7 +1032,7 @@ function viewCase(id) {
       <button class="icon-btn" data-go="#/">${ICON.back}</button>
       <div><h1>${esc(c.name)}</h1><div class="ev-note">${c.kind === 'custom' ? 'Авторский кейс · ' + esc(c.desc) : 'Официальный кейс CS2 · ' + (c.d || '')}</div></div>
       <div class="grow"></div>
-      <span class="price-chip ${c.old ? 'sale' : ''}" style="margin:0">${priceHTML(c)}</span>
+      <span class="pc-col"><span class="price-chip ${c.old ? 'sale' : ''}" style="margin:0">${priceHTML(c)}</span>${uah(c.price, 'under')}</span>
     </div>
     <div class="case-stage" id="stage" style="--glow:${c.glow}"><div class="halo"></div>${caseArt(c, '512fx384f')}</div>
     <div class="rolls" id="rolls" hidden></div>
@@ -1429,7 +1448,7 @@ function drawPerks() {
 function drawInv() {
   drawPerks();
   $('#invN').textContent = S.inv.length;
-  $('#invV').textContent = money(invValue());
+  $('#invV').innerHTML = money(invValue()) + uah(invValue());
   $('#selBtn').textContent = I.select ? 'Готово' : 'Выбрать';
   $('#selBtn').classList.toggle('primary', I.select);
   const l = invList(), g = $('#invGrid');
@@ -2366,7 +2385,7 @@ async function viewTop() {
         <div class="rank r${i + 1}">${i + 1}</div>
         ${bs ? `<img src="${img(bs.img, '128fx128f')}" alt="">` : '<div style="width:64px"></div>'}
         <div class="t"><b>${esc(r.nickname)}${r.id === ME.id ? ' <em class="me-tag">ты</em>' : ''}</b><span>${sub(r)}</span></div>
-        <div class="p">${val(r)}</div></div>`;
+        <div class="p">${val(r)}${T.by === 'networth' ? uah(r.networth) : T.by === 'best_price' ? uah(r.best_price) : ''}</div></div>`;
     }).join('')}</div>`;
   };
   await load();
@@ -2422,11 +2441,12 @@ async function viewUser(id) {
   <section class="inv-head glass edge">
     <div class="avatar">${esc(p.nickname.slice(0, 2))}</div>
     <div class="stat"><span>Игрок</span><b>${esc(p.nickname)}</b></div>
-    <div class="stat"><span>Состояние</span><b>${money(p.networth)}</b></div>
+    <div class="stat"><span>Состояние</span><b>${money(p.networth)}</b>${uah(p.networth)}</div>
     <div class="stat"><span>Кейсов</span><b>${p.opened}</b></div>
     <div class="stat"><span>Баттлы</span><b>${p.battles_w}/${p.battles_l}</b></div>
     <div class="stat"><span>На сайте</span><b>${fmtTime(p.time_sec)}</b></div>
     <div class="grow"></div>
+    <button class="btn primary" data-act="dm">${CHAT_ICO.replace('<svg', '<svg width="16" height="16"')} Написать</button>
     <button class="btn" data-go="#/top">${ICON.trophy.replace('<svg', '<svg width="16" height="16"')} Топ</button>
   </section>
   ${p.best_skin != null ? `<div class="section-head"><h2>Лучший дроп</h2></div><div style="max-width:340px">${itemCard({ s: p.best_skin, f: p.best_float, st: p.best_st, p: +p.best_price })}</div>` : ''}
@@ -2440,6 +2460,7 @@ async function viewUser(id) {
     onSeg(n, v) { if (n === 'utab') { U2.tab = v; drawTab(); loadTab(); } },
     act(a, el) {
       if (a === 'view') { const it = inv.find(x => x.u === +el.dataset.u); if (it) showItem(it, { readonly: true }); }
+      if (a === 'dm') openDM(id, p.nickname);
       if (a === 'viewSt') { const it = U2.steam && U2.steam.find(x => x.u === +el.dataset.u); if (it) showItem(it, { readonly: true }); }
     },
   };
@@ -2476,8 +2497,8 @@ async function viewProfile() {
   </section>
   ${ME.guest ? '<div class="hint glass-flat">Ты играешь как гость — прогресс привязан к этому браузеру. Задай пароль («Сохранить аккаунт»), чтобы заходить с других устройств и ничего не потерять.</div>' : ''}` : ''}
   <div class="stats stagger">
-    <div class="stat-tile glass-flat" style="--i:0"><span>Баланс</span><b>${money(S.bal)}</b></div>
-    <div class="stat-tile glass-flat" style="--i:1"><span>Стоимость инвентаря</span><b>${money(invValue())}</b></div>
+    <div class="stat-tile glass-flat" style="--i:0"><span>Баланс</span><b>${money(S.bal)}</b>${uah(S.bal)}</div>
+    <div class="stat-tile glass-flat" style="--i:1"><span>Стоимость инвентаря</span><b>${money(invValue())}</b>${uah(invValue())}</div>
     <div class="stat-tile glass-flat" style="--i:2"><span>Открыто кейсов</span><b>${st.opened}</b></div>
     <div class="stat-tile glass-flat" style="--i:3"><span>Потрачено на кейсы</span><b>${money(st.spent)}</b></div>
     <div class="stat-tile glass-flat" style="--i:4"><span>Продано предметов на</span><b>${money(st.sold)}</b></div>
@@ -2569,8 +2590,8 @@ function steamHTML() {
     <div class="steam-title"><h2>Steam</h2><span>Инвентарь ${esc(ME.nick)} · скины, выведенные с GlassDrop</span></div>
     <div class="grow"></div>
     <div class="stat"><span>Предметов</span><b>${list.length}</b></div>
-    <div class="stat"><span>Стоимость в Steam</span><b class="steam-v">${money(sv)}</b></div>
-    <div class="stat"><span>Всего с инвентарём сайта</span><b>${money(r2(sv + invValue()))}</b></div>
+    <div class="stat"><span>Стоимость в Steam</span><b class="steam-v">${money(sv)}</b>${uah(sv)}</div>
+    <div class="stat"><span>Всего с инвентарём сайта</span><b>${money(r2(sv + invValue()))}</b>${uah(r2(sv + invValue()))}</div>
     ${list.length ? `<button class="btn green" data-act="stAll">Продать всё</button>` : ''}
   </section>
   <div class="hint glass-flat">Это симуляция: в настоящий Steam ничего не уходит. Нажми на предмет, чтобы продать его: на баланс сайта (комиссия ${STEAM_FEE * 100}%) или за «реальные деньги» для вкладки «Реальная жизнь» (комиссия ${RL_FEE * 100}%).</div>
@@ -2610,6 +2631,131 @@ async function claimSteamQuest(el, redraw) {
 /* ================= «Реальная жизнь» ================= */
 const RLC = Object.fromEntries((window.RL || []).map(r => [r.id, r]));
 const RL_CATS = [['home', 'Недвижимость'], ['car', 'Машины'], ['tech', 'Гаджеты'], ['food', 'Супермаркет'], ['med', 'Аптека'], ['stuff', 'Всякое']];
+/* ================= chat: global room + private messages ================= */
+const CHAT_ICO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.9A8 8 0 1 1 21 12z"/></svg>';
+const SEND_ICO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13M13 6l6 6-6 6"/></svg>';
+const CH = { open: false, tab: 'global', peer: null, peerNick: '', msgs: {}, dms: [], unreadG: 0, ready: false,
+  read: (() => { try { return JSON.parse(localStorage.getItem('gd_chat_read') || '{}'); } catch { return {}; } })() };
+const chatWide = () => matchMedia('(min-width: 1280px)').matches;
+const roomOf = peer => peer ? 'dm:' + [ME.id, peer].sort().join(':') : 'global';
+const nickHue = n => { let h = 0; for (const ch of n) h = (h * 31 + ch.charCodeAt(0)) % 360; return h; };
+const curRoom = () => CH.tab === 'dm' && CH.peer ? roomOf(CH.peer) : CH.tab === 'global' ? 'global' : null;
+function markRead(room) {
+  const l = CH.msgs[room]; if (!l || !l.length) return;
+  CH.read[room] = l[l.length - 1].id; localStorage.setItem('gd_chat_read', JSON.stringify(CH.read));
+}
+const dmUnread = () => CH.dms.filter(d => d.sender !== ME.id && d.last_id > (CH.read[d.room] || 0)).length;
+function chatBadges() {
+  const n = dmUnread(), fab = $('#chatFab');
+  if (fab) { fab.dataset.n = n || (CH.unreadG && !CH.open ? '•' : ''); }
+  const t = $('#chat [data-ctab="dms"] i'); if (t) t.textContent = n || '';
+  const g = $('#chat [data-ctab="global"] i'); if (g) g.textContent = '';
+}
+const msgHTML = m => {
+  const me = m.sender === ME.id, t = new Date(m.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  return `<div class="cm ${me ? 'me' : ''}" data-id="${m.id}">${me || CH.tab === 'dm' ? '' : `<b style="--h:${nickHue(m.nick)}" data-cuser="${m.sender}" data-cnick="${esc(m.nick)}" title="Написать лично">${esc(m.nick)}</b>`}<p>${esc(m.body)}</p><time>${t}</time></div>`;
+};
+function chatBodyHTML() {
+  if (CH.tab === 'dms') {
+    if (!CH.dms.length) return `<div class="chat-empty">Личных сообщений пока нет.<br>Нажми на ник в общем чате или на странице игрока, чтобы написать ему.</div>`;
+    return CH.dms.map(d => `<button class="dm-li ${d.sender !== ME.id && d.last_id > (CH.read[d.room] || 0) ? 'new' : ''}" data-cuser="${d.peer}" data-cnick="${esc(d.nick)}">
+      <span class="dm-av" style="--h:${nickHue(d.nick)}">${esc(d.nick.slice(0, 2))}</span>
+      <span class="dm-t"><b>${esc(d.nick)}</b><small>${d.sender === ME.id ? 'Ты: ' : ''}${esc(d.body)}</small></span>
+      <time>${new Date(d.created_at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</time></button>`).join('');
+  }
+  const l = CH.msgs[curRoom()];
+  if (!l) return loadingHTML;
+  return l.length ? l.map(msgHTML).join('') : `<div class="chat-empty">${CH.tab === 'dm' ? 'Напиши первым 👋' : 'Тут пока тихо — напиши первым'}</div>`;
+}
+function drawChat() {
+  const el = $('#chat'); if (!el) return;
+  document.body.classList.toggle('chat-on', CH.open);
+  el.hidden = !CH.open; $('#chatFab').hidden = CH.open && chatWide() || !ME;
+  if (!CH.open) { chatBadges(); return; }
+  const dm = CH.tab === 'dm';
+  el.innerHTML = `<div class="chat-head">
+      ${dm ? `<button class="chat-back" data-cact="back" aria-label="Назад">‹</button><a class="chat-peer" href="#/u/${CH.peer}" style="--h:${nickHue(CH.peerNick)}">${esc(CH.peerNick)}</a>`
+           : `<div class="chat-tabs"><button data-ctab="global" class="${CH.tab === 'global' ? 'on' : ''}">Общий<i></i></button><button data-ctab="dms" class="${CH.tab === 'dms' ? 'on' : ''}">Личные<i></i></button></div>`}
+      <button class="chat-x" data-cact="close" aria-label="Закрыть">×</button></div>
+    <div class="chat-body" id="chatBody">${chatBodyHTML()}</div>
+    ${CH.tab === 'dms' ? '' : `<form class="chat-form" id="chatForm"><input id="chatIn" maxlength="300" autocomplete="off" placeholder="${dm ? 'Сообщение для ' + esc(CH.peerNick) : 'Сообщение всем…'}"><button type="submit" aria-label="Отправить">${SEND_ICO}</button></form>`}`;
+  const b = $('#chatBody'); b.scrollTop = b.scrollHeight;
+  const r = curRoom(); if (r) markRead(r);
+  if (r === 'global') CH.unreadG = 0;
+  chatBadges();
+}
+async function loadRoom(room) {
+  if (CH.msgs[room]) return;
+  const { data } = await sb.from('chat_messages').select('*').eq('room', room).order('id', { ascending: false }).limit(80);
+  CH.msgs[room] = (data || []).reverse();
+}
+async function loadDms() { try { CH.dms = await rpc('chat_dms'); } catch { CH.dms = []; } chatBadges(); }
+async function chatShow(tab = CH.tab, peer, nick) {
+  if (!ONLINE || !ME) return;
+  CH.open = true; CH.tab = tab;
+  if (tab === 'dm') { CH.peer = peer; CH.peerNick = nick; }
+  localStorage.setItem('gd_chat_open', '1');
+  drawChat();
+  const r = curRoom();
+  if (r && !CH.msgs[r]) { await loadRoom(r); if (curRoom() === r) drawChat(); }
+  if (tab === 'dms') { await loadDms(); if (CH.tab === 'dms') drawChat(); }
+  if (chatWide() || tab !== 'dms') { const i = $('#chatIn'); if (i && matchMedia('(hover: hover)').matches) i.focus(); }
+}
+function chatHide() { CH.open = false; localStorage.setItem('gd_chat_open', '0'); drawChat(); }
+const openDM = (peer, nick) => { if (peer && peer !== ME.id) chatShow('dm', peer, nick); };
+function onChatMsg(m) {
+  const l = CH.msgs[m.room];
+  if (l) { if (l.some(x => x.id === m.id)) return; l.push(m); if (l.length > 200) l.shift(); }
+  const mine = m.sender === ME.id, viewing = CH.open && curRoom() === m.room && !document.hidden;
+  if (m.room !== 'global') {
+    const d = CH.dms.find(x => x.room === m.room), peer = m.a === ME.id ? m.b : m.a;
+    const row = { room: m.room, peer, nick: mine ? (d ? d.nick : CH.peerNick) : m.nick, body: m.body, sender: m.sender, last_id: m.id, created_at: m.created_at };
+    CH.dms = [row, ...CH.dms.filter(x => x.room !== m.room)];
+    if (!mine && !viewing) { SFX.dm(); notify({ title: 'Сообщение от ' + esc(m.nick), sub: esc(m.body.slice(0, 80)), icon: CHAT_ICO, color: 'rgba(10,132,255,.4)', ms: 4000 }); }
+  } else if (!mine && !viewing) CH.unreadG++;
+  if (viewing) {
+    const b = $('#chatBody'), atEnd = b.scrollHeight - b.scrollTop - b.clientHeight < 80;
+    const e = $('.chat-empty', b); if (e) e.remove();
+    b.insertAdjacentHTML('beforeend', msgHTML(m));
+    if (atEnd || mine) b.scrollTop = b.scrollHeight;
+    markRead(m.room);
+    if (!mine) SFX.msg();
+  } else if (CH.open && CH.tab === 'dms') { const b = $('#chatBody'); if (b) b.innerHTML = chatBodyHTML(); }
+  chatBadges();
+}
+function chatInit() {
+  if (!ONLINE || !ME || CH.ready) return;
+  CH.ready = true;
+  document.body.insertAdjacentHTML('beforeend', `<aside class="chat glass" id="chat" hidden></aside><button class="chat-fab" id="chatFab" aria-label="Чат">${CHAT_ICO}</button>`);
+  $('#chatFab').onclick = () => CH.open ? chatHide() : chatShow();
+  const el = $('#chat');
+  el.addEventListener('click', e => {
+    const t = e.target.closest('[data-ctab],[data-cact],[data-cuser]'); if (!t) return;
+    if (t.dataset.ctab) chatShow(t.dataset.ctab);
+    else if (t.dataset.cact === 'close') chatHide();
+    else if (t.dataset.cact === 'back') chatShow('dms');
+    else if (t.dataset.cuser) openDM(t.dataset.cuser, t.dataset.cnick);
+  });
+  el.addEventListener('submit', async e => {
+    e.preventDefault();
+    const i = $('#chatIn'), body = i.value.trim(); if (!body) return;
+    const peer = CH.tab === 'dm' ? CH.peer : null;
+    i.value = ''; i.focus();
+    try { const m = await rpc('chat_send', { p_to: peer, p_body: body }); SFX.send(); onChatMsg(m); }
+    catch (err) { i.value = body; notifyErr(err); }
+  });
+  // realtime may deliver only part of the row: read the whole message (RLS still decides who may see it)
+  sb.channel('chat').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, async ({ new: m }) => {
+    if (!m || m.id == null) return;
+    if (m.body == null || m.room == null) { const { data } = await sb.from('chat_messages').select('*').eq('id', m.id).maybeSingle(); if (!data) return; m = data; }
+    onChatMsg(m);
+  }).subscribe();
+  loadDms();
+  const saved = localStorage.getItem('gd_chat_open');
+  if (chatWide() && saved !== '0') chatShow('global'); else drawChat();  // phones: only by the button
+  window.addEventListener('resize', () => { if (CH.open || $('#chatFab')) { document.body.classList.toggle('chat-on', CH.open); $('#chatFab').hidden = CH.open && chatWide(); } });
+}
+
 /* ---- time on site: the server adds the time between pings (once a minute while the tab is visible) ---- */
 const fmtTime = sec => { const m = Math.floor((sec || 0) / 60), h = Math.floor(m / 60), d = Math.floor(h / 24);
   return d ? `${d} д ${h % 24} ч ${m % 60} мин` : h ? `${h} ч ${m % 60} мин` : `${m} мин`; };
@@ -2698,8 +2844,8 @@ function viewLife() {
       <div class="life-ico">${ICON.home}</div>
       <div class="steam-title"><h2>Реальная жизнь</h2><span>Скины из Steam → реальные деньги → квартиры, тачки и шаурма</span></div>
       <div class="grow"></div>
-      <div class="stat"><span>${S.rlBal < 0 ? 'Долг' : 'Реальные деньги'}</span><b class="rl-v ${S.rlBal < 0 ? 'neg' : ''}">${rlMoney(S.rlBal)}</b></div>
-      <div class="stat"><span>Имущество</span><b>${rlMoney(worth)}</b></div>
+      <div class="stat"><span>${S.rlBal < 0 ? 'Долг' : 'Реальные деньги'}</span><b class="rl-v ${S.rlBal < 0 ? 'neg' : ''}">${rlMoney(S.rlBal)}</b>${uah(S.rlBal)}</div>
+      <div class="stat"><span>Имущество</span><b>${rlMoney(worth)}</b>${uah(worth)}</div>
       <div class="stat"><span>Аренда${rentDay ? ` · ${rlMoney(rentDay)}/день` : ''}</span><b>${rlMoney(acc)}</b></div>
       <div class="life-acts">
         ${acc >= .01 ? `<button class="btn green" data-act="rlCollect">Собрать аренду · ${rlMoney(acc)}</button>` : ''}
@@ -2736,7 +2882,7 @@ function viewLife() {
       return `<div class="section-head"><h2>${title}</h2></div><div class="rl-grid">${list.map(it => {
         const c = RLC[it.item];
         return card(c, `
-          <span class="rl-price">${c.cat === 'mine' || c.cat === 'organ' ? 'Стоит' : 'Продать за'} ${rlMoney(rlSellValue(it))}</span>
+          <span class="rl-price">${c.cat === 'mine' || c.cat === 'organ' ? 'Стоит' : 'Продать за'} ${rlMoney(rlSellValue(it))}</span>${uah(rlSellValue(it))}
           ${c.rent ? `<span class="rl-rent ${it.rent ? 'on' : ''}">${it.rent ? `Сдаётся · +${rlMoney(c.rent)}/день · накоплено ${rlMoney(it.acc)}` : `Можно сдать: +${rlMoney(c.rent)}/день`}</span>` : ''}
           <div class="rl-acts">${c.rent ? `<button class="btn sm ${it.rent ? '' : 'primary'}" data-act="rlRent" data-id="${it.id}" data-on="${it.rent ? 0 : 1}">${it.rent ? 'Снять с аренды' : 'Сдать в аренду'}</button>` : ''}
             <button class="btn sm green" data-act="rlSell" data-id="${it.id}">Продать</button></div>`, i++);
@@ -2751,7 +2897,7 @@ function viewLife() {
       ${seg('rlsort', [['asc', 'Дешевле'], ['desc', 'Дороже']], LIFE.sort, 'sm')}
       <label class="search">${ICON.search}<input id="lq" placeholder="Поиск: город, марка…" value="${esc(LIFE.q)}" autocomplete="off"></label></div>
       <div class="rl-grid" id="rlShop">${list.map((c, i) => card(c, `
-        ${rlFx(c)}<span class="rl-price big">${rlMoney(c.p)}</span>
+        ${rlFx(c)}<span class="rl-price big">${rlMoney(c.p)}</span>${uah(c.p)}
         ${c.rent ? `<span class="rl-rent">аренда +${rlMoney(c.rent)}/день</span>` : ''}
         <div class="rl-acts"><button class="btn sm ${S.rlBal >= c.p ? 'primary' : ''}" data-act="rlBuy" data-item="${c.id}">Купить</button></div>`, i)).join('') || '<div class="ev-note">Ничего не найдено</div>'}</div>`;
   };
@@ -2805,7 +2951,7 @@ function rlBuySheet(c, onDone) {
     <h2>${esc(c.n)}</h2>
     ${rlFx(c) ? `<div style="text-align:center;margin-bottom:6px">${rlFx(c)}</div>` : ''}
     <div class="subtitle">${esc(c.note || '')}${c.rent ? `<br>Можно сдавать в аренду: +${rlMoney(c.rent)} в день` : ''}<br>Если продать: вернётся ${Math.round(c.sell * 100)}% цены${c.rent ? ' + накопленная аренда' : ''}.</div>
-    <div class="steam-calc"><span>Цена</span><b>${rlMoney(c.p)}</b><span>Реальные деньги</span><b class="${S.rlBal >= c.p ? 'g' : 'r'}">${rlMoney(S.rlBal)}</b></div>
+    <div class="steam-calc"><span>Цена</span><b>${rlMoney(c.p)}<br>${uah(c.p)}</b><span>Реальные деньги</span><b class="${S.rlBal >= c.p ? 'g' : 'r'}">${rlMoney(S.rlBal)}</b></div>
     ${many ? seg('rln', [['1', '×1'], ['5', '×5'], ['10', '×10'], ['20', '×20']], '1', 'sm center') : ''}
     <div class="acts"><button class="btn" data-sact="close">Отмена</button><button class="btn primary" data-sact="ok" id="rlBuyBtn">Купить · ${rlMoney(c.p)}</button></div>`, {
     narrow: true,
@@ -2977,6 +3123,7 @@ async function startOnline() {
   try { S.pumpkins = await rpc('my_pumpkins'); pkReady = true; schedulePk(); } catch { S.pumpkins = []; }
   ndPoll(); setInterval(ndPoll, 4 * 60e3); setInterval(drawVitals, 60e3);
   timePing(); setInterval(timePing, 60e3); setInterval(drawTime, 15e3);
+  chatInit();
   document.addEventListener('visibilitychange', () => { if (!document.hidden) timePing(); });
   $('#vitals').onclick = vitalsSheet;
   shownBal = S.bal; balVal.textContent = fmt(S.bal); drawBonus();

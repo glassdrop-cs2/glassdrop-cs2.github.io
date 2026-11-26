@@ -940,3 +940,4 @@ grant execute on function site_stats() to anon, authenticated;
 -- read-only access for the site (writes happen only inside the functions above)
 grant usage on schema public to anon, authenticated;
 grant select on skins, cases, case_items, profiles, inventory, drops, battles, battle_players, battle_drops, leaderboard, bp_rewards, perks, steam_items, climbs to anon, authenticated;
+grant select on chat_messages to authenticated;  -- RLS policy chat_read decides which rows
