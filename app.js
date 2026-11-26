@@ -9,6 +9,9 @@ const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const IMGPRE = 'https://community.akamai.steamstatic.com/economy/image/';
 const img = (u, size = '256fx256f') => !u ? '' : u[0] === '~' ? IMGPRE + u.slice(1) + '/' + size : u;
+// any image that fails to load (Steam CDN hiccup) gets a neutral placeholder instead of a broken icon
+const IMG_PH = "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 48"><path d="M8 30l10-14h22l6 6h10v8H40l-4 6H22l-4 6H8z" fill="#ffffff22"/></svg>');
+document.addEventListener('error', e => { const t = e.target; if (t && t.tagName === 'IMG' && !t.dataset.fb) { t.dataset.fb = 1; t.src = IMG_PH; } }, true);
 const fmt = v => (+v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const money = v => '$' + fmt(v);
 const r2 = v => Math.round(v * 100) / 100;
@@ -55,9 +58,9 @@ const wearByCode = c => WEARS.find(w => w[0] === c);
 
 /* ================= skins & prices (base prices come from tools/build_data.py) ================= */
 const SK = window.SKINS.map((a, i) => {
-  const [name, weapon, pat, r, cat, mn, mx, st, im, base] = a;
+  const [name, weapon, pat, r, cat, mn, mx, st, im, base, px] = a;
   const star = name.startsWith('★');
-  return { i, name, weapon, pat, r, cat, mn, mx, st: !!st, img: im, base, star, vanilla: star && mn == null, tier: star ? 'rare' : r };
+  return { i, name, weapon, pat, r, cat, mn, mx, st: !!st, img: im, base, px, star, vanilla: star && mn == null, tier: star ? 'rare' : r };
 });
 const colOf = s => s.star ? TIER_COL.rare : TIER_COL[s.r];
 const tierOf = s => s.star ? 'rare' : s.r === 'contraband' ? 'covert' : s.r;
@@ -68,7 +71,9 @@ function fullName(it) {
 }
 const WEAR_MUL = { FN: 2.1, MW: 1.4, FT: 1, WW: .88, BS: .72 };
 const WEAR_MUL_STAR = { FN: 1.7, MW: 1.2, FT: 1, WW: .9, BS: .82 };
+const WIDX = { FN: 0, MW: 1, FT: 2, WW: 3, BS: 4 };
 function priceCode(s, code, st) {
+  if (s.px) { const v = s.px[(code ? WIDX[code] : 0) + (st ? 5 : 0)]; if (v) return Math.max(.03, v); }
   let p = s.base;
   if (code) p *= (s.star ? WEAR_MUL_STAR : WEAR_MUL)[code];
   if (st) p *= s.star ? 1.15 : 2;
@@ -157,7 +162,8 @@ function nickEmail(nick) {
 const KEY = 'glassdrop.v1', SKEY = 'glassdrop.settings';
 const BONUS_CD = 120e3, BONUS_AMT = 15;
 const freshStats = () => ({ opened: 0, spent: 0, sold: 0, upW: 0, upL: 0, bw: 0, bl: 0, best: null });
-const fresh = () => ({ bal: 100, inv: [], hist: [], uid: 1, lastBonus: 0, stats: freshStats() });
+const fresh = () => ({ bal: 100, inv: [], hist: [], uid: 1, lastBonus: 0, bonusN: 0, stats: freshStats() });
+const bonusAmt = n => n % 100 === 0 ? 1000 : n % 10 === 0 ? 100 : BONUS_AMT;
 let SET = { sound: true, fast: false };
 try { SET = Object.assign(SET, JSON.parse(localStorage.getItem(SKEY) || '{}')); } catch {}
 let S = fresh();
@@ -173,6 +179,7 @@ function bumpBest(it) { if (!S.stats.best || it.p > S.stats.best.p) S.stats.best
 function applyProfile(p) {
   S.bal = +p.balance;
   S.lastBonus = p.last_bonus ? Date.parse(p.last_bonus) : 0;
+  S.bonusN = p.bonus_n || 0;
   S.stats = { opened: p.opened, spent: +p.spent, sold: +p.sold, upW: p.up_w, upL: p.up_l, bw: p.battles_w, bl: p.battles_l, best: p.best_skin != null ? { s: p.best_skin, f: p.best_float, st: p.best_st, p: +p.best_price } : null };
   if (ME) ME.nick = p.nickname;
 }
@@ -222,11 +229,13 @@ const API = {
     return { sum, balance: S.bal };
   },
   async bonus() {
-    if (ONLINE) { const r = await rpc('claim_bonus'); S.lastBonus = Date.now(); return { balance: +r.balance }; }
+    if (ONLINE) { const r = await rpc('claim_bonus'); S.lastBonus = Date.now(); S.bonusN = r.n; return { balance: +r.balance, amount: +r.amount, n: r.n }; }
     const left = BONUS_CD - (Date.now() - S.lastBonus);
     if (left > 0) throw new Error('COOLDOWN:' + Math.ceil(left / 1000));
-    S.lastBonus = Date.now(); S.bal = r2(S.bal + BONUS_AMT); save();
-    return { balance: S.bal };
+    S.bonusN = (S.bonusN || 0) + 1;
+    const amount = bonusAmt(S.bonusN);
+    S.lastBonus = Date.now(); S.bal = r2(S.bal + amount); save();
+    return { balance: S.bal, amount, n: S.bonusN };
   },
   async upgrade(uids, tgt) {
     if (ONLINE) {
@@ -256,6 +265,20 @@ const API = {
     return r;
   },
 };
+
+/* ================= logo ================= */
+let logoN = 0;
+function logoSVG() {
+  const id = 'lg' + (logoN++);
+  return `<svg viewBox="0 0 32 32" class="logo-svg"><defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffc061"/><stop offset=".5" stop-color="#ff5e3a"/><stop offset="1" stop-color="#9b4dff"/></linearGradient></defs>
+    <path d="M16 1.5C16 1.5 4.5 13.6 4.5 20.3a11.5 11.5 0 0 0 23 0C27.5 13.6 16 1.5 16 1.5Z" fill="url(#${id})"/>
+    <path d="M16 1.5C16 1.5 4.5 13.6 4.5 20.3a11.5 11.5 0 0 0 23 0C27.5 13.6 16 1.5 16 1.5Z" fill="none" stroke="rgba(255,255,255,.55)" stroke-width=".8"/>
+    <path d="M10.6 11.2C9 13.4 8.1 15.6 8.2 17.6" stroke="#fff" stroke-opacity=".75" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+    <path d="M10.8 19.4l2.6-3.6 2 3.6zM16.6 19.4l2-3.6 2.6 3.6z" fill="#1b0a24"/>
+    <path d="M9.6 22.4c4 3.6 8.8 3.6 12.8 0l-1.6.2-.9 1.3-1.3-1-1.3 1.4-1.3-1.4-1.3 1.4-1.3-1.4-1.3 1-.9-1.3z" fill="#1b0a24"/>
+  </svg>`;
+}
+$('#logoMark').innerHTML = logoSVG();
 
 /* ================= sound ================= */
 let AC;
@@ -329,7 +352,10 @@ function drawBonus() {
   const k = left / BONUS_CD;
   bonusBtn.innerHTML = `${ICON.plus}${left ? `<svg class="cd" viewBox="0 0 40 40"><circle cx="20" cy="20" r="18.5" fill="none" stroke="rgba(255,255,255,.85)" stroke-width="2.5" stroke-dasharray="${116.2 * k} 200" transform="rotate(-90 20 20)" stroke-linecap="round"/></svg>` : ''}`;
   bonusBtn.style.filter = left ? 'saturate(.35) brightness(.8)' : '';
-  bonusBtn.title = left ? `Бонус через ${Math.ceil(left / 1000)} c` : `Забрать бонус $${BONUS_AMT}`;
+  const nx = (S.bonusN || 0) + 1, amt = bonusAmt(nx);
+  bonusBtn.classList.toggle('mega', amt > BONUS_AMT);
+  bonusBtn.dataset.amt = amt >= 1000 ? '$1K' : amt > BONUS_AMT ? '$100' : '';
+  bonusBtn.title = (left ? `Бонус через ${Math.ceil(left / 1000)} c` : `Забрать бонус ${money(amt)}`) + ` · нажатие №${nx} (каждое 10-е — $100, каждое 100-е — $1000)`;
 }
 bonusBtn.onclick = async () => {
   if (ONLINE && !ME) return;
@@ -337,8 +363,15 @@ bonusBtn.onclick = async () => {
   if (left > 0) { notify({ title: 'Бонус ещё заряжается', sub: `Будет доступен через ${Math.ceil(left / 1000)} c`, icon: ICON.gift, color: 'rgba(255,159,10,.25)' }); return; }
   try {
     const r = await API.bonus();
-    setBal(r.balance); SFX.coin();
-    notify({ title: 'Бонус получен', sub: 'Следующий — через 2 минуты', icon: ICON.gift, color: 'rgba(48,209,88,.3)', amt: '+' + money(BONUS_AMT), amtColor: '#5ee07f' });
+    setBal(r.balance);
+    const to10 = 10 - (r.n % 10), next = to10 === 10 ? 10 : to10;
+    if (r.amount > BONUS_AMT) {
+      SFX.win(r.amount >= 1000 ? 'rare' : 'covert');
+      notify({ title: r.amount >= 1000 ? `🎃 Сотое нажатие — джекпот!` : `🎉 Десятое нажатие!`, sub: `Это было ${r.n}-е нажатие плюсика`, icon: ICON.gift, color: 'rgba(255,159,10,.45)', amt: '+' + money(r.amount), amtColor: '#ffd60a', tall: true, ms: 4500 });
+    } else {
+      SFX.coin();
+      notify({ title: 'Бонус получен', sub: `До $100 — ещё ${next} нажат${next === 1 ? 'ие' : next < 5 ? 'ия' : 'ий'}`, icon: ICON.gift, color: 'rgba(48,209,88,.3)', amt: '+' + money(r.amount), amtColor: '#5ee07f' });
+    }
   } catch (e) { notifyErr(e); }
   drawBonus();
 };
@@ -348,6 +381,24 @@ const soundBtn = $('#soundBtn');
 const drawSound = () => { soundBtn.innerHTML = SET.sound ? ICON.sOn : ICON.sOff; };
 soundBtn.onclick = () => { SET.sound = !SET.sound; saveSet(); drawSound(); SFX.click(); };
 drawSound();
+
+/* ================= online / traffic ================= */
+const statsEl = $('#siteStats');
+const STATS = { online: 0, day: 0, month: 0 };
+function drawStats() {
+  if (!statsEl) return;
+  statsEl.innerHTML = `<span class="on"><i></i><b>${STATS.online || 1}</b><em>онлайн</em></span><span><b>${STATS.day}</b><em>сегодня</em></span><span><b>${STATS.month}</b><em>за месяц</em></span>`;
+  statsEl.title = `Сейчас на сайте: ${STATS.online || 1}\nУникальных игроков сегодня: ${STATS.day}\nЗа этот месяц: ${STATS.month}\nВсего игроков: ${STATS.players || '—'}`;
+}
+function startStats() {
+  if (!ONLINE || !statsEl) { statsEl && statsEl.remove(); return; }
+  const ch = sb.channel('online', { config: { presence: { key: ME.id } } });
+  ch.on('presence', { event: 'sync' }, () => { STATS.online = Object.keys(ch.presenceState()).length; drawStats(); })
+    .subscribe(async st => { if (st === 'SUBSCRIBED') await ch.track({ nick: ME.nick }); });
+  const load = async track => { try { Object.assign(STATS, await rpc(track ? 'track_visit' : 'site_stats')); drawStats(); } catch (e) { console.warn(e); } };
+  load(true); setInterval(() => load(false), 60e3);
+  drawStats();
+}
 
 /* ================= segmented controls ================= */
 function seg(name, opts, active, cls = '') {
@@ -415,13 +466,40 @@ function openSheet(html, { narrow = false, acts = {}, onClose, locked = false } 
 }
 
 /* ================= cards ================= */
+function showcase(c) {
+  if (c._show) return c._show;
+  const by = l => l.slice().sort((a, b) => evSkin(b) - evSkin(a));
+  const guns = by(Object.entries(c.pools).filter(([t]) => t !== 'rare').flatMap(([, l]) => l));
+  const stars = by(c.pools.rare || []);
+  const out = [], seen = new Set();
+  const add = s => { if (s && !seen.has(s.weapon) && out.length < 3) { seen.add(s.weapon); out.push(s); } };
+  if (guns.length) { add(guns[0]); add(stars[0]); guns.slice(1).forEach(add); }
+  stars.forEach(add);
+  const all = guns.concat(stars);
+  while (out.length < 3) out.push(all[out.length % all.length]);
+  return (c._show = out);
+}
+const GRP_DECO = { halloween: '🎃', bf: '%' };
 function caseArt(c, size = '360fx360f') {
   if (c.kind === 'official') return `<img src="${img(c.img, size)}" alt="${esc(c.name)}" loading="lazy">`;
-  return `<div class="ccase" style="--a:${c.a};--b:${c.b}"><img src="${img(c.hero.img)}" alt="" loading="lazy"><div class="lock"></div><div class="mark">${esc(c.mark)}</div></div>`;
+  const [a, b, d] = showcase(c);
+  return `<div class="crate g-${c.grp}" style="--a:${c.a};--b:${c.b}">
+    <div class="rays"></div>
+    <img class="loot l2" src="${img(b.img)}" alt="" loading="lazy">
+    <img class="loot l3" src="${img(d.img)}" alt="" loading="lazy">
+    <img class="loot l1" src="${img(a.img)}" alt="" loading="lazy">
+    <div class="box"><div class="lid"></div><div class="front"><span>${esc(c.mark)}</span></div></div>
+    ${GRP_DECO[c.grp] ? `<span class="deco">${GRP_DECO[c.grp]}</span>` : ''}
+  </div>`;
 }
+const saleOf = c => c.old ? Math.round((1 - c.price / c.old) * 100) : 0;
+const priceHTML = c => c.old ? `<s>${money(c.old)}</s>${money(c.price)}` : money(c.price);
 function caseCard(c, i) {
-  const badge = c.kind === 'custom' ? '<span class="badge custom">Авторский</span>' : (c.idx < 3 ? '<span class="badge new">New</span>' : '');
-  return `<div class="case-card glass-flat" style="--i:${i};--glow:${c.glow}" data-go="#/case/${c.id}">${badge}<div class="art">${caseArt(c)}</div><h3>${esc(c.name)}</h3><div class="meta">${c.kind === 'custom' ? esc(c.desc) : c.count + ' предметов · ' + (c.d || '').slice(0, 4)}</div><span class="price-chip">${money(c.price)}</span></div>`;
+  const badge = c.grp === 'halloween' ? '<span class="badge hw">🎃 Хэллоуин</span>'
+    : c.grp === 'bf' ? `<span class="badge bf">−${saleOf(c)}% Black Friday</span>`
+    : c.reveal ? '<span class="badge knife">100% ★</span>'
+    : c.kind === 'custom' ? '<span class="badge custom">Авторский</span>' : (c.idx < 3 ? '<span class="badge new">New</span>' : '');
+  return `<div class="case-card glass-flat ${c.grp ? 'grp-' + c.grp : ''}" style="--i:${i};--glow:${c.glow}" data-go="#/case/${c.id}">${badge}<div class="art">${caseArt(c)}</div><h3>${esc(c.name)}</h3><div class="meta">${c.kind === 'custom' ? esc(c.desc) : c.count + ' предметов · ' + (c.d || '').slice(0, 4)}</div><span class="price-chip ${c.old ? 'sale' : ''}">${priceHTML(c)}</span></div>`;
 }
 function itemCard(it, o = {}) {
   const s = SK[it.s], w = wearOf(it.f);
@@ -514,47 +592,82 @@ function pushTicker(h) {
 
 /* ================= HOME ================= */
 const H = { tab: 'all', q: '', sort: 'def' };
+const GROUPS = [
+  ['halloween', '🎃 Хэллоуин', 'жуткие коллекции сезона'],
+  ['bf', '🖤 Black Friday', 'сниженная наценка — больше возврат'],
+  ['knives', '🔪 Ножи и перчатки', '100% редкий предмет из каждого кейса'],
+  ['custom', '✦ Авторские', 'выдуманные коллекции из реальных скинов'],
+  ['official', 'Кейсы CS2', 'официальные, с реальным содержимым'],
+];
+const grpOf = c => c.kind === 'official' ? 'official' : c.grp || 'custom';
+const SALE_END = new Date(2026, 11, 1); // sale runs until Dec 1
+function countdown() {
+  const ms = SALE_END - Date.now();
+  if (ms <= 0) return '';
+  const d = Math.floor(ms / 864e5), h = Math.floor(ms / 36e5) % 24, m = Math.floor(ms / 6e4) % 60, sec = Math.floor(ms / 1e3) % 60;
+  const p2 = n => String(n).padStart(2, '0');
+  return `${d ? `<b>${d}</b><i>д</i>` : ''}<b>${p2(h)}</b><i>:</i><b>${p2(m)}</b><i>:</i><b>${p2(sec)}</b>`;
+}
+function webSVG() {
+  const ends = [[150, 0], [150, 46], [132, 100], [96, 140], [46, 150], [0, 150]];
+  let d = ends.map(([x, y]) => `M0 0L${x} ${y}`).join('');
+  for (const f of [.2, .38, .58, .8]) {
+    const pts = ends.map(([x, y]) => [x * f, y * f]);
+    d += 'M' + pts.map(([x, y], i) => i ? `Q${(pts[i - 1][0] + x) / 2 * .86} ${(pts[i - 1][1] + y) / 2 * .86} ${x.toFixed(1)} ${y.toFixed(1)}` : `${x.toFixed(1)} ${y.toFixed(1)}`).join('');
+  }
+  return `<svg class="web" viewBox="0 0 150 150"><path d="${d}" fill="none" stroke="rgba(255,255,255,.22)" stroke-width=".8"/><line x1="96" y1="0" x2="96" y2="62" stroke="rgba(255,255,255,.3)" stroke-width=".6"/><g transform="translate(96 66)"><ellipse rx="5" ry="6" fill="#120a18"/><circle cy="-6" r="3.2" fill="#120a18"/><path d="M-4-2l-7-4M-4 1l-8 0M-4 4l-7 5M4-2l7-4M4 1l8 0M4 4l7 5" stroke="#120a18" stroke-width="1.2"/></g></svg>`;
+}
 function viewHome() {
-  const feat = OFFICIAL[0];
+  const feat = caseById('c-halloween') || OFFICIAL[0];
   main.innerHTML = `
   ${tickerHTML()}
-  <section class="hero glass edge">
+  <section class="hero season-hero glass edge">
+    ${webSVG()}
     <div>
-      <h1>Открывай кейсы.<br><span class="grad">${ONLINE ? 'Вместе с друзьями.' : 'Без риска.'}</span></h1>
-      <p>Настоящие скины и кейсы CS2 плюс авторские коллекции. Шансы как в игре, флоат и StatTrak™${ONLINE ? ', кейс-баттлы, топ игроков и подарки друзьям' : ', свой инвентарь, продажа и апгрейды'} — всё на виртуальном балансе.</p>
+      <div class="season-chip"><span>🎃 Halloween</span><i>×</i><span>🖤 Black Friday</span></div>
+      <h1>Чёрная пятница<br><span class="grad">в мире кейсов</span></h1>
+      <p>Хэллоуинские коллекции, кейсы со сниженной наценкой и кейсы, где 100% выпадает нож. ${ONLINE ? 'Баттлы с друзьями, топ и подарки — ' : ''}всё на виртуальном балансе.</p>
+      <div class="sale-timer" id="saleTimer">${countdown() ? `<span>До конца распродажи</span><div class="cd">${countdown()}</div>` : ''}</div>
       <div class="actions">
-        <button class="btn primary big" data-go="#/case/${feat.id}">Открыть ${esc(feat.name)}</button>
-        ${ONLINE ? '<button class="btn big" data-go="#/battles">⚔ Баттлы</button>' : '<button class="btn big" data-act="toCases">Все кейсы</button>'}
+        <button class="btn primary big" data-go="#/case/${feat.id}">🎃 Открыть ${esc(feat.name)}</button>
+        <button class="btn big" data-act="toGrp" data-g="bf">🖤 Распродажа</button>
       </div>
     </div>
     <div class="hero-case" data-go="#/case/${feat.id}">
       <div class="halo"></div>
-      <img src="${img(feat.img, '512fx384f')}" alt="">
-      <div class="hero-tag glass">Новинка · ${money(feat.price)}</div>
+      ${caseArt(feat)}
+      <div class="hero-tag glass">Хит сезона · ${money(feat.price)}</div>
     </div>
   </section>
   <div class="section-head" id="casesHead">
     <h2>Кейсы</h2><span class="sub" id="caseCount"></span><div class="grow"></div>
     <div class="controls">
-      ${seg('tab', [['all', 'Все'], ['official', 'CS2'], ['custom', 'Авторские']], H.tab, 'sm')}
       <label class="search">${ICON.search}<input id="q" placeholder="Поиск кейса" value="${esc(H.q)}" autocomplete="off"></label>
       <select class="select" id="sort">
         ${[['def', 'По умолчанию'], ['pa', 'Сначала дешёвые'], ['pd', 'Сначала дорогие'], ['nm', 'По названию']].map(([v, l]) => `<option value="${v}" ${H.sort === v ? 'selected' : ''}>${l}</option>`).join('')}
       </select>
     </div>
   </div>
+  <div class="cat-row">${seg('tab', [['all', 'Все'], ...GROUPS.map(([g, l]) => [g, l])], H.tab, 'sm cats')}</div>
   <div id="caseGrid"></div>`;
   drawCaseGrid();
+  const tmr = setInterval(() => { const t = $('#saleTimer .cd'); if (t) t.innerHTML = countdown(); }, 1000);
   VIEW = {
+    destroy() { clearInterval(tmr); },
     onSeg(n, v) { if (n === 'tab') { H.tab = v; drawCaseGrid(); } },
     onInput(t) { if (t.id === 'q') { H.q = t.value; drawCaseGrid(); } },
     onChange(t) { if (t.id === 'sort') { H.sort = t.value; drawCaseGrid(); } },
-    act(a) { if (a === 'toCases') $('#casesHead').scrollIntoView({ behavior: 'smooth', block: 'start' }); },
+    act(a, el) {
+      if (a === 'toGrp') {
+        H.tab = el.dataset.g; segSelect($('[data-seg="tab"]', main), H.tab); drawCaseGrid();
+        $('#casesHead').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    },
   };
 }
 function drawCaseGrid() {
   const q = H.q.trim().toLowerCase();
-  let list = ALL_CASES.filter(c => (H.tab === 'all' || c.kind === H.tab) && (!q || c.name.toLowerCase().includes(q)));
+  let list = ALL_CASES.filter(c => (H.tab === 'all' || grpOf(c) === H.tab) && (!q || c.name.toLowerCase().includes(q)));
   if (H.sort === 'pa') list.sort((a, b) => a.price - b.price);
   if (H.sort === 'pd') list.sort((a, b) => b.price - a.price);
   if (H.sort === 'nm') list.sort((a, b) => a.name.localeCompare(b.name));
@@ -562,10 +675,10 @@ function drawCaseGrid() {
   const g = $('#caseGrid');
   if (!list.length) { g.innerHTML = `<div class="empty-state"><div class="ill">🔍</div><h3>Ничего не нашлось</h3>Попробуйте другой запрос</div>`; return; }
   if (H.tab === 'all' && !q && H.sort === 'def') {
-    g.innerHTML = `<div class="section-head" style="margin-top:6px"><h2 style="font-size:20px">✦ Авторские</h2><span class="sub">выдуманные коллекции из реальных скинов</span></div>
-      <div class="grid-cases stagger">${CUSTOM.map(caseCard).join('')}</div>
-      <div class="section-head"><h2 style="font-size:20px">Кейсы CS2</h2><span class="sub">официальные, с реальным содержимым</span></div>
-      <div class="grid-cases stagger">${OFFICIAL.map(caseCard).join('')}</div>`;
+    g.innerHTML = GROUPS.map(([k, l, sub]) => {
+      const cs = list.filter(c => grpOf(c) === k);
+      return cs.length ? `<div class="section-head grp-head grp-${k}"><h2 style="font-size:21px">${l}</h2><span class="sub">${sub}</span></div><div class="grid-cases stagger">${cs.map(caseCard).join('')}</div>` : '';
+    }).join('');
   } else g.innerHTML = `<div class="grid-cases stagger">${list.map(caseCard).join('')}</div>`;
 }
 
@@ -586,7 +699,7 @@ function viewCase(id) {
       <button class="icon-btn" data-go="#/">${ICON.back}</button>
       <div><h1>${esc(c.name)}</h1><div class="ev-note">${c.kind === 'custom' ? 'Авторский кейс · ' + esc(c.desc) : 'Официальный кейс CS2 · ' + (c.d || '')}</div></div>
       <div class="grow"></div>
-      <span class="price-chip" style="margin:0">${money(c.price)}</span>
+      <span class="price-chip ${c.old ? 'sale' : ''}" style="margin:0">${priceHTML(c)}</span>
     </div>
     <div class="case-stage" id="stage" style="--glow:${c.glow}"><div class="halo"></div>${caseArt(c, '512fx384f')}</div>
     <div class="rolls" id="rolls" hidden></div>
@@ -636,9 +749,9 @@ function fakeRoll(c) {
   const t = pickWeighted(o), pool = c.pools[t];
   return { s: pool[Math.floor(Math.random() * pool.length)].i, st: false, tier: t };
 }
-function rcHTML(d) {
+function rcHTML(d, c) {
   const s = SK[d.s];
-  if (s.star) return `<div class="rc gold"><b>★</b><span>Редкий предмет</span></div>`;
+  if (s.star && !(c && c.reveal)) return `<div class="rc gold"><b>★</b><span>Редкий предмет</span></div>`;
   return `<div class="rc" style="--rc:${colOf(s)}"><img src="${img(s.img, '200fx200f')}" alt=""><span>${esc(s.pat)}</span></div>`;
 }
 const shake = el => el && el.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(-8px)' }, { transform: 'translateX(8px)' }, { transform: 'translateX(-4px)' }, { transform: 'translateX(0)' }], { duration: 380 });
@@ -686,7 +799,7 @@ function spin(roll, c, drop, k, durOverride) {
     const N = 62, WIN = 52;
     const items = Array.from({ length: N }, (_, i) => i === WIN ? drop : fakeRoll(c));
     const strip = $('.strip', roll);
-    strip.innerHTML = items.map(rcHTML).join('');
+    strip.innerHTML = items.map(d => rcHTML(d, c)).join('');
     const cw = strip.children[0].offsetWidth + 8;
     const W = roll.clientWidth;
     const jitter = (Math.random() - .5) * (cw - 24);
@@ -707,7 +820,7 @@ function spin(roll, c, drop, k, durOverride) {
       roll.classList.add('done');
       const w = strip.children[WIN];
       const s = SK[drop.s];
-      if (s.star) w.outerHTML = `<div class="rc win" style="--rc:${TIER_COL.rare}"><img src="${img(s.img, '200fx200f')}" alt=""><span>${esc(s.pat)}</span></div>`;
+      if (s.star && !c.reveal) w.outerHTML = `<div class="rc win" style="--rc:${TIER_COL.rare}"><img src="${img(s.img, '200fx200f')}" alt=""><span>${esc(s.pat)}</span></div>`;
       else w.classList.add('win');
       res();
     }, dur + 80);
@@ -1458,7 +1571,7 @@ function authSheet() {
          <label class="field"><span>Пароль</span><input id="aPw" type="password" autocomplete="${mode === 'login' ? 'current-password' : 'new-password'}"></label>
          <div class="acts"><button class="btn primary big" data-sact="go">${mode === 'login' ? 'Войти' : 'Зарегистрироваться'}</button></div>`;
     const sh = openSheet(`
-      <div class="auth-logo"><div class="logo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linejoin="round"><path d="M3 8h18v12H3z"/><path d="M2 4h20v4H2zM10 12h4"/></svg></div></div>
+      <div class="auth-logo">${logoSVG()}</div>
       <h2>GlassDrop</h2>
       <div class="subtitle">Кейсы CS2, баттлы и топ — вместе с друзьями</div>
       <div style="display:flex;justify-content:center;margin-top:20px">${seg('mode', [['guest', 'Гость'], ['login', 'Вход'], ['reg', 'Регистрация']], mode)}</div>
@@ -1532,6 +1645,7 @@ async function startOnline() {
     else if (s.star || h.p >= 25) { SFX.ping(); notify({ title: `${h.nick} выбил${h.src === 'upgrade' ? ' апгрейдом' : ''}`, sub: fullName(h), icon: thumbIco(h.s), amt: money(h.p), tall: true, ms: 4000 }); }
   }).subscribe();
   sb.auth.onAuthStateChange((ev) => { if (ev === 'SIGNED_OUT') location.reload(); });
+  startStats();
 }
 
 /* ================= boot ================= */
@@ -1543,6 +1657,7 @@ async function startOnline() {
     route();
     notify({ title: `Привет, ${esc(ME.nick)}!`, sub: ME.guest ? 'Ты играешь как гость' : 'С возвращением', icon: ICON.gift, color: 'rgba(10,132,255,.35)' });
   } else {
+    startStats();
     route();
     if (!localStorage.getItem(KEY)) { save(); setTimeout(() => notify({ title: 'Добро пожаловать!', sub: 'На балансе $100 — открывайте кейсы', icon: ICON.gift, color: 'rgba(10,132,255,.35)' }), 900); }
   }

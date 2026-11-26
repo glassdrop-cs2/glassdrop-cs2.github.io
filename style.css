@@ -602,3 +602,144 @@ footer { text-align: center; color: var(--text-3); font-size: 12px; padding: 0 2
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+/* ============ Logo ============ */
+.logo-drop { width: 36px; height: 36px; display: grid; place-items: center; filter: drop-shadow(0 4px 12px rgba(255,94,58,.55)); transition: transform .6s var(--spring); }
+.logo:hover .logo-drop { transform: rotate(-10deg) scale(1.08); }
+.logo-drop svg, .auth-logo svg { width: 100%; height: 100%; }
+.logo .word span { background: linear-gradient(90deg, #ffb347, #ff5e3a 50%, #b26bff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.auth-logo svg { width: 68px; height: 68px; filter: drop-shadow(0 10px 24px rgba(255,94,58,.55)); animation: float 5s ease-in-out infinite; }
+
+/* ============ Online / traffic pill ============ */
+.site-stats { display: flex; align-items: center; gap: 2px; height: 38px; padding: 0 6px; border-radius: 999px; background: rgba(0,0,0,.22); border: 1px solid var(--stroke); font-size: 12px; cursor: default; white-space: nowrap; }
+.site-stats:empty { display: none; }
+.site-stats > span { display: flex; align-items: baseline; gap: 4px; padding: 0 8px; }
+.site-stats > span + span { border-left: 1px solid var(--stroke); }
+.site-stats b { font-weight: 800; font-variant-numeric: tabular-nums; font-size: 13px; }
+.site-stats em { font-style: normal; color: var(--text-3); font-weight: 600; }
+.site-stats .on i { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 10px var(--green); animation: pulse 1.6s infinite; align-self: center; }
+
+/* ============ Bonus: next click is special ============ */
+.balance .plus.mega { background: linear-gradient(180deg, #ffd978, #ff8a1f) !important; color: #2a1300; box-shadow: 0 0 0 0 rgba(255,170,40,.7); animation: megaPulse 1.6s infinite; }
+.balance .plus.mega::after { content: attr(data-amt); position: absolute; top: -9px; right: -12px; padding: 1px 5px; border-radius: 999px; font-size: 9.5px; font-weight: 900; background: #ff3b3b; color: #fff; box-shadow: 0 2px 8px rgba(255,59,59,.6); }
+.balance .plus { position: relative; }
+@keyframes megaPulse { 0% { box-shadow: 0 0 0 0 rgba(255,170,40,.7); } 70% { box-shadow: 0 0 0 12px rgba(255,170,40,0); } 100% { box-shadow: 0 0 0 0 rgba(255,170,40,0); } }
+
+/* ============ Season theme: Halloween × Black Friday ============ */
+body.season { --bg: #07040b; }
+.season .bg .b1 { background: radial-gradient(circle, #ff6a00 0%, transparent 62%); opacity: .5; }
+.season .bg .b2 { background: radial-gradient(circle, #7b2cff 0%, transparent 65%); }
+.season .bg .b3 { background: radial-gradient(circle, #ff1f4b 0%, transparent 62%); opacity: .3; }
+.season .bg .b4 { background: radial-gradient(circle, #3d0a6b 0%, transparent 65%); opacity: .6; }
+.season .btn.primary { background: linear-gradient(180deg, #ff9a3c, #ff5a1f); box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 10px 30px -8px rgba(255,106,0,.75); }
+.season .btn.primary:hover { background: linear-gradient(180deg, #ffab55, #ff6a2f); }
+.season .seg .pill { background: linear-gradient(180deg, rgba(255,140,60,.32), rgba(255,90,30,.18)); }
+.season .hero h1 .grad { background: linear-gradient(90deg, #ffb347, #ff5e3a 45%, #b26bff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.season .hero-case .halo { background: conic-gradient(from 0deg, rgba(255,106,0,0), rgba(255,106,0,.5), rgba(155,77,255,.5), rgba(255,31,75,.35), rgba(255,106,0,0)); }
+
+/* bats */
+.bats { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.bats i { position: absolute; width: 46px; height: 24px; opacity: .75; left: -60px;
+  background: no-repeat center/contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 32'%3E%3Cpath d='M32 9c1.5-3 2.4-5.6 2.6-8 .9 2.6 2 4.6 3.6 6 4.6-4 11-6 19.8-4.4-4.2 2.4-6.4 5.6-6.4 9.8-3.4-2.2-6.8-2-9.8 1.2-1.8-1.8-4.2-1.6-6 .6-1.4 2.2-2.6 4.6-3.8 7.4-1.2-2.8-2.4-5.2-3.8-7.4-1.8-2.2-4.2-2.4-6-.6-3-3.2-6.4-3.4-9.8-1.2 0-4.2-2.2-7.4-6.4-9.8C15.8 1 22.2 3 26.8 7c1.6-1.4 2.7-3.4 3.6-6 .2 2.4 1.1 5 1.6 8z' fill='%23120818'/%3E%3C/svg%3E");
+  animation: batFly 26s linear infinite, batFlap .28s ease-in-out infinite alternate; }
+.bats i:nth-child(1) { top: 14%; animation-delay: 0s, 0s; }
+.bats i:nth-child(2) { top: 32%; width: 30px; animation-duration: 34s, .22s; animation-delay: -12s, -.1s; opacity: .5; }
+.bats i:nth-child(3) { top: 58%; width: 56px; animation-duration: 30s, .32s; animation-delay: -20s, 0s; }
+.bats i:nth-child(4) { top: 76%; width: 26px; animation-duration: 40s, .2s; animation-delay: -5s, -.05s; opacity: .45; }
+.bats i:nth-child(5) { top: 44%; width: 38px; animation-duration: 36s, .26s; animation-delay: -28s, -.12s; opacity: .6; }
+@keyframes batFly { 0% { transform: translate(0, 0); } 25% { transform: translate(28vw, -6vh); } 50% { transform: translate(55vw, 4vh); } 75% { transform: translate(82vw, -5vh); } 100% { transform: translate(calc(100vw + 120px), 2vh); } }
+@keyframes batFlap { from { scale: 1 1; } to { scale: 1 .45; } }
+
+/* season hero */
+.season-hero { position: relative; }
+.season-hero .web { position: absolute; left: 0; top: 0; width: 170px; height: 170px; pointer-events: none; opacity: .9; }
+.season-chip { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px; border-radius: 999px; font-size: 13px; font-weight: 800; letter-spacing: .02em; margin-bottom: 16px;
+  background: linear-gradient(90deg, rgba(255,106,0,.28), rgba(0,0,0,.5)); border: 1px solid rgba(255,160,80,.35); }
+.season-chip i { font-style: normal; color: var(--text-3); }
+.sale-timer { display: flex; align-items: center; gap: 12px; margin: -10px 0 24px; flex-wrap: wrap; }
+.sale-timer:empty { display: none; }
+.sale-timer > span { font-size: 13px; font-weight: 700; color: var(--text-2); text-transform: uppercase; letter-spacing: .06em; }
+.sale-timer .cd { display: flex; align-items: center; gap: 3px; }
+.sale-timer .cd b { min-width: 38px; height: 40px; padding: 0 6px; border-radius: 12px; display: grid; place-items: center; font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; background: #000; border: 1px solid rgba(255,255,255,.14); box-shadow: inset 0 1px 0 rgba(255,255,255,.12); }
+.sale-timer .cd i { font-style: normal; font-weight: 800; color: var(--text-3); padding: 0 2px; }
+.hero-case .crate { width: 400px; max-width: 100%; animation: float 6s ease-in-out infinite; }
+
+/* categories */
+.cat-row { margin: -4px 0 6px; overflow-x: auto; scrollbar-width: none; }
+.cat-row::-webkit-scrollbar { display: none; }
+.seg.cats button { white-space: nowrap; }
+.grp-head h2 { display: flex; align-items: center; gap: 8px; }
+.grp-head.grp-halloween h2 { color: #ffb36b; }
+.grp-head.grp-knives h2 { color: #e8e8ee; }
+
+/* badges & prices */
+.badge.hw { background: linear-gradient(90deg, rgba(255,106,0,.55), rgba(90,20,140,.5)); }
+.badge.bf { background: #000; border-color: rgba(255,255,255,.4); color: #fff; }
+.badge.knife { background: linear-gradient(90deg, rgba(228,174,57,.55), rgba(120,80,10,.5)); color: #fff3d6; }
+.price-chip s { color: var(--text-3); font-weight: 600; margin-right: 6px; font-size: 12px; }
+.price-chip.sale { background: rgba(255,214,10,.14); color: #ffd60a; border-color: rgba(255,214,10,.3); }
+.case-card.grp-bf { background: linear-gradient(180deg, rgba(0,0,0,.55), rgba(20,20,24,.35)); }
+.case-card.grp-halloween { background: linear-gradient(180deg, rgba(255,106,0,.09), rgba(60,10,90,.12)); }
+
+/* ============ Custom case art: open crate with loot popping out ============ */
+.crate { --a: #8be9ff; --b: #6b5cff; position: relative; width: 100%; aspect-ratio: 1.25; container-type: inline-size; }
+.case-card .art .crate { width: 100%; }
+.crate .rays { position: absolute; inset: -6% 4% 14%; border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--a) 55%, transparent) 0 6deg, transparent 6deg 18deg);
+  -webkit-mask: radial-gradient(circle, #000 18%, transparent 68%); mask: radial-gradient(circle, #000 18%, transparent 68%);
+  opacity: .55; animation: spin 40s linear infinite; }
+.crate img.loot { position: absolute !important; height: auto !important; object-fit: contain; animation: none !important; transition: transform .6s var(--spring) !important; filter: drop-shadow(0 10px 10px rgba(0,0,0,.55)) !important; }
+.crate img.l1 { width: 72% !important; left: 14%; top: 10%; transform: rotate(-14deg); z-index: 3; }
+.crate img.l2 { width: 50% !important; left: 2%; top: 18%; transform: rotate(24deg); z-index: 2; opacity: .92; }
+.crate img.l3 { width: 50% !important; right: 2%; left: auto; top: 16%; transform: rotate(-38deg) scaleX(-1); z-index: 2; opacity: .92; }
+.case-card:hover .crate img.l1 { transform: rotate(-8deg) translateY(-6%) scale(1.06) !important; }
+.case-card:hover .crate img.l2 { transform: rotate(16deg) translate(-4%, -4%) !important; }
+.case-card:hover .crate img.l3 { transform: rotate(-30deg) translate(-4%, -4%) scaleX(-1) !important; }
+.crate .box { position: absolute; left: 12%; right: 12%; bottom: 4%; height: 40%; z-index: 4; }
+.crate .front { position: absolute; inset: 22% 0 0; border-radius: 6cqw;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--b) 80%, #fff 12%), color-mix(in srgb, var(--b) 85%, #000));
+  border: 1.4cqw solid color-mix(in srgb, var(--a) 70%, transparent);
+  box-shadow: inset 0 2cqw 0 rgba(255,255,255,.18), inset 0 -3cqw 6cqw rgba(0,0,0,.35), 0 4cqw 8cqw -2cqw rgba(0,0,0,.7), 0 0 10cqw -3cqw var(--a);
+  display: grid; place-items: center; overflow: hidden; }
+.crate .front::before { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 18%, rgba(0,0,0,.14) 18% 19%); }
+.crate .front::after { content: ""; position: absolute; left: -30%; top: 0; width: 30%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,.22), transparent); transform: skewX(-20deg); animation: shine 4.5s ease-in-out infinite; }
+.crate .front span { position: relative; z-index: 1; font-size: 6.4cqw; font-weight: 900; letter-spacing: .14em; text-transform: uppercase; color: #fff; text-shadow: 0 .4cqw 1.6cqw rgba(0,0,0,.6), 0 0 4cqw var(--a); white-space: nowrap; max-width: 92%; overflow: hidden; text-overflow: ellipsis; }
+.crate .lid { position: absolute; left: -3%; right: -3%; top: 0; height: 30%; border-radius: 4cqw 4cqw 2cqw 2cqw; transform-origin: 50% 100%; transform: perspective(60cqw) rotateX(52deg) translateY(-26%);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--a) 60%, var(--b)), color-mix(in srgb, var(--b) 70%, #000));
+  border: 1.2cqw solid color-mix(in srgb, var(--a) 55%, transparent); box-shadow: 0 -2cqw 8cqw -2cqw var(--a); }
+.crate .deco { position: absolute; z-index: 5; right: 6%; bottom: 2%; font-size: 15cqw; line-height: 1; filter: drop-shadow(0 1cqw 2cqw rgba(0,0,0,.6)); }
+.crate.g-bf .deco { right: 5%; bottom: 30%; width: 17cqw; height: 17cqw; border-radius: 50%; display: grid; place-items: center; background: #ffd60a; color: #000; font-size: 9cqw; font-weight: 900; transform: rotate(-14deg); box-shadow: 0 1cqw 4cqw rgba(0,0,0,.5); }
+@keyframes shine { 0%, 60% { left: -30%; } 100% { left: 130%; } }
+.case-stage .crate { width: 420px; max-width: 86%; animation: float 6s ease-in-out infinite; }
+.bc-art .crate { width: 300px; animation: float 6s ease-in-out infinite; }
+.bcase .crate, .bt-case .crate { width: 100%; }
+.bcase .crate .rays, .bt-case .crate .rays, .bcase .crate .front span, .bt-case .crate .front span { display: none; }
+
+@media (max-width: 1100px) { .site-stats > span:not(.on) { display: none; } }
+@media (max-width: 560px) {
+  .site-stats { height: 32px; padding: 0 2px; }
+  .site-stats .on em { display: none; }
+  .logo .word, .logo small { display: none; }
+  .season-hero .web { width: 110px; height: 110px; }
+  .sale-timer .cd b { min-width: 32px; height: 34px; font-size: 16px; }
+}
+@media (prefers-reduced-motion: reduce) { .bats { display: none; } }
+
+/* fit the header: stacked stats, tighter nav */
+.site-stats { height: 42px; border-radius: 14px; }
+.site-stats > span { flex-direction: column; align-items: center; gap: 0; padding: 0 9px; line-height: 1.05; }
+.site-stats em { font-size: 9.5px; text-transform: uppercase; letter-spacing: .04em; }
+.site-stats .on { flex-direction: row; gap: 6px; }
+.site-stats .on > b, .site-stats .on > em { display: block; }
+.site-stats .on { display: grid; grid-template-columns: auto auto; grid-template-rows: auto auto; column-gap: 5px; }
+.site-stats .on i { grid-row: 1 / 3; }
+.site-stats .on b { grid-column: 2; }
+.site-stats .on em { grid-column: 2; }
+@media (max-width: 1640px) { .logo small { display: none; } .topbar { gap: 8px; } .topbar .seg button { padding: 0 11px; } .site-stats > span { padding: 0 7px; } }
+@media (max-width: 1240px) { .topbar #nav button span { display: none; } }
+.season-hero .web { left: auto; right: 0; transform: scaleX(-1); }
+.season-hero .hero-case { height: 360px; }
+.season-hero .hero-case .crate { width: 360px; }
+.season-hero .hero-case .hero-tag { bottom: -8px; z-index: 6; }
+.logo small { display: none; }
+.topbar { width: min(1360px, calc(100% - 28px)); }
