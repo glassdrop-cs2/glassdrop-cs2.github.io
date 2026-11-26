@@ -751,7 +751,7 @@ function showcase(c) {
 }
 const GRP_DECO = { halloween: gi('pumpkin'), bf: '%' };
 function caseArt(c, size = '360fx360f') {
-  if (c.kind === 'official' || c.img) return `<img src="${img(c.img, size)}" alt="${esc(c.name)}" loading="lazy" decoding="async">`;
+  if (c.kind === 'official') return `<img src="${img(c.img, size)}" alt="${esc(c.name)}" loading="lazy" decoding="async">`;
   const [a, b, d] = showcase(c);
   return `<div class="crate g-${c.grp}" style="--a:${c.a};--b:${c.b}">
     <div class="rays"></div>

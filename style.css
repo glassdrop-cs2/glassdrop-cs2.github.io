@@ -1115,3 +1115,9 @@ svg.gi { width: 1.2em; height: 1.2em; flex: none; display: inline-block; vertica
 .cp-art img { height: 100%; width: auto; }
 .bp-case > img { max-width: 100%; max-height: 78px; object-fit: contain; filter: drop-shadow(0 6px 10px rgba(0,0,0,.5)); }
 @media (max-width: 560px) { .actionbar { max-width: calc(100vw - 16px); flex-wrap: wrap; justify-content: center; row-gap: 6px; } .actionbar .btn.sm { padding: 0 10px; } }
+/* drawn crates inside the battle case picker */
+.cp-img, .cp-art { container-type: inline-size; }
+.cp-img .crate { width: 112px; }
+.cp-art .crate { width: 72px; }
+/* phones: crates keep their look, only the endless spin/shine stops */
+.lowfx .crate .rays, .lowfx .crate .front::after { animation: none; }
