@@ -6,7 +6,8 @@ create table if not exists skins (
   id int primary key, tier text not null, r text not null, cat text not null,
   mn float8, mx float8, st boolean not null, star boolean not null, base numeric not null
 );
-alter table skins add column if not exists px numeric[];  -- real market prices: FN,MW,FT,WW,BS, then StatTrak FN..BS
+alter table skins add column if not exists px numeric[];
+alter table skins add column if not exists weapon text;  -- real market prices: FN,MW,FT,WW,BS, then StatTrak FN..BS
 create table if not exists cases (id text primary key, name text not null, price numeric not null, odds jsonb not null);
 create table if not exists case_items (case_id text references cases on delete cascade, tier text not null, skin_id int references skins, primary key (case_id, skin_id));
 
@@ -39,6 +40,21 @@ alter table profiles add column if not exists bp_claimed int[] not null default 
 alter table profiles add column if not exists luck_until timestamptz;
 alter table profiles add column if not exists bp_premium boolean not null default false;
 alter table cases add column if not exists sale numeric not null default 0;
+-- Steam inventory quests (slots come from seed.sql)
+create table if not exists steam_quests (code text primary key, min numeric not null default 0, reward numeric not null, xp int not null, slots jsonb not null);
+alter table profiles add column if not exists steam_q text[] not null default '{}';
+-- "Реальная жизнь": catalog (rl_seed.sql), wallet with real money, owned things
+create table if not exists rl_catalog (id text primary key, cat text not null, price numeric not null, buy boolean not null, sell numeric not null, rent numeric not null default 0, starter boolean not null default false);
+alter table profiles add column if not exists rl_balance numeric(14,2) not null default 0;
+alter table profiles add column if not exists rl_init boolean not null default false;
+create table if not exists rl_inv (
+  id bigserial primary key, owner uuid not null references profiles on delete cascade,
+  item text not null references rl_catalog, paid numeric(14,2) not null, rent_from timestamptz, created_at timestamptz not null default now()
+);
+create index if not exists rl_inv_owner on rl_inv (owner);
+alter table rl_inv enable row level security;
+alter table rl_catalog enable row level security;
+alter table steam_quests enable row level security;
 create table if not exists bp_rewards (level int primary key, kind text not null, amount numeric, case_id text, n int, skin_id int, code text, mins int);
 alter table bp_rewards add column if not exists free boolean not null default false;
 create table if not exists perks (
@@ -526,7 +542,7 @@ begin
   return round((lo + (hi - lo) * random() * .999)::numeric, 9)::float8;
 end $$;
 
-create or replace function bp_end() returns timestamptz language sql immutable as $f$ select timestamptz '2027-01-01 00:00+02' $f$;
+create or replace function bp_end() returns timestamptz language sql immutable as $f$ select timestamptz '2026-12-02 23:59:59+02' $f$;
 
 create or replace function buy_pass() returns jsonb language plpgsql security definer set search_path = public as $$
 declare uid uuid := auth.uid(); bal numeric;
@@ -589,6 +605,129 @@ begin
   return jsonb_build_object('n', n, 'sum', v, 'payout', pay, 'fee', v - pay, 'balance', bal);
 end $$;
 
+create or replace function claim_steam_quest(p_code text) returns jsonb language plpgsql security definer set search_path = public as $$
+declare uid uuid := auth.uid(); q steam_quests; sl jsonb; bal numeric;
+begin
+  select * into q from steam_quests where code = p_code;
+  if not found then raise exception 'BAD_QUEST'; end if;
+  perform 1 from profiles where id = uid for update;
+  if p_code = any((select steam_q from profiles where id = uid)) then raise exception 'ALREADY_CLAIMED'; end if;
+  for sl in select value from jsonb_array_elements(q.slots) loop
+    if not exists (select 1 from steam_items si join skins k on k.id = si.skin_id
+                    where si.owner = uid and si.price >= q.min
+                      and case when sl ? 'cat' then k.cat = sl->>'cat'
+                               else k.weapon in (select jsonb_array_elements_text(sl->'w')) end) then
+      raise exception 'QUEST_NOT_DONE';
+    end if;
+  end loop;
+  update profiles set balance = balance + q.reward, xp = xp + q.xp, steam_q = steam_q || p_code where id = uid returning balance into bal;
+  return jsonb_build_object('balance', bal, 'reward', q.reward, 'xp', q.xp);
+end $$;
+
+-- ---------- "Реальная жизнь" ----------
+-- rent piles up for at most 7 days, then the tenant stops paying until you collect
+create or replace function rl_accrued(p_item text, p_from timestamptz) returns numeric language sql stable as $$
+  select case when p_from is null then 0
+              else round((select rent from rl_catalog where id = p_item) * least(extract(epoch from now() - p_from) / 86400, 7)::numeric, 2) end $$;
+
+create or replace function rl_state() returns jsonb language plpgsql security definer set search_path = public as $$
+declare uid uuid := auth.uid(); p profiles;
+begin
+  select * into p from profiles where id = uid for update;
+  if not found then raise exception 'NO_PROFILE'; end if;
+  if not p.rl_init then
+    insert into rl_inv (owner, item, paid) select uid, id, price from rl_catalog where starter order by id;
+    update profiles set rl_init = true where id = uid;
+  end if;
+  return jsonb_build_object(
+    'balance', (select rl_balance from profiles where id = uid),
+    'items', coalesce((select jsonb_agg(jsonb_build_object('id', r.id, 'item', r.item, 'paid', r.paid, 'rent_from', r.rent_from, 'acc', rl_accrued(r.item, r.rent_from)) order by r.id)
+                       from rl_inv r where r.owner = uid), '[]'::jsonb));
+end $$;
+
+create or replace function rl_buy(p_item text, p_n int) returns jsonb language plpgsql security definer set search_path = public as $$
+declare uid uuid := auth.uid(); c rl_catalog; cost numeric;
+begin
+  select * into c from rl_catalog where id = p_item;
+  if not found or not c.buy then raise exception 'BAD_ITEM'; end if;
+  if p_n < 1 or p_n > case when c.cat = 'food' then 20 else 1 end then raise exception 'BAD_N'; end if;
+  cost := round(c.price * p_n, 2);
+  update profiles set rl_balance = rl_balance - cost where id = uid and rl_balance >= cost;
+  if not found then raise exception 'NO_RL_FUNDS'; end if;
+  insert into rl_inv (owner, item, paid) select uid, c.id, c.price from generate_series(1, p_n);
+  return rl_state();
+end $$;
+
+create or replace function rl_sell(p_ids bigint[]) returns jsonb language plpgsql security definer set search_path = public as $$
+declare uid uuid := auth.uid(); n int; v numeric; rent numeric; bal numeric;
+begin
+  perform 1 from profiles where id = uid for update;
+  select count(*), coalesce(sum(round(r.paid * c.sell, 2)), 0), coalesce(sum(rl_accrued(r.item, r.rent_from)), 0) into n, v, rent
+    from rl_inv r join rl_catalog c on c.id = r.item where r.owner = uid and r.id = any(p_ids);
+  if n = 0 then raise exception 'NOT_OWNER'; end if;
+  delete from rl_inv where owner = uid and id = any(p_ids);
+  update profiles set rl_balance = rl_balance + v + rent where id = uid returning rl_balance into bal;
+  return jsonb_build_object('n', n, 'sum', v, 'rent', rent, 'balance', bal);
+end $$;
+
+create or replace function rl_rent(p_id bigint, p_on boolean) returns jsonb language plpgsql security definer set search_path = public as $$
+declare uid uuid := auth.uid(); r rl_inv; got numeric := 0;
+begin
+  perform 1 from profiles where id = uid for update;
+  select * into r from rl_inv where id = p_id and owner = uid;
+  if not found then raise exception 'NOT_OWNER'; end if;
+  if (select rent from rl_catalog where id = r.item) <= 0 then raise exception 'BAD_ITEM'; end if;
+  if p_on then
+    update rl_inv set rent_from = coalesce(rent_from, now()) where id = p_id;
+  else
+    got := rl_accrued(r.item, r.rent_from);
+    update rl_inv set rent_from = null where id = p_id;
+    update profiles set rl_balance = rl_balance + got where id = uid;
+  end if;
+  return rl_state() || jsonb_build_object('got', got);
+end $$;
+
+create or replace function rl_collect() returns jsonb language plpgsql security definer set search_path = public as $$
+declare uid uuid := auth.uid(); got numeric;
+begin
+  perform 1 from profiles where id = uid for update;
+  select coalesce(sum(rl_accrued(item, rent_from)), 0) into got from rl_inv where owner = uid and rent_from is not null;
+  update rl_inv set rent_from = now() where owner = uid and rent_from is not null;
+  update profiles set rl_balance = rl_balance + got where id = uid;
+  return rl_state() || jsonb_build_object('got', got);
+end $$;
+
+create or replace function rl_eat(p_id bigint) returns jsonb language plpgsql security definer set search_path = public as $$
+declare uid uuid := auth.uid();
+begin
+  delete from rl_inv r using rl_catalog c where r.id = p_id and r.owner = uid and c.id = r.item and c.cat = 'food';
+  if not found then raise exception 'NOT_OWNER'; end if;
+  return rl_state();
+end $$;
+
+-- real money -> site balance, 1:1
+create or replace function rl_deposit(p_amount numeric) returns jsonb language plpgsql security definer set search_path = public as $$
+declare uid uuid := auth.uid(); amt numeric := round(p_amount, 2); bal numeric; rl numeric;
+begin
+  if amt is null or amt < .01 then raise exception 'BAD_AMOUNT'; end if;
+  update profiles set rl_balance = rl_balance - amt, balance = balance + amt
+   where id = uid and rl_balance >= amt returning balance, rl_balance into bal, rl;
+  if not found then raise exception 'NO_RL_FUNDS'; end if;
+  return jsonb_build_object('balance', bal, 'rl_balance', rl, 'amount', amt);
+end $$;
+
+-- sell Steam items for real money (into the "Реальная жизнь" wallet), 10% fee
+create or replace function steam_sell_rl(p_ids bigint[]) returns jsonb language plpgsql security definer set search_path = public as $$
+declare uid uuid := auth.uid(); n int; v numeric; pay numeric; rl numeric;
+begin
+  with del as (delete from steam_items where owner = uid and id = any(p_ids) returning price)
+  select count(*), coalesce(sum(price), 0) into n, v from del;
+  if n = 0 then raise exception 'NOT_OWNER'; end if;
+  pay := round(v * .9, 2);
+  update profiles set rl_balance = rl_balance + pay where id = uid returning rl_balance into rl;
+  return jsonb_build_object('n', n, 'sum', v, 'payout', pay, 'fee', v - pay, 'rl_balance', rl);
+end $$;
+
 create or replace function withdraw_items(p_ids bigint[]) returns jsonb language plpgsql security definer set search_path = public as $$
 declare uid uuid := auth.uid(); n int; v numeric;
 begin
@@ -644,7 +783,7 @@ end $$;
 -- ============ permissions ============
 do $$ declare f text; begin
   -- internal helpers: not callable from the API
-  foreach f in array array['roll_float(int)','roll_drop(text)','grant_item(uuid,jsonb,text)','resolve_battle(bigint)','do_open(uuid,text,text,int)','roll_code_float(int,text)','bp_reward(int)'] loop
+  foreach f in array array['roll_float(int)','roll_drop(text)','grant_item(uuid,jsonb,text)','resolve_battle(bigint)','do_open(uuid,text,text,int)','roll_code_float(int,text)','bp_reward(int)','rl_accrued(text,timestamptz)'] loop
     execute format('revoke all on function %s from public, anon, authenticated', f);
   end loop;
   -- player API: signed-in users only (guests are signed in anonymously)
@@ -652,7 +791,9 @@ do $$ declare f text; begin
                            'upgrade_items(bigint[],int,text)','gift_item(bigint,text)','create_battle(text,int,int)','join_battle(bigint)',
                            'add_bot(bigint)','cancel_battle(bigint)','track_visit()','claim_quest(text)','claim_daily()',
                            'find_pumpkin(int)','my_pumpkins()','claim_level(int)','use_luck(bigint)','open_free(text,int)',
-                           'withdraw_items(bigint[])','play_climb(bigint[],numeric,numeric)','buy_pass()','steam_deposit(bigint[])'] loop
+                           'withdraw_items(bigint[])','play_climb(bigint[],numeric,numeric)','buy_pass()','steam_deposit(bigint[])',
+                           'claim_steam_quest(text)','rl_state()','rl_buy(text,int)','rl_sell(bigint[])','rl_rent(bigint,boolean)',
+                           'rl_collect()','rl_eat(bigint)','rl_deposit(numeric)','steam_sell_rl(bigint[])'] loop
     execute format('revoke all on function %s from public, anon', f);
     execute format('grant execute on function %s to authenticated', f);
   end loop;
