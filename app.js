@@ -28,6 +28,7 @@ const ICON = {
   inv: svg('<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>'),
   up: svg('<circle cx="12" cy="12" r="9"/><path d="m8 12 4-4 4 4M12 16V8"/>'),
   user: svg('<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>'),
+  home: svg('<path d="M3 11l9-7 9 7"/><path d="M5 9.5V20h14V9.5"/><path d="M10 20v-6h4v6"/>'),
   swords: svg('<path d="M14.5 17.5 3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2M9.5 6.5 14 2h3v3l-4.5 4.5M5 14l4 4M7 17l-3 3M3 19l2 2"/>'),
   trophy: svg('<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/>'),
   sOn: svg('<path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/>'),
@@ -298,6 +299,7 @@ const CFG = window.GD_CONFIG || {};
 const ONLINE = !!(CFG.url && CFG.key && window.supabase);
 const sb = ONLINE ? window.supabase.createClient(CFG.url, CFG.key, { auth: { persistSession: true, autoRefreshToken: true } }) : null;
 const ERR = {
+  NO_RL_FUNDS: 'Не хватает реальных денег', BAD_ITEM: 'Этот предмет нельзя купить', BAD_AMOUNT: 'Неверная сумма', BAD_QUEST: 'Нет такого задания',
   NO_FUNDS: 'Недостаточно средств', NICK_TAKEN: 'Этот ник уже занят', BAD_NICK: 'Ник: 3–16 символов — буквы, цифры, пробел, _ . -',
   NOT_OPEN: 'Баттл уже начался или отменён', FULL: 'Мест уже нет', ALREADY_IN: 'Ты уже в этом баттле', NO_USER: 'Игрок с таким ником не найден',
   SELF: 'Нельзя подарить самому себе', NOT_OWNER: 'Этот предмет уже не твой', TARGET_TOO_CHEAP: 'Цель должна быть дороже ставки',
@@ -359,7 +361,7 @@ function applyProfile(p) {
   S.bal = +p.balance;
   S.lastBonus = p.last_bonus ? Date.parse(p.last_bonus) : 0;
   S.bonusN = p.bonus_n || 0;
-  S.bpClaimed = p.bp_claimed || []; S.bpPremium = !!p.bp_premium; S.luckUntil = p.luck_until ? Date.parse(p.luck_until) : 0;
+  S.bpClaimed = p.bp_claimed || []; S.bpPremium = !!p.bp_premium; S.steamQ = p.steam_q || []; S.rlBal = +(p.rl_balance || 0); S.luckUntil = p.luck_until ? Date.parse(p.luck_until) : 0;
   S.xp = p.xp || 0; S.quests = p.quests || {}; S.dailyLast = p.daily_last; S.dailyStreak = p.daily_streak || 0; S.pumpkinDone = !!p.pumpkin_done;
   S.stats = { opened: p.opened, spent: +p.spent, sold: +p.sold, upW: p.up_w, upL: p.up_l, bw: p.battles_w, bl: p.battles_l, best: p.best_skin != null ? { s: p.best_skin, f: p.best_float, st: p.best_st, p: +p.best_price } : null };
   if (ME) ME.nick = p.nickname;
@@ -690,8 +692,8 @@ const NAV = ONLINE
   : [['', 'Кейсы', ICON.cases], ['upgrade', 'Апгрейд', ICON.up], ['quests', 'Квесты', ICON.quest], ['profile', 'Профиль', ICON.user]];
 const navHTML = list => `<span class="pill"></span>` + list.map(([r, l, i]) => `<button data-go="#/${r}" data-r="${r}">${i}<span>${l}</span></button>`).join('');
 $('#nav').innerHTML = navHTML(NAV); $('#dockNav').innerHTML = navHTML(NAV);
-const NAV_KEY = { case: '', battle: 'battles', u: 'top', inventory: 'profile', steam: 'profile' };
-const ptabsHTML = active => `<nav class="ptabs"><div class="ptab-bar">${[['profile', 'Профиль', ICON.user], ['inventory', 'Инвентарь', ICON.inv], ...(ONLINE ? [['steam', 'Steam', gi('steam')]] : [])]
+const NAV_KEY = { case: '', battle: 'battles', u: 'top', inventory: 'profile', steam: 'profile', life: 'profile' };
+const ptabsHTML = active => `<nav class="ptabs"><div class="ptab-bar">${[['profile', 'Профиль', ICON.user], ['inventory', 'Инвентарь', ICON.inv], ...(ONLINE ? [['steam', 'Steam', gi('steam')], ['life', 'Жизнь', ICON.home]] : [])]
   .map(([r, l, i]) => `<a class="ptab ${r === active ? 'on' : ''}" href="#/${r}">${i}<span>${l}</span>${r === 'inventory' ? `<em>${S.inv.length}</em>` : r === 'steam' && S.steam.length ? `<em>${S.steam.length}</em>` : ''}</a>`).join('')}</div></nav>`;
 function updateNav(r) {
   const key = r in NAV_KEY ? NAV_KEY[r] : r;
@@ -741,7 +743,7 @@ function showcase(c) {
   const guns = by(Object.entries(c.pools).filter(([t]) => t !== 'rare').flatMap(([, l]) => l));
   const stars = by(c.pools.rare || []);
   const out = [], seen = new Set();
-  const key = s => s.cat === 'sticker' || s.cat === 'graffiti' ? s.name : s.weapon;
+  const key = s => s.cat === 'sticker' || s.cat === 'graffiti' || s.cat === 'agent' ? s.name : s.weapon;
   const add = s => { if (s && !seen.has(key(s)) && out.length < 3) { seen.add(key(s)); out.push(s); } };
   if (guns.length) { add(guns[0]); add(stars[0]); guns.slice(1).forEach(add); }
   stars.forEach(add);
@@ -791,7 +793,7 @@ const onlineOnly = t => `<div class="empty-state"><div class="ill">${gi('globe')
 const main = $('#view');
 let VIEW = {};
 let viewToken = 0;
-const ROUTES = { steam: viewSteam, climb: viewClimb, quests: viewQuests, '': viewHome, case: viewCase, inventory: viewInventory, upgrade: viewUpgrade, profile: viewProfile, battles: viewBattles, battle: viewBattle, top: viewTop, u: viewUser };
+const ROUTES = { life: viewLife, steam: viewSteam, climb: viewClimb, quests: viewQuests, '': viewHome, case: viewCase, inventory: viewInventory, upgrade: viewUpgrade, profile: viewProfile, battles: viewBattles, battle: viewBattle, top: viewTop, u: viewUser };
 let firstRender = true;
 async function route() {
   if (ONLINE && !ME) return;
@@ -1816,7 +1818,7 @@ function bpReward(lv) {
   const free = lv % 7 === 0;
   return lv % 10 === 0 ? { level: lv, kind: 'case', case_id: 'c-knife-budget', n: 1, free } : lv % 5 === 0 ? { level: lv, kind: 'luck', mins: 30, free } : { level: lv, kind: 'money', amount: 100, free };
 }
-const BP_END = new Date('2027-01-01T00:00:00+02:00'), BP_PRICE = 200;
+const BP_END = new Date('2026-12-02T23:59:59+02:00'), BP_PRICE = 200;
 const bpEnded = () => Date.now() >= BP_END;
 const bpOpen = lv => bpReward(lv).free || S.bpPremium;
 const bpUnclaimed = () => { if (!ONLINE || bpEnded()) return []; const L = levelOf(S.xp || 0).lvl, out = []; for (let l = 2; l <= L; l++) if (!S.bpClaimed.includes(l)) out.push(l); return out; };
@@ -1950,7 +1952,8 @@ function viewQuests() {
     </section>
     ${ONLINE ? `<div class="section-head"><h2>${gi('ticket')} Боевой пропуск</h2><span class="sub">награда за каждый уровень · XP дают кейсы, апгрейды, баттлы, подъём и квесты</span></div>
     <div class="bp-head glass-flat ${S.bpPremium ? 'premium' : ''}">
-      <div class="bp-season"><span>Сезон 1 · ${bpEnded() ? 'завершён' : 'до ' + BP_END.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}</span><b>${bpEnded() ? 'Награды больше не выдаются' : `осталось ${Math.ceil((BP_END - Date.now()) / 864e5)} дн.`}</b></div>
+      <div class="bp-season"><span>Сезон 1 · ${bpEnded() ? 'завершён' : 'до ' + BP_END.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}</span><b>${bpEnded() ? 'Скоро зимний сезон' : `осталось ${Math.ceil((BP_END - Date.now()) / 864e5)} дн.`}</b></div>
+      <div class="bp-plan"><span>Дальше</span><b>${gi('sparkle')} зимний сезон</b></div>
       <div class="bp-plan"><span>Бесплатно</span><b>${(window.BP || []).filter(r => r.free).length} из ${(window.BP || []).length} наград</b></div>
       <div class="bp-plan prem"><span>Премиум</span><b>${S.bpPremium ? `${ICON.check} активен` : `все награды · ${money(BP_PRICE)}`}</b></div>
       <div class="grow"></div>${bpReady.length > 1 ? `<button class="btn green sm" data-act="bpAll">Забрать всё (${bpReady.length})</button>` : ''}
@@ -1970,6 +1973,7 @@ function viewQuests() {
         <div class="q-reward ${S.pumpkinDone ? 'done' : ''}">${S.pumpkinDone ? '✓ Награда $1000 получена' : 'Награда: $1000 + 500 XP'}</div>
       </section>
     </div>
+    ${ONLINE ? sqHTML() : ''}
     <div class="section-head"><h2>Задания</h2><span class="sub">награда растёт с каждым уровнем задания</span></div>
     <div class="q-list stagger">${activeQuests().map((k, i) => {
       const q = QUESTS[k], tier = S.quests[k] || 0, d = questDef(k, tier), cur = Math.min(q.cur(), d.target), ok = q.cur() >= d.target;
@@ -1995,6 +1999,7 @@ function viewQuests() {
       if (a === 'bp') claimLevels([+el.dataset.lv], el).then(() => { const k = $('#bpTrack') && $('#bpTrack').scrollLeft; draw(); if ($('#bpTrack')) $('#bpTrack').scrollLeft = k; });
       if (a === 'bpAll') claimLevels(bpReadyList(), el).then(() => { draw(); scrollBp(); });
       if (a === 'buyPass') buyPassSheet(() => { draw(); scrollBp(); });
+      if (a === 'sqClaim') claimSteamQuest(el, draw);
     },
   };
 }
@@ -2428,10 +2433,11 @@ async function viewProfile() {
 const STEAM_FEE = .05;
 function viewSteam() {
   if (!ONLINE) { location.hash = '#/profile'; return; }
-  const draw = () => { main.innerHTML = ptabsHTML('steam') + steamHTML(); };
+  const draw = () => { main.innerHTML = ptabsHTML('steam') + steamHTML() + sqHTML(); };
   draw();
   VIEW = {
     act(a, el) {
+      if (a === 'sqClaim') claimSteamQuest(el, draw);
       if (a === 'stItem') steamBackSheet([+el.dataset.u], draw);
       if (a === 'stAll') steamBackSheet(S.steam.map(i => i.u), draw);
     },
@@ -2439,16 +2445,28 @@ function viewSteam() {
 }
 function steamBackSheet(ids, onDone) {
   const its = S.steam.filter(i => ids.includes(i.u)); if (!its.length) return;
-  const sum = r2(its.reduce((a, i) => a + i.p, 0)), pay = r2(sum * (1 - STEAM_FEE)), one = its.length === 1 ? its[0] : null, s = one && SK[one.s];
+  const sum = r2(its.reduce((a, i) => a + i.p, 0)), pay = r2(sum * (1 - STEAM_FEE)), rlPay = r2(sum * (1 - RL_FEE)), one = its.length === 1 ? its[0] : null, s = one && SK[one.s];
   openSheet(`
     <div class="steam-badge">${gi('steam')}</div>
-    <h2>${one ? 'Вернуть на сайт?' : `Вернуть все ${its.length} предм.?`}</h2>
-    <div class="subtitle">${one ? esc(fullName(one)) + ' · ' : ''}стоимость ${money(sum)}<br>Предмет${one ? '' : 'ы'} прода${one ? 'ётся' : 'дутся'} из Steam, деньги придут на баланс сайта с комиссией ${STEAM_FEE * 100}%.</div>
+    <h2>${one ? 'Продать из Steam' : `Продать все ${its.length} предм.`}</h2>
+    <div class="subtitle">${one ? esc(fullName(one)) + ' · ' : ''}стоимость ${money(sum)}</div>
     ${one ? `<div class="detail-art" style="--rc:${colOf(s)};height:140px"><div class="glow"></div><img src="${img(s.img)}" alt=""></div>` : ''}
-    <div class="steam-calc"><span>Стоимость</span><b>${money(sum)}</b><span>Комиссия ${STEAM_FEE * 100}%</span><b class="r">−${money(r2(sum - pay))}</b><span>На баланс</span><b class="g">${money(pay)}</b></div>
-    <div class="acts"><button class="btn" data-sact="close">Отмена</button><button class="btn green" data-sact="ok">Получить ${money(pay)}</button></div>`, {
+    <div class="sell-ways">
+      <div class="sell-way"><b>На баланс сайта</b><span>комиссия ${STEAM_FEE * 100}%</span><em class="g">${money(pay)}</em><button class="btn green" data-sact="ok">На сайт</button></div>
+      <div class="sell-way"><b>За реальные деньги</b><span>комиссия ${RL_FEE * 100}% · в «Реальную жизнь»</span><em class="b">${money(rlPay)}</em><button class="btn primary" data-sact="rl">${ICON.home} В жизнь</button></div>
+    </div>
+    <div class="acts"><button class="btn" data-sact="close">Отмена</button></div>`, {
     narrow: true,
     acts: {
+      async rl(b, close) {
+        b.disabled = true;
+        try {
+          const r = await rpc('steam_sell_rl', { p_ids: ids });
+          S.steam = S.steam.filter(i => !ids.includes(i.u)); S.rlBal = +r.rl_balance; SFX.coin(); close();
+          notify({ title: 'Продано за реальные деньги', sub: `${r.n} предм. · комиссия ${money(+r.fee)} · вкладка «Реальная жизнь»`, icon: ICON.home, color: 'rgba(10,132,255,.35)', amt: '+' + money(+r.payout), amtColor: '#64d2ff', tall: true });
+          onDone && onDone();
+        } catch (e) { b.disabled = false; notifyErr(e); }
+      },
       async ok(b, close) {
         b.disabled = true;
         try {
@@ -2471,12 +2489,231 @@ function steamHTML() {
     <div class="stat"><span>Предметов</span><b>${list.length}</b></div>
     <div class="stat"><span>Стоимость в Steam</span><b class="steam-v">${money(sv)}</b></div>
     <div class="stat"><span>Всего с инвентарём сайта</span><b>${money(r2(sv + invValue()))}</b></div>
-    ${list.length ? `<button class="btn green" data-act="stAll">Всё на баланс · ${money(r2(sv * (1 - STEAM_FEE)))}</button>` : ''}
+    ${list.length ? `<button class="btn green" data-act="stAll">Продать всё</button>` : ''}
   </section>
-  <div class="hint glass-flat">Это симуляция: в настоящий Steam ничего не уходит. Нажми на предмет, чтобы продать его обратно на сайт — деньги придут на баланс с комиссией ${STEAM_FEE * 100}%.</div>
+  <div class="hint glass-flat">Это симуляция: в настоящий Steam ничего не уходит. Нажми на предмет, чтобы продать его: на баланс сайта (комиссия ${STEAM_FEE * 100}%) или за «реальные деньги» для вкладки «Реальная жизнь» (комиссия ${RL_FEE * 100}%).</div>
   ${list.length ? `<div class="grid-items stagger">${list.map((it, i) => itemCard(it, { i: Math.min(i, 30), attr: `data-act="stItem" data-u="${it.u}"`, wearText: new Date(it.t).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }) })).join('')}</div>`
     : `<div class="empty-state"><div class="ill">${gi('steam')}</div><h3>В Steam пока пусто</h3>Открой предмет в инвентаре и нажми «Вывести в Steam».<br><button class="btn primary" data-go="#/inventory">В инвентарь</button></div>`}`;
 }
+/* ================= Steam inventory quests ================= */
+const RL_FEE = .1;
+function sqSlotDone(q, sl) {
+  return S.steam.some(it => it.p >= q.min && (sl.cat ? SK[it.s].cat === sl.cat : sl.w.includes(SK[it.s].weapon)));
+}
+function sqHTML() {
+  const qs = window.SQ || [];
+  return `<div class="section-head"><h2>${gi('steam')} Задания Steam-инвентаря</h2><span class="sub">выведи скины в Steam и собери коллекцию — предметы остаются у тебя</span></div>
+  <div class="sq-list">${qs.map(q => {
+    const done = q.slots.map(sl => sqSlotDone(q, sl)), n = done.filter(Boolean).length, got = S.steamQ.includes(q.code), ok = n === q.slots.length;
+    return `<section class="sq-card glass-flat ${got ? 'claimed' : ok ? 'ready' : ''}">
+      <div class="sq-top"><div><h3>${esc(q.n)}</h3><div class="ev-note">${esc(q.d)}</div></div>
+        <div class="q-prize"><b>${money(q.reward)}</b><span>+${q.xp} XP</span></div></div>
+      <div class="xpbar small"><i style="width:${(n / q.slots.length * 100).toFixed(1)}%"></i></div>
+      <div class="sq-slots">${q.slots.map((sl, i) => `<span class="sq-slot ${done[i] ? 'on' : ''}">${done[i] ? ICON.check : ''}${esc(sl.n)}</span>`).join('')}</div>
+      <div class="sq-foot"><span class="ev-note">${n} / ${q.slots.length}${q.min ? ` · каждый предмет от ${money(q.min)}` : ''}</span>
+        ${got ? `<span class="q-reward done">✓ Награда получена</span>` : `<button class="btn ${ok ? 'green' : ''} sm" data-act="sqClaim" data-q="${q.code}" ${ok ? '' : 'disabled'}>${ok ? 'Забрать' : 'Собираем'}</button>`}</div>
+    </section>`;
+  }).join('')}</div>`;
+}
+async function claimSteamQuest(el, redraw) {
+  el.disabled = true;
+  try {
+    const r = await rpc('claim_steam_quest', { p_code: el.dataset.q });
+    S.steamQ.push(el.dataset.q); S.xp = (S.xp || 0) + r.xp; setBal(+r.balance); drawLevel(); SFX.win('covert');
+    notify({ title: 'Задание Steam выполнено!', sub: `+${r.xp} XP`, icon: gi('steam'), color: 'rgba(48,209,88,.35)', amt: '+' + money(+r.reward), amtColor: '#5ee07f', tall: true });
+    redraw();
+  } catch (e) { el.disabled = false; notifyErr(e); }
+}
+
+/* ================= «Реальная жизнь» ================= */
+const RLC = Object.fromEntries((window.RL || []).map(r => [r.id, r]));
+const RL_CATS = [['home', 'Недвижимость'], ['car', 'Машины'], ['tech', 'Гаджеты'], ['food', 'Супермаркет'], ['stuff', 'Всякое']];
+const LIFE = { tab: 'mine', cat: 'home', q: '', sort: 'asc', limit: 60 };
+const rlMoney = v => '$' + (+v).toLocaleString('en-US', { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 });
+const rlSellValue = it => r2(it.paid * RLC[it.item].sell);
+function rlApply(r) {
+  S.rlBal = +r.balance;
+  S.rl = r.items.map(x => ({ id: x.id, item: x.item, paid: +x.paid, rent: !!x.rent_from, acc: +x.acc })).filter(x => RLC[x.item]);
+}
+function viewLife() {
+  if (!ONLINE) { location.hash = '#/profile'; return; }
+  const tok = viewToken;
+  main.innerHTML = ptabsHTML('life') + loadingHTML;
+  const load = () => rpc('rl_state').then(r => { if (tok !== viewToken) return; rlApply(r); draw(); }).catch(notifyErr);
+  const head = () => {
+    const worth = r2(S.rl.reduce((a, it) => a + rlSellValue(it), 0)), acc = r2(S.rl.reduce((a, it) => a + it.acc, 0));
+    const rentDay = r2(S.rl.filter(it => it.rent).reduce((a, it) => a + RLC[it.item].rent, 0));
+    return `<section class="life-head glass edge">
+      <div class="life-ico">${ICON.home}</div>
+      <div class="steam-title"><h2>Реальная жизнь</h2><span>Скины из Steam → реальные деньги → квартиры, тачки и шаурма</span></div>
+      <div class="grow"></div>
+      <div class="stat"><span>Реальные деньги</span><b class="rl-v">${rlMoney(S.rlBal)}</b></div>
+      <div class="stat"><span>Имущество</span><b>${rlMoney(worth)}</b></div>
+      <div class="stat"><span>Аренда${rentDay ? ` · ${rlMoney(rentDay)}/день` : ''}</span><b>${rlMoney(acc)}</b></div>
+      <div class="life-acts">
+        ${acc >= .01 ? `<button class="btn green" data-act="rlCollect">Собрать аренду · ${rlMoney(acc)}</button>` : ''}
+        <button class="btn primary" data-act="rlDeposit" ${S.rlBal >= .01 ? '' : 'disabled'}>Задепать на сайт</button>
+        <button class="btn" disabled title="Скоро">Кредит · скоро</button>
+      </div>
+    </section>
+    <div class="hint glass-flat">Это игра, всё ненастоящее. Реальные деньги приходят от продажи скинов из Steam (вкладка Steam → «В жизнь», комиссия ${RL_FEE * 100}%) и от продажи своих вещей. Их можно потратить в магазине или задепать обратно на сайт 1:1. Квартиру можно сдать в аренду — деньги капают каждый день (копятся до 7 дней).</div>`;
+  };
+  const card = (c, body, i) => `<div class="rl-card glass-flat" style="--i:${Math.min(i, 24)}">
+      <div class="rl-img">${c.img ? `<img loading="lazy" decoding="async" src="${c.img}" alt="">` : ICON.home}</div>
+      <div class="rl-body"><b>${esc(c.n)}</b><span class="rl-note">${esc(c.note || '')}</span>${body}</div>
+    </div>`;
+  const mineHTML = () => {
+    if (!S.rl.length) return `<div class="empty-state"><div class="ill">${ICON.home}</div><h3>Ничего нет</h3>Даже ковра. Загляни в магазин.</div>`;
+    const groups = [['home', 'Недвижимость', it => RLC[it.item].cat === 'home' || it.item === 'st-flat'],
+                    ['things', 'Вещи', it => ['mine', 'car', 'tech', 'stuff'].includes(RLC[it.item].cat) && it.item !== 'st-flat'],
+                    ['food', 'Еда', it => RLC[it.item].cat === 'food'],
+                    ['organ', 'Чёрный рынок (это шутка)', it => RLC[it.item].cat === 'organ']];
+    let i = 0;
+    return groups.map(([g, title, f]) => {
+      let list = S.rl.filter(f);
+      if (!list.length) return '';
+      if (g === 'food') {  // same food stacks into one card
+        const by = {}; list.forEach(it => (by[it.item] = by[it.item] || []).push(it));
+        return `<div class="section-head"><h2>${title}</h2></div><div class="rl-grid">${Object.values(by).map(l => card(RLC[l[0].item], `
+          <span class="rl-price">×${l.length} · продать за ${rlMoney(rlSellValue(l[0]))} шт.</span>
+          <div class="rl-acts"><button class="btn sm" data-act="rlEat" data-id="${l[0].id}">Съесть</button><button class="btn sm green" data-act="rlSell" data-id="${l[0].id}">Продать</button></div>`, i++)).join('')}</div>`;
+      }
+      return `<div class="section-head"><h2>${title}</h2>${g === 'organ' ? '<span class="sub">по приколу: продаётся один раз и навсегда</span>' : ''}</div><div class="rl-grid">${list.map(it => {
+        const c = RLC[it.item];
+        return card(c, `
+          <span class="rl-price">${c.cat === 'mine' || c.cat === 'organ' ? 'Стоит' : 'Продать за'} ${rlMoney(rlSellValue(it))}</span>
+          ${c.rent ? `<span class="rl-rent ${it.rent ? 'on' : ''}">${it.rent ? `Сдаётся · +${rlMoney(c.rent)}/день · накоплено ${rlMoney(it.acc)}` : `Можно сдать: +${rlMoney(c.rent)}/день`}</span>` : ''}
+          <div class="rl-acts">${c.rent ? `<button class="btn sm ${it.rent ? '' : 'primary'}" data-act="rlRent" data-id="${it.id}" data-on="${it.rent ? 0 : 1}">${it.rent ? 'Снять с аренды' : 'Сдать в аренду'}</button>` : ''}
+            <button class="btn sm green" data-act="rlSell" data-id="${it.id}">Продать</button></div>`, i++);
+      }).join('')}</div>`;
+    }).join('');
+  };
+  const shopHTML = () => {
+    const q = LIFE.q.trim().toLowerCase();
+    let list = (window.RL || []).filter(c => c.cat === LIFE.cat && (!q || (c.n + ' ' + c.note).toLowerCase().includes(q)));
+    list.sort((a, b) => LIFE.sort === 'asc' ? a.p - b.p : b.p - a.p);
+    return `<div class="section-head">${seg('rlcat', RL_CATS, LIFE.cat, 'sm')}<div class="grow"></div>
+      ${seg('rlsort', [['asc', 'Дешевле'], ['desc', 'Дороже']], LIFE.sort, 'sm')}
+      <label class="search">${ICON.search}<input id="lq" placeholder="Поиск: город, марка…" value="${esc(LIFE.q)}" autocomplete="off"></label></div>
+      <div class="rl-grid" id="rlShop">${list.map((c, i) => card(c, `
+        <span class="rl-price big">${rlMoney(c.p)}</span>
+        ${c.rent ? `<span class="rl-rent">аренда +${rlMoney(c.rent)}/день</span>` : ''}
+        <div class="rl-acts"><button class="btn sm ${S.rlBal >= c.p ? 'primary' : ''}" data-act="rlBuy" data-item="${c.id}">Купить</button></div>`, i)).join('') || '<div class="ev-note">Ничего не найдено</div>'}</div>`;
+  };
+  const body = () => LIFE.tab === 'mine' ? mineHTML() : shopHTML();
+  const draw = () => {
+    main.innerHTML = ptabsHTML('life') + head() + `<div class="section-head">${seg('rltab', [['mine', `Моё (${S.rl.length})`], ['shop', 'Магазин']], LIFE.tab)}</div><div id="rlBody">${body()}</div>`;
+    layoutPills();
+  };
+  const drawBody = () => { const b = $('#rlBody'); if (b) { b.innerHTML = body(); layoutPills(b); } };
+  const after = (r, msg) => { rlApply(r); draw(); if (msg) notify(msg); };
+  load();
+  VIEW = {
+    refresh: () => S.rl && draw(),
+    onSeg(n, v) {
+      if (n === 'rltab') { LIFE.tab = v; drawBody(); }
+      if (n === 'rlcat') { LIFE.cat = v; drawBody(); }
+      if (n === 'rlsort') { LIFE.sort = v; drawBody(); }
+    },
+    onInput(t) { if (t.id === 'lq') { LIFE.q = t.value; const g = $('#rlShop'); if (g) { const pos = t.selectionStart; drawBody(); const n = $('#lq'); if (n) { n.focus(); n.setSelectionRange(pos, pos); } } } },
+    async act(a, el) {
+      if (!S.rl) return;
+      if (a === 'rlBuy') return rlBuySheet(RLC[el.dataset.item], r => after(r));
+      if (a === 'rlSell') return rlSellSheet(S.rl.find(x => x.id === +el.dataset.id), r => after(r));
+      if (a === 'rlDeposit') return rlDepositSheet(draw);
+      el.disabled = true;
+      try {
+        if (a === 'rlRent') {
+          const on = el.dataset.on === '1', r = await rpc('rl_rent', { p_id: +el.dataset.id, p_on: on });
+          SFX.click();
+          after(r, on ? { title: 'Сдано в аренду', sub: 'Деньги капают каждый день, собирай их наверху', icon: ICON.home, color: 'rgba(10,132,255,.3)' }
+                      : { title: 'Снято с аренды', sub: +r.got ? 'Накопленная аренда зачислена' : '', icon: ICON.home, amt: +r.got ? '+' + rlMoney(+r.got) : '', amtColor: '#64d2ff' });
+        }
+        if (a === 'rlCollect') {
+          const r = await rpc('rl_collect'); SFX.coin();
+          after(r, { title: 'Аренда собрана', sub: 'Реальные деньги', icon: ICON.home, color: 'rgba(48,209,88,.3)', amt: '+' + rlMoney(+r.got), amtColor: '#5ee07f' });
+        }
+        if (a === 'rlEat') {
+          const c = RLC[S.rl.find(x => x.id === +el.dataset.id).item];
+          const r = await rpc('rl_eat', { p_id: +el.dataset.id }); SFX.ping();
+          after(r, { title: 'Вкусно!', sub: c.n + ' съедено', icon: '😋', color: 'rgba(255,159,10,.3)' });
+        }
+      } catch (e) { el.disabled = false; notifyErr(e); }
+    },
+  };
+}
+function rlBuySheet(c, onDone) {
+  const many = c.cat === 'food';
+  openSheet(`
+    <div class="rl-sheet-img">${c.img ? `<img src="${c.img}" alt="">` : ICON.home}</div>
+    <h2>${esc(c.n)}</h2>
+    <div class="subtitle">${esc(c.note || '')}${c.rent ? `<br>Можно сдавать в аренду: +${rlMoney(c.rent)} в день` : ''}<br>Если продать: вернётся ${Math.round(c.sell * 100)}% цены${c.rent ? ' + накопленная аренда' : ''}.</div>
+    <div class="steam-calc"><span>Цена</span><b>${rlMoney(c.p)}</b><span>Реальные деньги</span><b class="${S.rlBal >= c.p ? 'g' : 'r'}">${rlMoney(S.rlBal)}</b></div>
+    ${many ? seg('rln', [['1', '×1'], ['5', '×5'], ['10', '×10'], ['20', '×20']], '1', 'sm center') : ''}
+    <div class="acts"><button class="btn" data-sact="close">Отмена</button><button class="btn primary" data-sact="ok" id="rlBuyBtn">Купить · ${rlMoney(c.p)}</button></div>`, {
+    narrow: true,
+    acts: {
+      onSeg(n, v) { if (n === 'rln') { $('#rlBuyBtn').dataset.n = v; $('#rlBuyBtn').textContent = `Купить · ${rlMoney(r2(c.p * v))}`; } },
+      async ok(b, close) {
+        b.disabled = true;
+        try {
+          const n = +(b.dataset.n || 1), r = await rpc('rl_buy', { p_item: c.id, p_n: n });
+          SFX.coin(); close(); onDone(r);
+          notify({ title: 'Куплено!', sub: c.n + (n > 1 ? ` ×${n}` : '') + ' — во вкладке «Моё»', icon: ICON.home, color: 'rgba(10,132,255,.35)', amt: '−' + rlMoney(r2(c.p * n)) });
+        } catch (e) { b.disabled = false; notifyErr(e); }
+      },
+    },
+  });
+}
+function rlSellSheet(it, onDone) {
+  if (!it) return;
+  const c = RLC[it.item], v = rlSellValue(it);
+  openSheet(`
+    <div class="rl-sheet-img">${c.img ? `<img src="${c.img}" alt="">` : ICON.home}</div>
+    <h2>Продать ${esc(c.n)}?</h2>
+    <div class="subtitle">${c.cat === 'organ' ? 'Это шутка, но продаётся один раз и навсегда.' : c.cat === 'mine' ? 'Своё, родное. Назад купить не получится.' : `Покупатель даёт ${Math.round(c.sell * 100)}% от цены покупки.`}</div>
+    <div class="steam-calc"><span>Получишь</span><b class="g">${rlMoney(v)}</b>${it.acc >= .01 ? `<span>+ аренда</span><b class="g">${rlMoney(it.acc)}</b>` : ''}</div>
+    <div class="acts"><button class="btn" data-sact="close">Отмена</button><button class="btn green" data-sact="ok">Продать · ${rlMoney(r2(v + it.acc))}</button></div>`, {
+    narrow: true,
+    acts: {
+      async ok(b, close) {
+        b.disabled = true;
+        try {
+          const r = await rpc('rl_sell', { p_ids: [it.id] });
+          const st = await rpc('rl_state');
+          SFX.coin(); close(); onDone(st);
+          notify({ title: 'Продано', sub: c.n, icon: ICON.home, color: 'rgba(48,209,88,.3)', amt: '+' + rlMoney(r2(+r.sum + +r.rent)), amtColor: '#5ee07f' });
+        } catch (e) { b.disabled = false; notifyErr(e); }
+      },
+    },
+  });
+}
+function rlDepositSheet(onDone) {
+  const max = S.rlBal;
+  openSheet(`
+    <h2>Задепать на сайт</h2>
+    <div class="subtitle">Реальные деньги → баланс GlassDrop, 1:1 без комиссии.</div>
+    <label class="field"><span>Сумма (есть ${rlMoney(max)})</span><input id="rlAmt" inputmode="decimal" value="${max.toFixed(2)}" autocomplete="off"></label>
+    ${seg('rlpart', [['.25', '25%'], ['.5', '50%'], ['1', 'Всё']], '1', 'sm center')}
+    <div class="acts"><button class="btn" data-sact="close">Отмена</button><button class="btn green" data-sact="ok">Задепать</button></div>`, {
+    narrow: true,
+    acts: {
+      onSeg(n, v) { if (n === 'rlpart') $('#rlAmt').value = (Math.floor(max * v * 100) / 100).toFixed(2); },
+      async ok(b, close) {
+        const amt = Math.floor(parseFloat(String($('#rlAmt').value).replace(',', '.')) * 100) / 100;
+        if (!(amt >= .01) || amt > max) return notifyErr(new Error('BAD_AMOUNT'));
+        b.disabled = true;
+        try {
+          const r = await rpc('rl_deposit', { p_amount: amt });
+          S.rlBal = +r.rl_balance; setBal(+r.balance); SFX.coin(); close(); onDone();
+          notify({ title: 'Задеплено на сайт', sub: 'Из реальной жизни', icon: ICON.home, color: 'rgba(48,209,88,.3)', amt: '+' + money(+r.amount), amtColor: '#5ee07f' });
+        } catch (e) { b.disabled = false; notifyErr(e); }
+      },
+      enter() { const b = document.querySelector('.scrim [data-sact="ok"]'); b && b.click(); },
+    },
+  });
+}
+
 function renameSheet() {
   openSheet(`<h2>Новый ник</h2><label class="field"><span>Ник</span><input id="newNick" maxlength="16" value="${esc(ME.nick)}" autocomplete="off"></label><div class="acts"><button class="btn" data-sact="close">Отмена</button><button class="btn primary" data-sact="ok">Сохранить</button></div>`, {
     narrow: true,

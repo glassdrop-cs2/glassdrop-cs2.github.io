@@ -1128,3 +1128,71 @@ svg.gi { width: 1.2em; height: 1.2em; flex: none; display: inline-block; vertica
 .win-card.kept { box-shadow: 0 0 0 2px rgba(10,132,255,.75), 0 0 26px -6px rgba(10,132,255,.8); }
 .win-card .mini-acts .btn[hidden] { display: none; }
 .win-card.mini .mini-acts { gap: 4px; }
+
+/* ===== v14: round things stay round (iOS Safari shrinks fixed-size flex items) ===== */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body { overflow-x: clip; }
+.balance .plus, .icon-btn, #island .ico, .item .check, .slot, .lvl-badge, .lvl-big, .spinner, .avatar, .q-ico {
+  flex-shrink: 0; aspect-ratio: 1 / 1;
+}
+.balance .plus, .icon-btn, .slot, .lvl-badge, .lvl-big { min-width: 0; }
+/* upgrade ring sits in the middle of its column, like the buttons under it */
+.ring-wrap { margin: 0 auto; flex-shrink: 0; }
+@media (max-width: 560px) { .ring-wrap { width: min(260px, 78vw); height: auto; aspect-ratio: 1 / 1; } }
+
+/* ===== v14: Steam quests ===== */
+.sq-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; margin-bottom: 8px; }
+.sq-card { padding: 16px 18px; border-radius: 22px; display: flex; flex-direction: column; gap: 10px; }
+.sq-card.ready { border-color: rgba(48,209,88,.5); }
+.sq-card.claimed { opacity: .75; }
+.sq-top { display: flex; gap: 12px; align-items: flex-start; }
+.sq-top > div:first-child { flex: 1; min-width: 0; }
+.sq-top h3 { margin: 0 0 2px; font-size: 17px; }
+.sq-slots { display: flex; flex-wrap: wrap; gap: 6px; }
+.sq-slot { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: rgba(255,255,255,.06); color: var(--text-3); border: 1px solid rgba(255,255,255,.08); }
+.sq-slot svg { width: 12px; height: 12px; }
+.sq-slot.on { background: rgba(48,209,88,.16); color: #5ee07f; border-color: rgba(48,209,88,.4); }
+.sq-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+
+/* ===== v14: Steam sell options ===== */
+.sell-ways { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0 4px; }
+.sell-way { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px 10px; border-radius: 18px; background: rgba(255,255,255,.05); text-align: center; }
+.sell-way span { font-size: 12px; color: var(--text-3); }
+.sell-way em { font-style: normal; font-size: 22px; font-weight: 800; margin: 4px 0 6px; }
+.sell-way em.g { color: #5ee07f; } .sell-way em.b { color: #64d2ff; }
+.sell-way .btn svg { width: 15px; height: 15px; margin-right: 4px; }
+@media (max-width: 420px) { .sell-ways { grid-template-columns: 1fr; } }
+
+/* ===== v14: real life ===== */
+.life-head { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; padding: 18px 20px; border-radius: 26px; margin-bottom: 12px; }
+.life-ico { width: 52px; height: 52px; flex: none; border-radius: 16px; display: grid; place-items: center; background: linear-gradient(135deg, #64d2ff, #0a84ff); color: #fff; }
+.life-ico svg { width: 28px; height: 28px; }
+.life-head .stat { display: flex; flex-direction: column; gap: 2px; }
+.life-head .stat span { font-size: 12px; color: var(--text-3); }
+.life-head .stat b { font-size: 20px; }
+.life-head .rl-v { color: #64d2ff; }
+.life-acts { display: flex; gap: 8px; flex-wrap: wrap; width: 100%; justify-content: flex-end; }
+.rl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; margin-bottom: 8px; }
+.rl-card { border-radius: 20px; overflow: hidden; display: flex; flex-direction: column; content-visibility: auto; contain-intrinsic-size: auto 300px; }
+.rl-img { height: 140px; background: rgba(255,255,255,.04); display: grid; place-items: center; overflow: hidden; }
+.rl-img img { width: 100%; height: 100%; object-fit: cover; }
+.rl-img svg { width: 40px; height: 40px; opacity: .4; }
+.rl-body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.rl-body b { font-size: 14.5px; line-height: 1.25; }
+.rl-note { font-size: 12px; color: var(--text-3); min-height: 15px; }
+.rl-price { font-size: 13px; font-weight: 700; color: var(--text-2); }
+.rl-price.big { font-size: 18px; color: #fff; }
+.rl-rent { font-size: 12px; color: var(--text-3); }
+.rl-rent.on { color: #64d2ff; }
+.rl-acts { display: flex; gap: 6px; margin-top: auto; padding-top: 6px; flex-wrap: wrap; }
+.rl-acts .btn { flex: 1; }
+.rl-sheet-img { height: 170px; margin: -4px -4px 12px; border-radius: 18px; overflow: hidden; background: rgba(255,255,255,.04); display: grid; place-items: center; }
+.rl-sheet-img img { width: 100%; height: 100%; object-fit: cover; }
+.seg.center { display: flex; width: fit-content; margin: 12px auto 0; }
+@media (max-width: 560px) {
+  .rl-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .rl-img { height: 104px; }
+  .life-head .stat b { font-size: 17px; }
+  .life-acts { justify-content: stretch; } .life-acts .btn { flex: 1; }
+}
+@media (max-width: 560px) { .ptab svg { display: none; } .ptab { padding: 0 8px; gap: 4px; font-size: 12.5px; height: 36px; } .ptab em { padding: 1px 5px; } .ptab-bar { gap: 1px; padding: 3px; } }
