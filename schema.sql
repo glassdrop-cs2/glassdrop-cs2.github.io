@@ -39,6 +39,10 @@ alter table pumpkins enable row level security;
 alter table profiles add column if not exists bp_claimed int[] not null default '{}';
 alter table profiles add column if not exists luck_until timestamptz;
 alter table profiles add column if not exists bp_premium boolean not null default false;
+-- bp_premium / bp_claimed belong to the current pass and are reset when a season closes;
+-- bp_s1_prem keeps the season 1 premium (frames, medal); bp_xp0 = XP at the start of the current pass
+alter table profiles add column if not exists bp_s1_prem boolean not null default false;
+alter table profiles add column if not exists bp_xp0 int not null default 0;
 alter table profiles add column if not exists bp_s1_lvl int;   -- season 1 level; stops changing when the season ends
 alter table profiles add column if not exists frame text;      -- profile frame the player wears
 -- referrals: who invited this player, whether the inviter already got the $250, and the inviter's income
@@ -55,6 +59,7 @@ alter table profiles add column if not exists bio text;
 -- ============ seasons: results and trophies ============
 create table if not exists seasons (id int primary key, name text not null, starts timestamptz not null, ends timestamptz not null, closed_at timestamptz, result jsonb);
 insert into seasons (id, name, starts, ends) values (1, 'Сезон 1', '2026-11-01 00:00+02', '2026-12-02 23:59:59+02') on conflict (id) do nothing;
+insert into seasons (id, name, starts, ends) values (2, 'Сезон 2 · Зима', '2026-12-02 23:59:59+02', '2027-01-31 23:59:59+02') on conflict (id) do nothing;
 -- numbers at the start of a season; a player without a row started it with $100 and zeros
 create table if not exists season_snap (season int not null, uid uuid not null references profiles on delete cascade, networth numeric(14,2) not null,
   xp int not null, opened int not null, battles_w int not null, time_sec int not null, primary key (season, uid));
@@ -105,6 +110,13 @@ alter table rl_catalog enable row level security;
 alter table steam_quests enable row level security;
 create table if not exists bp_rewards (level int primary key, kind text not null, amount numeric, case_id text, n int, skin_id int, code text, mins int);
 alter table bp_rewards add column if not exists free boolean not null default false;
+alter table bp_rewards add column if not exists season int not null default 1;
+do $p$ begin
+  if not exists (select 1 from information_schema.key_column_usage where table_name = 'bp_rewards' and constraint_name = 'bp_rewards_pkey' and column_name = 'season') then
+    alter table bp_rewards drop constraint bp_rewards_pkey;
+    alter table bp_rewards add primary key (season, level);
+  end if;
+end $p$;
 create table if not exists perks (
   id bigserial primary key, owner uuid not null references profiles on delete cascade,
   kind text not null, case_id text, mins int, src text not null default 'pass', created_at timestamptz not null default now()
@@ -175,6 +187,7 @@ select p.id, p.nickname, p.balance, coalesce(i.v, 0)::numeric(14,2) as inv_value
 , p.xp, p.daily_streak, coalesce(sv.v, 0)::numeric(14,2) as steam_value, p.time_sec
 , p.frame, p.bp_premium, p.bp_s1_lvl, p.created_at
 , p.avatar, p.bio
+, p.bp_s1_prem
 from profiles p left join (select owner, sum(price) v from inventory group by owner) i on i.owner = p.id
 left join (select owner, sum(price) v from steam_items group by owner) sv on sv.owner = p.id;
 
@@ -420,7 +433,7 @@ begin
   if p_n < 1 or p_n > max_open(c.price) then raise exception 'BAD_N'; end if;
   cost := round(case_price(c) * p_n, 2);
   update profiles set balance = balance - cost, opened = opened + p_n, spent = spent + cost,
-         xp = xp + floor((floor(cost) + case when c.price >= 1 then 2 * p_n else 0 end) * nd_mult(nd_hp, nd_junk))::int
+         xp = xp + floor((floor(cost / 4) + case when c.price >= 1 then 2 * p_n else 0 end) * nd_mult(nd_hp, nd_junk))::int
    where id = uid and balance >= cost returning nickname, balance into nick, bal;
   if not found then raise exception 'NO_FUNDS'; end if;
   return jsonb_build_object('items', do_open(uid, nick, p_case, p_n), 'balance', bal);
@@ -507,7 +520,7 @@ begin
   select * into c from cases where id = p_case;
   if not found then raise exception 'NO_CASE'; end if;
   cost := round(case_price(c) * p_rounds, 2);
-  update profiles set balance = balance - cost, opened = opened + p_rounds, spent = spent + cost, xp = xp + floor((floor(cost) + 2 * p_rounds) * nd_mult(nd_hp, nd_junk))::int
+  update profiles set balance = balance - cost, opened = opened + p_rounds, spent = spent + cost, xp = xp + floor((floor(cost / 4) + 2 * p_rounds) * nd_mult(nd_hp, nd_junk))::int
    where id = uid and balance >= cost returning nickname into nick;
   if not found then raise exception 'NO_FUNDS'; end if;
   insert into battles (case_id, rounds, max_players, cost, creator, creator_nick) values (p_case, p_rounds, p_players, cost, uid, nick) returning id into bid;
@@ -553,7 +566,7 @@ begin
   if exists (select 1 from battle_players where battle_id = p_id and user_id = uid) then raise exception 'ALREADY_IN'; end if;
   select count(*) into cnt from battle_players where battle_id = p_id;
   if cnt >= b.max_players then raise exception 'FULL'; end if;
-  update profiles set balance = balance - b.cost, opened = opened + b.rounds, spent = spent + b.cost, xp = xp + floor((floor(b.cost) + 2 * b.rounds) * nd_mult(nd_hp, nd_junk))::int
+  update profiles set balance = balance - b.cost, opened = opened + b.rounds, spent = spent + b.cost, xp = xp + floor((floor(b.cost / 4) + 2 * b.rounds) * nd_mult(nd_hp, nd_junk))::int
    where id = uid and balance >= b.cost returning nickname into nick;
   if not found then raise exception 'NO_FUNDS'; end if;
   insert into battle_players (battle_id, user_id, nickname, slot)
@@ -660,18 +673,22 @@ begin
   return l;
 end $$;
 
--- levels 2..100 come from bp_rewards (seed); after 100 every level gives money: $50..$200, every 10th $250
-create or replace function bp_reward(p_level int) returns bp_rewards language plpgsql stable as $$
+-- levels 2..100 come from bp_rewards (seed); after 100 every level gives money:
+-- season 1: $50..$200, every 10th $250; season 2: $15..$60, every 10th $100
+create or replace function bp_reward(p_season int, p_level int) returns bp_rewards language plpgsql stable as $$
 declare r bp_rewards;
 begin
-  select * into r from bp_rewards where level = p_level;
+  select * into r from bp_rewards where season = p_season and level = p_level;
   if found then return r; end if;
+  r.season := p_season;
   r.level := p_level;
   r.free := p_level % 7 = 0;
   r.kind := 'money';
-  r.amount := case when p_level % 10 = 0 then 250 when p_level % 5 = 0 then 150 else 50 * (p_level % 5) end;
+  r.amount := case when p_season = 1 then (case when p_level % 10 = 0 then 250 when p_level % 5 = 0 then 150 else 50 * (p_level % 5) end)
+                   else (case when p_level % 10 = 0 then 100 when p_level % 5 = 0 then 60 else 15 * (p_level % 5) end) end;
   return r;
 end $$;
+create or replace function bp_reward(p_level int) returns bp_rewards language sql stable as $f$ select bp_reward(1, p_level) $f$;
 
 create or replace function roll_code_float(p_skin int, p_code text) returns float8 language plpgsql volatile as $$
 declare s skins; lo float8; hi float8;
@@ -684,17 +701,36 @@ begin
 end $$;
 
 create or replace function bp_end() returns timestamptz language sql immutable as $f$ select timestamptz '2026-12-02 23:59:59+02' $f$;
+create or replace function bp2_end() returns timestamptz language sql immutable as $f$ select timestamptz '2027-01-31 23:59:59+02' $f$;
+-- which pass runs now: 1, 2, or 0 when none
+create or replace function bp_cur() returns int language sql stable as $f$
+  select case when now() < bp_end() then 1 when now() < bp2_end() then 2 else 0 end $f$;
+create or replace function bp_price(p_season int) returns numeric language sql immutable as $f$ select (case p_season when 1 then 200 else 1000 end)::numeric $f$;
+-- pass level: season 1 = the whole XP; later seasons count only the XP earned since the season started
+create or replace function bp_lvl(p profiles) returns int language sql stable as $f$
+  select case when bp_cur() = 1 then level_of(p.xp) else level_of(greatest(p.xp - p.bp_xp0, 0)) end $f$;
+-- the new pass may only be used after the old season is closed (that resets the pass and sets bp_xp0)
+create or replace function bp_ready() returns int language plpgsql security definer set search_path = public as $$
+declare s int := bp_cur();
+begin
+  if s = 0 then raise exception 'PASS_ENDED'; end if;
+  if s > 1 and exists (select 1 from seasons where id = s - 1 and closed_at is null) then
+    perform season_close_due();
+    if exists (select 1 from seasons where id = s - 1 and closed_at is null) then raise exception 'SEASON_SWITCH'; end if;
+  end if;
+  return s;
+end $$;
 
 create or replace function buy_pass() returns jsonb language plpgsql security definer set search_path = public as $$
-declare uid uuid := auth.uid(); bal numeric;
+declare uid uuid := auth.uid(); bal numeric; s int := bp_ready(); price numeric := bp_price(bp_cur());
 begin
-  if now() >= bp_end() then raise exception 'PASS_ENDED'; end if;
   if (select bp_premium from profiles where id = uid) then raise exception 'ALREADY_PREMIUM'; end if;
-  update profiles set balance = balance - 200, spent = spent + 200, bp_premium = true
-   where id = uid and balance >= 200 returning balance into bal;
+  update profiles set balance = balance - price, spent = spent + price, bp_premium = true, bp_s1_prem = bp_s1_prem or s = 1
+   where id = uid and balance >= price returning balance into bal;
   if not found then raise exception 'NO_FUNDS'; end if;
   return jsonb_build_object('balance', bal);
 end $$;
+update profiles set bp_s1_prem = true where bp_premium and not bp_s1_prem and now() < bp_end();
 
 -- season level follows XP until the season ends, then stays as it was (it is shown on the season medal)
 create or replace function bp_track_lvl() returns trigger language plpgsql as $$
@@ -718,21 +754,20 @@ begin
     need := frame_req(p_frame);
     if need is null then raise exception 'BAD_FRAME'; end if;
     if coalesce(p.bp_s1_lvl, 0) < need then raise exception 'LEVEL_LOCKED'; end if;
-    if p_frame <> 's1-ember' and not p.bp_premium then raise exception 'PREMIUM_REQUIRED'; end if;
+    if p_frame <> 's1-ember' and not p.bp_s1_prem then raise exception 'PREMIUM_REQUIRED'; end if;
   end if;
   update profiles set frame = p_frame where id = uid;
   return p_frame;
 end $$;
 
 create or replace function claim_level(p_level int) returns jsonb language plpgsql security definer set search_path = public as $$
-declare uid uuid := auth.uid(); p profiles; r bp_rewards; bal numeric; d jsonb := null; iid bigint; f float8;
+declare uid uuid := auth.uid(); p profiles; r bp_rewards; bal numeric; d jsonb := null; iid bigint; f float8; s int := bp_ready();
 begin
   select * into p from profiles where id = uid for update;
   if not found then raise exception 'NO_PROFILE'; end if;
-  if p_level < 2 or level_of(p.xp) < p_level then raise exception 'LEVEL_LOCKED'; end if;
+  if p_level < 2 or bp_lvl(p) < p_level then raise exception 'LEVEL_LOCKED'; end if;
   if p_level = any(p.bp_claimed) then raise exception 'ALREADY_CLAIMED'; end if;
-  if now() >= bp_end() then raise exception 'PASS_ENDED'; end if;
-  r := bp_reward(p_level);
+  r := bp_reward(s, p_level);
   if not r.free and not p.bp_premium then raise exception 'PREMIUM_REQUIRED'; end if;
   update profiles set bp_claimed = bp_claimed || p_level where id = uid;
   if r.kind = 'money' then
@@ -885,6 +920,8 @@ begin
   insert into season_snap (season, uid, networth, xp, opened, battles_w, time_sec)
     select p_season + 1, id, networth, xp, opened, battles_w, time_sec from leaderboard on conflict do nothing;
   update seasons set closed_at = now(), result = st where id = p_season;
+  -- the next battle pass starts from zero: premium and claims reset, its level counts XP from here
+  update profiles set bp_s1_prem = bp_s1_prem or (p_season = 1 and bp_premium), bp_premium = false, bp_claimed = '{}', bp_xp0 = xp;
   return st;
 end $$;
 
@@ -1102,7 +1139,7 @@ begin
   crash := least(1000, greatest(1, floor(96 / (1 - random())) / 100));
   win := crash >= p_target;
   if win then pay := round(bet * p_target, 2); end if;
-  update profiles set balance = balance + pay, xp = xp + floor((2 + least(floor(bet / 4), 500)) * nd_mult(nd_hp, nd_junk))::int
+  update profiles set balance = balance + pay, xp = xp + floor((2 + least(floor(bet / 16), 125)) * nd_mult(nd_hp, nd_junk))::int
    where id = uid returning nickname, balance into nick, bal;
   insert into climbs (user_id, nickname, bet, skins, target, crash, win, payout) values (uid, nick, bet, k, p_target, crash, win, pay);
   return jsonb_build_object('crash', crash, 'win', win, 'payout', pay, 'bet', bet, 'balance', bal, 'target', p_target);
@@ -1125,7 +1162,7 @@ end $$;
 -- ============ permissions ============
 do $$ declare f text; begin
   -- internal helpers: not callable from the API
-  foreach f in array array['roll_float(int)','roll_drop(text)','nick_email(text)','grant_item(uuid,jsonb,text)','resolve_battle(bigint)','do_open(uuid,text,text,int)','roll_code_float(int,text)','bp_reward(int)','rl_accrued(text,timestamptz)','rl_tick(uuid)','rl_home(uuid)','rl_bill_day(uuid)','rl_needs_json(uuid)','bp_track_lvl()','ref_check(uuid)','season_rows(int)','season_close(int)','season_close_due()'] loop
+  foreach f in array array['roll_float(int)','roll_drop(text)','nick_email(text)','grant_item(uuid,jsonb,text)','resolve_battle(bigint)','do_open(uuid,text,text,int)','roll_code_float(int,text)','bp_reward(int)','rl_accrued(text,timestamptz)','rl_tick(uuid)','rl_home(uuid)','rl_bill_day(uuid)','rl_needs_json(uuid)','bp_track_lvl()','ref_check(uuid)','season_rows(int)','season_close(int)','season_close_due()','bp_reward(int,int)','bp_ready()','bp_lvl(profiles)'] loop
     execute format('revoke all on function %s from public, anon, authenticated', f);
   end loop;
   -- player API: signed-in users only (guests are signed in anonymously)
