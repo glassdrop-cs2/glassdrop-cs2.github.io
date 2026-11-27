@@ -41,6 +41,13 @@ alter table profiles add column if not exists luck_until timestamptz;
 alter table profiles add column if not exists bp_premium boolean not null default false;
 alter table profiles add column if not exists bp_s1_lvl int;   -- season 1 level; stops changing when the season ends
 alter table profiles add column if not exists frame text;      -- profile frame the player wears
+-- referrals: who invited this player, whether the inviter already got the $250, and the inviter's income
+alter table profiles add column if not exists ref_by uuid references profiles(id) on delete set null;
+alter table profiles add column if not exists ref_done boolean not null default false;
+alter table profiles add column if not exists ref_gave numeric(16,4) not null default 0;     -- what this player brought to the inviter
+alter table profiles add column if not exists ref_pending numeric(16,4) not null default 0;  -- inviter's income not yet moved to balance
+alter table profiles add column if not exists ref_total numeric(16,4) not null default 0;    -- inviter's income, all time
+create index if not exists profiles_ref_by on profiles (ref_by);
 alter table cases add column if not exists sale numeric not null default 0;
 -- Steam inventory quests (slots come from seed.sql)
 create table if not exists steam_quests (code text primary key, min numeric not null default 0, reward numeric not null, xp int not null, slots jsonb not null);
@@ -275,11 +282,47 @@ begin
   return jsonb_build_object('balance', bal, 'last_bonus', now(), 'amount', amt, 'n', n);
 end $$;
 
+-- ---------- referrals ----------
+-- inviter gets $250 once the friend has opened 50 cases and spent 30 minutes on the site
+create or replace function ref_check(p_uid uuid) returns void language plpgsql as $$
+declare rid uuid;
+begin
+  update profiles set ref_done = true, ref_gave = ref_gave + 250
+   where id = p_uid and ref_by is not null and not ref_done and opened >= 50 and time_sec >= 1800
+   returning ref_by into rid;
+  if rid is not null then update profiles set ref_pending = ref_pending + 250, ref_total = ref_total + 250 where id = rid; end if;
+end $$;
+
+-- the code is the inviter's nickname; works once, within a day of creating the account; friend gets $1000
+create or replace function set_referrer(p_code text) returns jsonb language plpgsql security definer set search_path = public as $$
+declare uid uuid := auth.uid(); me profiles; rid uuid; rnick text; bal numeric;
+begin
+  select * into me from profiles where id = uid for update;
+  if not found then raise exception 'NO_PROFILE'; end if;
+  if me.ref_by is not null then raise exception 'REF_ALREADY'; end if;
+  if me.created_at < now() - interval '1 day' then raise exception 'REF_TOO_LATE'; end if;
+  select id, nickname into rid, rnick from profiles where lower(nickname) = lower(btrim(p_code));
+  if rid is null then raise exception 'NO_USER'; end if;
+  if rid = uid or exists (select 1 from profiles where id = rid and ref_by = uid) then raise exception 'REF_SELF'; end if;
+  update profiles set ref_by = rid, balance = balance + 1000 where id = uid returning balance into bal;
+  return jsonb_build_object('by', rnick, 'balance', bal, 'bonus', 1000);
+end $$;
+
+create or replace function claim_ref() returns jsonb language plpgsql security definer set search_path = public as $$
+declare uid uuid := auth.uid(); amt numeric; bal numeric;
+begin
+  select floor(ref_pending * 100) / 100 into amt from profiles where id = uid for update;
+  if amt is null then raise exception 'NO_PROFILE'; end if;
+  if amt <= 0 then raise exception 'REF_EMPTY'; end if;
+  update profiles set balance = balance + amt, ref_pending = ref_pending - amt where id = uid returning balance into bal;
+  return jsonb_build_object('amount', amt, 'balance', bal);
+end $$;
+
 -- roll p_n drops for a player; with an active luck potion 40% of rolls get a second try and keep the pricier one
 create or replace function do_open(p_uid uuid, p_nick text, p_case text, p_n int) returns jsonb language plpgsql as $$
-declare d jsonb; d2 jsonb; iid bigint; res jsonb := '[]'; lucky boolean;
+declare d jsonb; d2 jsonb; iid bigint; res jsonb := '[]'; lucky boolean; rid uuid; cut numeric;
 begin
-  select coalesce(luck_until > now(), false) into lucky from profiles where id = p_uid;
+  select coalesce(luck_until > now(), false), ref_by into lucky, rid from profiles where id = p_uid;
   for i in 1..p_n loop
     d := roll_drop(p_case);
     if lucky and random() < .4 then
@@ -291,6 +334,14 @@ begin
     values (p_uid, p_nick, (d->>'skin')::int, (d->>'float')::float8, (d->>'st')::boolean, (d->>'price')::numeric, 'case', p_case);
     res := res || jsonb_build_array(d || jsonb_build_object('id', iid));
   end loop;
+  if rid is not null then
+    select round(sum((x->>'price')::numeric) * .01, 4) into cut from jsonb_array_elements(res) x;
+    if cut > 0 then
+      update profiles set ref_gave = ref_gave + cut where id = p_uid;
+      update profiles set ref_pending = ref_pending + cut, ref_total = ref_total + cut where id = rid;
+    end if;
+    perform ref_check(p_uid);
+  end if;
   return res;
 end $$;
 
@@ -381,6 +432,7 @@ begin
   select id, nickname into to_id, to_nick from profiles where lower(nickname) = lower(btrim(p_to));
   if to_id is null then raise exception 'NO_USER'; end if;
   if to_id = uid then raise exception 'SELF'; end if;
+  if exists (select 1 from profiles where id = uid and ref_by is not null and not ref_done) then raise exception 'REF_LOCK'; end if;
   update inventory set owner = to_id, src = 'gift' where id = p_id and owner = uid returning * into it;
   if not found then raise exception 'NOT_OWNER'; end if;
   nick := me_nick();
@@ -739,6 +791,7 @@ begin
   update profiles set time_sec = time_sec + case when time_ping > now() - interval '150 seconds' then least(extract(epoch from now() - time_ping), 75)::int else 0 end,
                       time_ping = now()
    where id = auth.uid() returning time_sec into t;
+  perform ref_check(auth.uid());
   return t;
 end $$;
 
@@ -947,7 +1000,7 @@ end $$;
 -- ============ permissions ============
 do $$ declare f text; begin
   -- internal helpers: not callable from the API
-  foreach f in array array['roll_float(int)','roll_drop(text)','grant_item(uuid,jsonb,text)','resolve_battle(bigint)','do_open(uuid,text,text,int)','roll_code_float(int,text)','bp_reward(int)','rl_accrued(text,timestamptz)','rl_tick(uuid)','rl_home(uuid)','rl_bill_day(uuid)','rl_needs_json(uuid)','bp_track_lvl()'] loop
+  foreach f in array array['roll_float(int)','roll_drop(text)','grant_item(uuid,jsonb,text)','resolve_battle(bigint)','do_open(uuid,text,text,int)','roll_code_float(int,text)','bp_reward(int)','rl_accrued(text,timestamptz)','rl_tick(uuid)','rl_home(uuid)','rl_bill_day(uuid)','rl_needs_json(uuid)','bp_track_lvl()','ref_check(uuid)'] loop
     execute format('revoke all on function %s from public, anon, authenticated', f);
   end loop;
   -- player API: signed-in users only (guests are signed in anonymously)
@@ -957,7 +1010,7 @@ do $$ declare f text; begin
                            'find_pumpkin(int)','my_pumpkins()','claim_level(int)','use_luck(bigint)','open_free(text,int)',
                            'withdraw_items(bigint[])','play_climb(bigint[],numeric,numeric)','buy_pass()','steam_deposit(bigint[])',
                            'claim_steam_quest(text)','rl_state()','rl_buy(text,int)','rl_sell(bigint[])','rl_rent(bigint,boolean)',
-                           'rl_collect()','rl_eat(bigint)','rl_deposit(numeric)','steam_sell_rl(bigint[])','rl_needs()','time_ping()','chat_send(uuid,text)','chat_dms()','set_frame(text)'] loop
+                           'rl_collect()','rl_eat(bigint)','rl_deposit(numeric)','steam_sell_rl(bigint[])','rl_needs()','time_ping()','chat_send(uuid,text)','chat_dms()','set_frame(text)','set_referrer(text)','claim_ref()'] loop
     execute format('revoke all on function %s from public, anon', f);
     execute format('grant execute on function %s to authenticated', f);
   end loop;
