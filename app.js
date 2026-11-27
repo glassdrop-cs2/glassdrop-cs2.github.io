@@ -312,7 +312,7 @@ const CFG = window.GD_CONFIG || {};
 const ONLINE = !!(CFG.url && CFG.key && window.supabase);
 const sb = ONLINE ? window.supabase.createClient(CFG.url, CFG.key, { auth: { persistSession: true, autoRefreshToken: true } }) : null;
 const ERR = {
-  BAD_FRAME: 'Такой рамки нет', ALREADY_HAVE: 'Это уже у тебя есть', BAD_AVATAR: 'Не удалось сохранить фото', BAD_BIO: '«О себе» — до 80 символов',
+  BAD_FRAME: 'Такой рамки нет', SEASON_SWITCH: 'Сезон меняется, попробуй через пару минут', ALREADY_HAVE: 'Это уже у тебя есть', BAD_AVATAR: 'Не удалось сохранить фото', BAD_BIO: '«О себе» — до 80 символов',
   'Payload too large': 'Фото слишком большое', 'exceeded the maximum allowed size': 'Фото слишком большое',
   REF_LOCK: 'Дарить можно после 50 открытых кейсов и 30 минут на сайте — так работает бонус за приглашение', REF_EMPTY: 'Пока нечего забирать',
   REF_ALREADY: 'Пригласивший уже указан', REF_TOO_LATE: 'Приглашение работает только для новых аккаунтов', REF_SELF: 'Нельзя пригласить самого себя',
@@ -380,7 +380,7 @@ function applyProfile(p) {
   if (p.time_sec != null && !S.timeSec) { S.timeSec = p.time_sec; S.timeAt = Date.now(); }
   S.lastBonus = p.last_bonus ? Date.parse(p.last_bonus) : 0;
   S.bonusN = p.bonus_n || 0;
-  S.bpClaimed = p.bp_claimed || []; S.bpPremium = !!p.bp_premium; S.steamQ = p.steam_q || []; S.rlBal = +(p.rl_balance || 0); S.luckUntil = p.luck_until ? Date.parse(p.luck_until) : 0;
+  S.bpClaimed = p.bp_claimed || []; S.bpPremium = !!p.bp_premium; S.s1prem = !!p.bp_s1_prem; S.bpXp0 = +p.bp_xp0 || 0; S.steamQ = p.steam_q || []; S.rlBal = +(p.rl_balance || 0); S.luckUntil = p.luck_until ? Date.parse(p.luck_until) : 0;
   S.ref = { by: p.ref_by, done: !!p.ref_done, pending: +(p.ref_pending || 0), total: +(p.ref_total || 0) };
   S.avatar = p.avatar || ''; S.bio = p.bio || '';
   S.frame = p.frame || null; S.s1lvl = p.bp_s1_lvl || 0; S.created = p.created_at ? Date.parse(p.created_at) : Date.now();
@@ -1892,7 +1892,7 @@ const luckLeft = () => { const t = hms(S.luckUntil - Date.now()); return t.start
 const dailyAmount = st => st >= 31 ? 200 + 25 * Math.floor((st - 31) / 30) : st >= 8 ? 70 : 50;
 const dailyReady = () => S.dailyLast !== utcDay(0);
 const nextStreak = () => S.dailyLast === utcDay(-1) || S.dailyLast === utcDay(0) ? S.dailyStreak + (dailyReady() ? 1 : 0) : 1;
-const BPMAP = Object.fromEntries((window.BP || []).map(r => [r.level, r]));
+const BPMAP = Object.fromEntries((window.BP || []).map(r => [(r.season || 1) + ':' + r.level, r]));
 /* ================= SEASON FRAMES & MEDALS ================= */
 const FRAMES = [
   { id: 's1-ember', n: 'Тлеющие угли', lvl: 10, free: true },
@@ -1903,7 +1903,7 @@ const FRAMES = [
 const FRM = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // season level: follows XP while the season runs, then stays as the server froze it
 const s1Lvl = () => bpEnded() ? (S.s1lvl || 0) : Math.max(S.s1lvl || 0, levelOf(S.xp || 0).lvl);
-const frameOwned = f => s1Lvl() >= f.lvl && (f.free || S.bpPremium);
+const frameOwned = f => s1Lvl() >= f.lvl && (f.free || S.s1prem);
 const avUrl = path => path ? CFG.url + '/storage/v1/object/public/avatars/' + path : '';
 const avatarHTML = (nick, fr, attr = '', av = '') => `<div class="avatar ${FRM[fr] ? 'fr fr-' + fr : ''} ${av ? 'pic' : ''}" ${attr}>${av ? `<img src="${esc(avUrl(av))}" alt="" loading="lazy" decoding="async">` : esc((nick || '?').slice(0, 2))}</div>`;
 async function wearFrame(id, el) {
@@ -1969,7 +1969,7 @@ function medalYears(y) {
   <text x="50" y="87" text-anchor="middle" font-size="19" font-weight="900" fill="${t.l}">${y}</text>
   <text x="50" y="96" text-anchor="middle" font-size="5.6" font-weight="800" letter-spacing="1" fill="${t.l}" opacity=".85">${y === 1 ? 'ГОД' : y < 5 ? 'ГОДА' : 'ЛЕТ'}</text></svg>`;
 }
-const pubMedal = p => ({ prem: !!p.bp_premium, lvl: p.bp_s1_lvl || levelOf(p.xp || 0).lvl, opened: p.opened || 0, created: p.created_at ? Date.parse(p.created_at) : Date.now() });
+const pubMedal = p => ({ prem: !!(p.bp_s1_prem || (p.bp_premium && !bpEnded())), lvl: p.bp_s1_lvl || levelOf(p.xp || 0).lvl, opened: p.opened || 0, created: p.created_at ? Date.parse(p.created_at) : Date.now() });
 // one medal per kind; the case medal replaces itself with the next metal
 function medalsOf(p, mine) {
   const out = [];
@@ -1985,13 +1985,14 @@ function medalsOf(p, mine) {
 }
 const medalsHTML = (p, mine) => medalsOf(p, mine).map(x => `<div class="medal ${x.lock ? 'locked' : ''}">${x.svg}<div><b>${esc(x.t)}</b><span>${esc(x.s)}</span></div></div>`).join('');
 const medalsMini = p => medalsOf(p, false).map(x => `<span class="medal-mini" title="${esc(x.t)}">${x.svg}</span>`).join('');
-const cosmHTML = () => `<div class="medals">${medalsHTML({ prem: S.bpPremium, lvl: s1Lvl(), opened: (S.stats && S.stats.opened) || 0, created: S.created || Date.now() }, true)}</div>
+const cosmHTML = () => `<div class="medals">${medalsHTML({ prem: S.s1prem, lvl: s1Lvl(), opened: (S.stats && S.stats.opened) || 0, created: S.created || Date.now() }, true)}</div>
   <div class="fr-pick">${[{ id: '', n: 'Без рамки', lvl: 0, free: true }, ...FRAMES].map(f => {
     const own = !f.id || frameOwned(f), on = (S.frame || '') === f.id;
     return `<button class="fr-opt ${on ? 'on' : ''} ${own ? '' : 'locked'}" ${own && !on ? `data-act="wearFrame" data-fr="${f.id}"` : 'disabled'}>${avatarHTML(ME.nick, f.id, '', S.avatar)}<b>${f.n}</b><span>${on ? 'надета' : own ? 'надеть' : `${f.lvl} ур.${f.free ? '' : ' · премиум'}`}</span></button>`;
   }).join('')}</div>`;
 // a frame card sits in the pass track right after its level
 function frameCardHTML(lv) {
+  if (bpS() !== 1) return '';
   const f = FRAMES.find(x => x.lvl === lv); if (!f) return '';
   const own = frameOwned(f), reached = s1Lvl() >= lv && !bpEnded(), on = S.frame === f.id;
   return `<div class="bp-card bp-fr ${own ? 'owned' : reached ? 'prem-lock' : 'locked'} ${f.free ? 'is-free' : 'is-prem'}">
@@ -2002,31 +2003,41 @@ function frameCardHTML(lv) {
   </div>`;
 }
 
-function bpReward(lv) {
-  if (BPMAP[lv]) return BPMAP[lv];
+// battle pass seasons (server: bp_end(), bp2_end(), bp_price()); a later season counts only XP earned since it started
+const BP_SEASONS = [
+  { id: 1, name: 'Сезон 1', end: new Date('2026-12-02T23:59:59+02:00'), price: 200 },
+  { id: 2, name: 'Сезон 2 · Зима', end: new Date('2027-01-31T23:59:59+02:00'), price: 1000 },
+];
+const bpSeason = () => BP_SEASONS.find(x => Date.now() < x.end) || null;
+const bpS = () => (bpSeason() || BP_SEASONS[BP_SEASONS.length - 1]).id;
+const BP_END = BP_SEASONS[0].end;
+const bpEnded = () => Date.now() >= BP_END;  // season 1 is over (its frames and medal are frozen)
+const bpLvl = () => levelOf(bpS() === 1 ? S.xp || 0 : Math.max(0, (S.xp || 0) - (S.bpXp0 || 0)));
+function bpReward(lv, season = bpS()) {
+  const r = BPMAP[season + ':' + lv]; if (r) return r;
   const free = lv % 7 === 0;
-  return { level: lv, kind: 'money', amount: lv % 10 === 0 ? 250 : lv % 5 === 0 ? 150 : 50 * (lv % 5), free };
+  const amount = season === 1 ? (lv % 10 === 0 ? 250 : lv % 5 === 0 ? 150 : 50 * (lv % 5)) : (lv % 10 === 0 ? 100 : lv % 5 === 0 ? 60 : 15 * (lv % 5));
+  return { season, level: lv, kind: 'money', amount, free };
 }
-const BP_END = new Date('2026-12-02T23:59:59+02:00'), BP_PRICE = 200;
-const bpEnded = () => Date.now() >= BP_END;
 const bpOpen = lv => bpReward(lv).free || S.bpPremium;
-const bpUnclaimed = () => { if (!ONLINE || bpEnded()) return []; const L = levelOf(S.xp || 0).lvl, out = []; for (let l = 2; l <= L; l++) if (!S.bpClaimed.includes(l)) out.push(l); return out; };
+const bpUnclaimed = () => { if (!ONLINE || !bpSeason()) return []; const L = bpLvl().lvl, out = []; for (let l = 2; l <= L; l++) if (!S.bpClaimed.includes(l)) out.push(l); return out; };
 const bpReadyList = () => bpUnclaimed().filter(bpOpen);
 const bpLockedList = () => bpUnclaimed().filter(l => !bpOpen(l));
 function buyPassSheet(onDone) {
-  const locked = bpLockedList();
+  const locked = bpLockedList(), se = bpSeason();
+  if (!se) return;
   openSheet(`
     <div class="bp-crown">${gi('trophy')}</div>
     <h2>Премиум боевой пропуск</h2>
-    <div class="subtitle">Открывает все награды сезона: скины вплоть до Karambit | Fade, ножевые кейсы, пачки открытий и зелья удачи. Бесплатная дорожка — около 15% наград, остальное только в премиуме.${locked.length ? `<br><b>Уже доступно сразу: ${locked.length} наград${locked.length === 1 ? 'а' : locked.length < 5 ? 'ы' : ''}.</b>` : ''}<br>Сезон до ${BP_END.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}.</div>
-    <div class="acts"><button class="btn" data-sact="close">Позже</button><button class="btn primary" data-sact="ok">Купить за ${money(BP_PRICE)}</button></div>`, {
+    <div class="subtitle">Открывает все награды сезона: скины${se.id === 1 ? ' вплоть до Karambit | Fade' : ' вплоть до Karambit | Tiger Tooth'}, ножевые кейсы, пачки открытий и зелья удачи. Бесплатная дорожка — около 15% наград, остальное только в премиуме.${locked.length ? `<br><b>Уже доступно сразу: ${locked.length} наград${locked.length === 1 ? 'а' : locked.length < 5 ? 'ы' : ''}.</b>` : ''}<br>${esc(se.name)} до ${se.end.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}.</div>
+    <div class="acts"><button class="btn" data-sact="close">Позже</button><button class="btn primary" data-sact="ok">Купить за ${money(se.price)}</button></div>`, {
     narrow: true,
     acts: {
       async ok(b, close) {
         b.disabled = true;
         try {
           const r = await rpc('buy_pass');
-          S.bpPremium = true; setBal(+r.balance); SFX.win('covert'); close(); drawLevel();
+          S.bpPremium = true; if (se.id === 1) S.s1prem = true; setBal(+r.balance); SFX.win('covert'); close(); drawLevel();
           notify({ title: 'Премиум пропуск активен!', sub: locked.length ? `Можно забрать ещё ${locked.length} наград` : 'Все награды сезона открыты', icon: gi('trophy'), color: 'rgba(255,214,10,.35)', tall: true });
           onDone && onDone();
         } catch (e) { b.disabled = false; notifyErr(e); }
@@ -2059,11 +2070,17 @@ function drawLuck() {
   $$('[data-luckleft]').forEach(e => { e.textContent = luckLeft(); });
 }
 setInterval(drawLuck, 1000);
+// levels from 110 burn, five stages up to 1000
+const FIRE_AT = [110, 250, 400, 650, 1000];
+const fireOf = l => FIRE_AT.filter(x => l >= x).length;
+const fireCls = l => fireOf(l) ? 'fire fire-' + fireOf(l) : '';
+const lvlChip = l => `<span class="lvl-chip ${fireCls(l)}">ур. ${l}</span>`;
 function drawLevel() {
   const L = levelOf(S.xp || 0);
   if (lvlEl) {
     lvlEl.innerHTML = `<svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="17" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="3"/><circle cx="20" cy="20" r="17" fill="none" stroke="url(#lvg)" stroke-width="3" stroke-linecap="round" stroke-dasharray="${106.8 * L.k} 200" transform="rotate(-90 20 20)"/><defs><linearGradient id="lvg"><stop offset="0" stop-color="#ffb347"/><stop offset="1" stop-color="#b26bff"/></linearGradient></defs></svg><b>${L.lvl}</b>${anythingToClaim() ? '<i class="dot"></i>' : ''}`;
     lvlEl.title = `Уровень ${L.lvl} · ${L.cur}/${L.need} XP — квесты и ежедневный бонус`;
+    lvlEl.className = 'lvl-badge ' + fireCls(L.lvl);
   }
   $$('[data-r="quests"]').forEach(b => b.classList.toggle('has-dot', anythingToClaim()));
 }
@@ -2121,9 +2138,10 @@ function viewQuests() {
       return `<div class="dday ${done ? 'done' : ''} ${day === st ? 'today' : ''}"><span>день ${day}</span><b>${money(dailyAmount(day)).replace('.00', '')}</b></div>`;
     }).join('');
     const pk = Array.from({ length: PK_TOTAL }, (_, i) => `<i class="${S.pumpkins.includes(i + 1) ? 'on' : ''}">${gi('pumpkin')}</i>`).join('');
-    const bpReady = bpReadyList(), maxLv = Math.max(100, L.lvl + 10);
+    const BL = bpLvl(), se = bpSeason(), bpS_ = bpS(), bpList = (window.BP || []).filter(r => (r.season || 1) === bpS_);
+    const bpReady = bpReadyList(), maxLv = Math.max(100, BL.lvl + 10);
     const bpCards = ONLINE ? Array.from({ length: maxLv - 1 }, (_, i) => {
-      const lv = i + 2, r = bpReward(lv), done = S.bpClaimed.includes(lv), reached = !done && lv <= L.lvl && !bpEnded(), can = reached && bpOpen(lv);
+      const lv = i + 2, r = bpReward(lv), done = S.bpClaimed.includes(lv), reached = !done && lv <= BL.lvl && !!se, can = reached && bpOpen(lv);
       return `<div class="bp-card ${done ? 'done' : can ? 'ready' : reached ? 'prem-lock' : 'locked'} k-${r.kind} ${r.free ? 'is-free' : 'is-prem'}" data-lv="${lv}">
         <div class="bp-lv">${lv}</div><span class="bp-tag">${r.free ? 'FREE' : 'PREMIUM'}</span>${bpArt(r)}
         <div class="bp-name">${bpName(r)}</div><div class="bp-sub">${bpSub(r)}</div>
@@ -2132,22 +2150,22 @@ function viewQuests() {
     }).join('') : '';
     main.innerHTML = `
     <section class="lvl-card glass edge">
-      <div class="lvl-big"><b>${L.lvl}</b><span>уровень</span></div>
+      <div class="lvl-big ${fireCls(L.lvl)}"><b>${L.lvl}</b><span>уровень</span></div>
       <div class="lvl-info">
         <h1>Квесты и награды</h1>
         <div class="xpbar"><i style="width:${(L.k * 100).toFixed(1)}%"></i></div>
         <div class="ev-note">${L.cur} / ${L.need} XP до ${L.lvl + 1} уровня · всего ${S.xp || 0} XP</div>
       </div>
     </section>
-    ${ONLINE ? `<div class="section-head"><h2>${gi('ticket')} Боевой пропуск</h2><span class="sub">награда за каждый уровень · XP дают кейсы, апгрейды, баттлы, подъём и квесты</span></div>
+    ${ONLINE ? `<div class="section-head"><h2>${gi('ticket')} Боевой пропуск</h2><span class="sub">${bpS() === 1 ? 'награда за каждый уровень' : 'уровень пропуска считается по XP, набранному с начала сезона'} · XP дают кейсы, апгрейды, баттлы, подъём и квесты</span></div>
     <div class="bp-head glass-flat ${S.bpPremium ? 'premium' : ''}">
-      <div class="bp-season"><span>Сезон 1 · ${bpEnded() ? 'завершён' : 'до ' + BP_END.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}</span><b>${bpEnded() ? 'Скоро зимний сезон' : `осталось ${Math.ceil((BP_END - Date.now()) / 864e5)} дн.`}</b></div>
-      <div class="bp-plan"><span>Эксклюзив сезона</span><b>${gi('sparkle')} 4 рамки и медаль</b></div>
-      <div class="bp-plan"><span>Бесплатно</span><b>${(window.BP || []).filter(r => r.free).length} из ${(window.BP || []).length} наград</b></div>
-      <div class="bp-plan prem"><span>Премиум</span><b>${S.bpPremium ? `${ICON.check} активен` : `все награды · ${money(BP_PRICE)}`}</b></div>
-      <div class="bp-medal ${S.bpPremium ? '' : 'locked'}">${medalSeason(s1Lvl())}<div><span>${S.bpPremium ? 'Твоя медаль сезона' : 'Медаль за премиум'}</span><b>${S.bpPremium ? (bpEnded() ? 'уровень зафиксирован' : 'уровень растёт до конца сезона') : 'покажет твой уровень'}</b></div></div>
+      <div class="bp-season"><span>${se ? `${esc(se.name)} · до ${se.end.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}` : 'Сезон завершён'}</span><b>${se ? `осталось ${Math.ceil((se.end - Date.now()) / 864e5)} дн.` : 'Скоро новый сезон'}</b></div>
+      ${bpS_ === 1 ? `<div class="bp-plan"><span>Эксклюзив сезона</span><b>${gi('sparkle')} 4 рамки и медаль</b></div>` : `<div class="bp-plan"><span>Уровень пропуска</span><b>${BL.lvl} · ${BL.cur} / ${BL.need} XP</b></div>`}
+      <div class="bp-plan"><span>Бесплатно</span><b>${bpList.filter(r => r.free).length} из ${bpList.length} наград</b></div>
+      <div class="bp-plan prem"><span>Премиум</span><b>${S.bpPremium ? `${ICON.check} активен` : `все награды · ${money((se || BP_SEASONS[BP_SEASONS.length - 1]).price)}`}</b></div>
+      ${bpS_ === 1 ? `<div class="bp-medal ${S.s1prem ? '' : 'locked'}">${medalSeason(s1Lvl())}<div><span>${S.s1prem ? 'Твоя медаль сезона' : 'Медаль за премиум'}</span><b>${S.s1prem ? (bpEnded() ? 'уровень зафиксирован' : 'уровень растёт до конца сезона') : 'покажет твой уровень'}</b></div></div>` : ''}
       <div class="grow"></div>${bpReady.length > 1 ? `<button class="btn green sm" data-act="bpAll">Забрать всё (${bpReady.length})</button>` : ''}
-      ${!S.bpPremium && !bpEnded() ? `<button class="btn primary sm" data-act="buyPass">Купить премиум${bpLockedList().length ? ` · ${bpLockedList().length} наград ждут` : ''}</button>` : ''}</div>
+      ${!S.bpPremium && se ? `<button class="btn primary sm" data-act="buyPass">Купить премиум${bpLockedList().length ? ` · ${bpLockedList().length} наград ждут` : ''}</button>` : ''}</div>
     <div class="bp-track glass-flat" id="bpTrack">${bpCards}</div>` : ''}
     <div class="q-top">
       <section class="q-card daily glass-flat">
@@ -2177,7 +2195,7 @@ function viewQuests() {
       </div>`;
     }).join('')}</div>`;
   };
-  const scrollBp = () => { const tr = $('#bpTrack'); if (!tr) return; const L = levelOf(S.xp || 0).lvl, first = bpReadyList()[0] || L + 1; const card = $(`.bp-card[data-lv="${first}"]`, tr); if (card) tr.scrollLeft = card.offsetLeft - tr.offsetLeft - 16; };
+  const scrollBp = () => { const tr = $('#bpTrack'); if (!tr) return; const L = bpLvl().lvl, first = bpReadyList()[0] || L + 1; const card = $(`.bp-card[data-lv="${first}"]`, tr); if (card) tr.scrollLeft = card.offsetLeft - tr.offsetLeft - 16; };
   draw(); scrollBp();
   const t = setInterval(() => { const e = $('#dailyCd'); if (e) e.textContent = hms(msToUtcMidnight()); if (!dailyReady() || !e) return; draw(); }, 1000);
   VIEW = {
@@ -2555,7 +2573,7 @@ async function viewTop() {
     if (tk !== viewToken) return;
     const trOf = {}; (trs || []).forEach(t => (trOf[t.uid] = trOf[t.uid] || []).push(t));
     if (error) { $('#topList').innerHTML = `<div class="empty-state">${esc(error.message)}</div>`; return; }
-    const val = r => T.by === 'time_sec' ? fmtTime(r.id === ME.id ? Math.max(r.time_sec || 0, myTime()) : r.time_sec) : T.by === 'xp' ? `ур. ${levelOf(r.xp || 0).lvl}` : T.by === 'networth' ? money(r.networth) : T.by === 'best_price' ? money(r.best_price) : T.by === 'opened' ? r.opened : `${r.battles_w} побед`;
+    const val = r => T.by === 'time_sec' ? fmtTime(r.id === ME.id ? Math.max(r.time_sec || 0, myTime()) : r.time_sec) : T.by === 'xp' ? lvlChip(levelOf(r.xp || 0).lvl) : T.by === 'networth' ? money(r.networth) : T.by === 'best_price' ? money(r.best_price) : T.by === 'opened' ? r.opened : `${r.battles_w} побед`;
     const sub = r => T.by === 'time_sec' ? `ур. ${levelOf(r.xp || 0).lvl} · ${r.opened} кейсов` : T.by === 'xp' ? `${r.xp || 0} XP · стрик ${r.daily_streak || 0} дн.` : T.by === 'best_price' && r.best_skin != null ? esc(fullName({ s: r.best_skin, f: r.best_float, st: r.best_st })) : T.by === 'networth' ? `баланс ${money(r.balance)} · инвентарь ${money(r.inv_value)}` : T.by === 'battles_w' ? `${r.battles_l} поражений` : `потрачено на апгрейды: ${r.up_w + r.up_l}`;
     $('#topList').innerHTML = `<div class="list glass-flat stagger">${data.map((r, i) => {
       const bs = r.best_skin != null ? SK[r.best_skin] : null;
