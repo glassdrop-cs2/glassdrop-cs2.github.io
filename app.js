@@ -312,7 +312,7 @@ const CFG = window.GD_CONFIG || {};
 const ONLINE = !!(CFG.url && CFG.key && window.supabase);
 const sb = ONLINE ? window.supabase.createClient(CFG.url, CFG.key, { auth: { persistSession: true, autoRefreshToken: true } }) : null;
 const ERR = {
-  BAD_FRAME: 'Такой рамки нет', BAD_AVATAR: 'Не удалось сохранить фото', BAD_BIO: '«О себе» — до 80 символов',
+  BAD_FRAME: 'Такой рамки нет', ALREADY_HAVE: 'Это уже у тебя есть', BAD_AVATAR: 'Не удалось сохранить фото', BAD_BIO: '«О себе» — до 80 символов',
   'Payload too large': 'Фото слишком большое', 'exceeded the maximum allowed size': 'Фото слишком большое',
   REF_LOCK: 'Дарить можно после 50 открытых кейсов и 30 минут на сайте — так работает бонус за приглашение', REF_EMPTY: 'Пока нечего забирать',
   REF_ALREADY: 'Пригласивший уже указан', REF_TOO_LATE: 'Приглашение работает только для новых аккаунтов', REF_SELF: 'Нельзя пригласить самого себя',
@@ -924,6 +924,7 @@ const GROUPS = [
   ['stickers', gi('sticker') + ' Наклейки и граффити', 'кейсы за копейки — от $0.04'],
   ['bf', gi('bf') + ' Black Friday', `скидки на ${ALL_CASES.filter(c => c.old).length} кейсов — до конца распродажи`],
   ['knives', gi('knife') + ' Ножи и перчатки', '100% редкий предмет из каждого кейса'],
+  ['vip', gi('sparkle') + ' Хайроллер', 'самые дорогие предметы игры — от $2 000 за кейс'],
   ['custom', gi('sparkle') + ' Авторские', 'выдуманные коллекции из реальных скинов'],
   ['maps', gi('globe') + ' Коллекции карт', 'Cobblestone с Dragon Lore, Dust 2, Mirage и другие — шансы как у сувенирных наборов'],
   ['official', 'Кейсы CS2', 'официальные, с реальным содержимым'],
@@ -3153,6 +3154,15 @@ function viewLife() {
     let i = 0;
     return groups.map(([g, title, f]) => {
       let list = S.rl.filter(f);
+      if (g === 'organ') {  // sold organs stay listed and can be bought back
+        const gone = (window.RL || []).filter(c => c.cat === 'organ' && !S.rl.some(it => it.item === c.id));
+        if (!list.length && !gone.length) return '';
+        return `<div class="section-head"><h2>${title}</h2><span class="sub">проданное можно выкупить обратно за +25% к цене</span></div><div class="rl-grid">${list.map(it => card(RLC[it.item], `
+          <span class="rl-price">Стоит ${rlMoney(rlSellValue(it))}</span>${uah(rlSellValue(it))}
+          <div class="rl-acts"><button class="btn sm green" data-act="rlSell" data-id="${it.id}">Продать</button></div>`, i++)).join('')}${gone.map(c => card(c, `
+          <span class="rl-price">Продано · выкуп ${rlMoney(r2(c.p * 1.25))}</span>${uah(r2(c.p * 1.25))}
+          <div class="rl-acts"><button class="btn sm ${S.rlBal >= r2(c.p * 1.25) ? 'primary' : ''}" data-act="rlBack" data-item="${c.id}">Выкупить обратно</button></div>`, i++)).join('')}</div>`;
+      }
       if (!list.length) return '';
       if (g === 'food') {  // same food stacks into one card
         const by = {}; list.forEach(it => (by[it.item] = by[it.item] || []).push(it));
@@ -3201,6 +3211,7 @@ function viewLife() {
     async act(a, el) {
       if (!S.rl) return;
       if (a === 'rlBuy') return rlBuySheet(RLC[el.dataset.item], r => after(r));
+      if (a === 'rlBack') return rlBackSheet(RLC[el.dataset.item], r => after(r));
       if (a === 'rlSell') return rlSellSheet(S.rl.find(x => x.id === +el.dataset.id), r => after(r));
       if (a === 'rlDeposit') return rlDepositSheet(draw);
       el.disabled = true;
@@ -3224,6 +3235,28 @@ function viewLife() {
       } catch (e) { el.disabled = false; notifyErr(e); }
     },
   };
+}
+function rlBackSheet(c, onDone) {
+  if (!c) return;
+  const cost = r2(c.p * 1.25);
+  openSheet(`
+    <div class="rl-sheet-img">${c.img ? `<img src="${c.img}" alt="">` : ICON.home}</div>
+    <h2>Выкуп: ${esc(c.n)}</h2>
+    <div class="subtitle">Цена ${rlMoney(c.p)} + 25% за выкуп. Платится реальными деньгами.</div>
+    <div class="steam-calc"><span>К оплате</span><b>${rlMoney(cost)}<br>${uah(cost)}</b><span>Реальные деньги</span><b class="${S.rlBal >= cost ? 'g' : 'r'}">${rlMoney(S.rlBal)}</b></div>
+    <div class="acts"><button class="btn" data-sact="close">Отмена</button><button class="btn primary" data-sact="ok" ${S.rlBal >= cost ? '' : 'disabled'}>Выкупить · ${rlMoney(cost)}</button></div>`, {
+    narrow: true,
+    acts: {
+      async ok(b, close) {
+        b.disabled = true;
+        try {
+          const r = await rpc('rl_buyback', { p_item: c.id });
+          SFX.coin(); close(); onDone(r);
+          notify({ title: 'Выкуплено обратно', sub: c.n, icon: ICON.home, color: 'rgba(48,209,88,.3)', amt: '−' + rlMoney(cost) });
+        } catch (e) { b.disabled = false; notifyErr(e); }
+      },
+    },
+  });
 }
 function rlBuySheet(c, onDone) {
   const many = c.cat === 'food' || c.cat === 'med';
