@@ -52,6 +52,15 @@ create index if not exists profiles_ref_by on profiles (ref_by);
 alter table profiles add column if not exists avatar text;
 alter table profiles add column if not exists bio text;
 
+-- ============ seasons: results and trophies ============
+create table if not exists seasons (id int primary key, name text not null, starts timestamptz not null, ends timestamptz not null, closed_at timestamptz, result jsonb);
+insert into seasons (id, name, starts, ends) values (1, 'Сезон 1', '2026-11-01 00:00+02', '2026-12-02 23:59:59+02') on conflict (id) do nothing;
+-- numbers at the start of a season; a player without a row started it with $100 and zeros
+create table if not exists season_snap (season int not null, uid uuid not null references profiles on delete cascade, networth numeric(14,2) not null,
+  xp int not null, opened int not null, battles_w int not null, time_sec int not null, primary key (season, uid));
+create table if not exists trophies (id bigserial primary key, season int not null, uid uuid not null references profiles on delete cascade,
+  kind text not null, info jsonb not null default '{}', created_at timestamptz not null default now(), unique (season, uid, kind));
+
 -- ============ avatars: public bucket, each player writes only into the folder named by their id ============
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values ('avatars', 'avatars', true, 524288, array['image/webp', 'image/jpeg'])
@@ -153,7 +162,7 @@ create index if not exists battle_drops_b on battle_drops (battle_id);
 
 -- ============ row level security: everyone reads, nobody writes directly ============
 do $$ declare t text; begin
-  foreach t in array array['skins','cases','case_items','profiles','inventory','drops','battles','battle_players','battle_drops','bp_rewards','perks','steam_items','climbs'] loop
+  foreach t in array array['skins','cases','case_items','profiles','inventory','drops','battles','battle_players','battle_drops','bp_rewards','perks','steam_items','climbs','seasons','trophies'] loop
     execute format('alter table %I enable row level security', t);
     execute format('drop policy if exists read_all on %I', t);
     execute format('create policy read_all on %I for select using (true)', t);
@@ -834,9 +843,61 @@ create or replace function rl_needs_json(p_uid uuid) returns jsonb language sql 
     from profiles where id = p_uid $$;
 
 -- called every minute by an open tab; a gap longer than 2.5 min (tab closed / hidden) is not counted
+-- what each player did during a season (current numbers minus the snapshot at its start)
+create or replace function season_rows(p_season int) returns table (uid uuid, nickname text, gain numeric, xp int, opened int, battles_w int, time_sec int, best numeric)
+language sql stable security definer set search_path = public as $$
+  select l.id, l.nickname, round(l.networth - coalesce(s.networth, 100), 2),
+         l.xp - coalesce(s.xp, 0), l.opened - coalesce(s.opened, 0), l.battles_w - coalesce(s.battles_w, 0), l.time_sec - coalesce(s.time_sec, 0),
+         coalesce((select max(d.price) from drops d where d.user_id = l.id and d.source in ('case', 'upgrade') and d.created_at between se.starts and se.ends), 0)
+    from leaderboard l join seasons se on se.id = p_season
+    left join season_snap s on s.season = p_season and s.uid = l.id
+$$;
+
+-- leader of each category; "mvp" = most categories won (ties share it); "rich" = most money made in the season (ties share it)
+create or replace function season_standings(p_season int) returns jsonb language sql stable security definer set search_path = public as $$
+  with r as (select * from season_rows(p_season)),
+  c as (select uid, 'gain' cat, gain v from r union all select uid, 'xp', xp from r union all select uid, 'best', best from r
+        union all select uid, 'opened', opened from r union all select uid, 'battles_w', battles_w from r union all select uid, 'time_sec', time_sec from r),
+  m as (select cat, max(v) mv from c group by cat),
+  w as (select c.uid, c.cat, c.v from c join m on m.cat = c.cat and c.v = m.mv where m.mv > 0),
+  cnt as (select uid, count(*)::int n, array_agg(cat order by cat) cats from w group by uid),
+  top as (select max(n) mn from cnt)
+  select jsonb_build_object(
+    'season', p_season,
+    'cats', coalesce((select jsonb_object_agg(cat, x) from (select w.cat, jsonb_agg(jsonb_build_object('uid', w.uid, 'nick', r.nickname, 'v', w.v)) x from w join r using (uid) group by w.cat) q), '{}'),
+    'mvp', coalesce((select jsonb_agg(jsonb_build_object('uid', cnt.uid, 'nick', r.nickname, 'n', cnt.n, 'cats', cnt.cats)) from cnt join r using (uid) cross join top where cnt.n = top.mn), '[]'),
+    'rich', coalesce((select jsonb_agg(jsonb_build_object('uid', r.uid, 'nick', r.nickname, 'gain', r.gain)) from r where r.gain > 0 and r.gain = (select max(gain) from r)), '[]'))
+$$;
+
+-- gives the trophies once, stores the result and takes the start numbers of the next season
+create or replace function season_close(p_season int) returns jsonb language plpgsql security definer set search_path = public as $$
+declare se seasons; st jsonb; x jsonb;
+begin
+  select * into se from seasons where id = p_season for update;
+  if not found or se.closed_at is not null or now() < se.ends then return null; end if;
+  st := season_standings(p_season);
+  for x in select * from jsonb_array_elements(st->'mvp') loop
+    insert into trophies (season, uid, kind, info) values (p_season, (x->>'uid')::uuid, 'mvp', x) on conflict do nothing;
+  end loop;
+  for x in select * from jsonb_array_elements(st->'rich') loop
+    insert into trophies (season, uid, kind, info) values (p_season, (x->>'uid')::uuid, 'rich', x) on conflict do nothing;
+  end loop;
+  insert into season_snap (season, uid, networth, xp, opened, battles_w, time_sec)
+    select p_season + 1, id, networth, xp, opened, battles_w, time_sec from leaderboard on conflict do nothing;
+  update seasons set closed_at = now(), result = st where id = p_season;
+  return st;
+end $$;
+
+create or replace function season_close_due() returns void language plpgsql security definer set search_path = public as $$
+declare i int;
+begin
+  for i in select id from seasons where closed_at is null and ends <= now() order by id loop perform season_close(i); end loop;
+end $$;
+
 create or replace function time_ping() returns int language plpgsql security definer set search_path = public as $$
 declare t int;
 begin
+  if exists (select 1 from seasons where closed_at is null and ends <= now()) then perform season_close_due(); end if;
   update profiles set time_sec = time_sec + case when time_ping > now() - interval '150 seconds' then least(extract(epoch from now() - time_ping), 75)::int else 0 end,
                       time_ping = now()
    where id = auth.uid() returning time_sec into t;
@@ -1049,7 +1110,7 @@ end $$;
 -- ============ permissions ============
 do $$ declare f text; begin
   -- internal helpers: not callable from the API
-  foreach f in array array['roll_float(int)','roll_drop(text)','nick_email(text)','grant_item(uuid,jsonb,text)','resolve_battle(bigint)','do_open(uuid,text,text,int)','roll_code_float(int,text)','bp_reward(int)','rl_accrued(text,timestamptz)','rl_tick(uuid)','rl_home(uuid)','rl_bill_day(uuid)','rl_needs_json(uuid)','bp_track_lvl()','ref_check(uuid)'] loop
+  foreach f in array array['roll_float(int)','roll_drop(text)','nick_email(text)','grant_item(uuid,jsonb,text)','resolve_battle(bigint)','do_open(uuid,text,text,int)','roll_code_float(int,text)','bp_reward(int)','rl_accrued(text,timestamptz)','rl_tick(uuid)','rl_home(uuid)','rl_bill_day(uuid)','rl_needs_json(uuid)','bp_track_lvl()','ref_check(uuid)','season_rows(int)','season_close(int)','season_close_due()'] loop
     execute format('revoke all on function %s from public, anon, authenticated', f);
   end loop;
   -- player API: signed-in users only (guests are signed in anonymously)
@@ -1065,11 +1126,20 @@ do $$ declare f text; begin
   end loop;
 end $$;
 grant execute on function nick_free(text) to anon, authenticated;
+revoke all on function season_standings(int) from public;
+grant execute on function season_standings(int) to anon, authenticated;
+-- close the season right on time even if nobody is online (time_ping closes it too, as a fallback)
+do $c$ begin
+  create extension if not exists pg_cron;
+  perform cron.schedule('season-close', '*/5 * * * *', 'select public.season_close_due()');
+exception when others then raise notice 'pg_cron not available: %', sqlerrm;
+end $c$;
 revoke all on function rl_public(uuid) from public;
 grant execute on function rl_public(uuid) to anon, authenticated;
 revoke all on function site_stats() from public;
 grant execute on function site_stats() to anon, authenticated;
 -- read-only access for the site (writes happen only inside the functions above)
 grant usage on schema public to anon, authenticated;
-grant select on skins, cases, case_items, profiles, inventory, drops, battles, battle_players, battle_drops, leaderboard, bp_rewards, perks, steam_items, climbs to anon, authenticated;
+grant select on skins, cases, case_items, profiles, inventory, drops, battles, battle_players, battle_drops, leaderboard, bp_rewards, perks, steam_items, climbs, seasons, trophies to anon, authenticated;
+alter table season_snap enable row level security;
 grant select on chat_messages to authenticated;  -- RLS policy chat_read decides which rows
