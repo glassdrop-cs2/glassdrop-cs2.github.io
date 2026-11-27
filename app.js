@@ -318,7 +318,7 @@ const ERR = {
   REF_ALREADY: 'Пригласивший уже указан', REF_TOO_LATE: 'Приглашение работает только для новых аккаунтов', REF_SELF: 'Нельзя пригласить самого себя',
   CHAT_RATE: 'Не так быстро — подожди секунду', BAD_MSG: 'Сообщение: от 1 до 300 символов',
   NO_RL_FUNDS: 'Не хватает реальных денег', BAD_ITEM: 'Этот предмет нельзя купить', BAD_AMOUNT: 'Неверная сумма', BAD_QUEST: 'Нет такого задания',
-  NO_FUNDS: 'Недостаточно средств', NICK_TAKEN: 'Этот ник уже занят', BAD_NICK: 'Ник: 3–16 символов — буквы, цифры, пробел, _ . -',
+  NO_FUNDS: 'Не хватает денег на балансе сайта', NICK_TAKEN: 'Этот ник уже занят', BAD_NICK: 'Ник: 3–16 символов — буквы, цифры, пробел, _ . -',
   NOT_OPEN: 'Баттл уже начался или отменён', FULL: 'Мест уже нет', ALREADY_IN: 'Ты уже в этом баттле', NO_USER: 'Игрок с таким ником не найден',
   SELF: 'Нельзя подарить самому себе', NOT_OWNER: 'Этот предмет уже не твой', TARGET_TOO_CHEAP: 'Цель должна быть дороже ставки',
   NOT_CREATOR: 'Это может только создатель баттла', QUEST_NOT_DONE: 'Квест ещё не выполнен', LEVEL_LOCKED: 'Этот уровень ещё не открыт', PREMIUM_REQUIRED: 'Эта награда — только в премиум-пропуске', PASS_ENDED: 'Сезон боевого пропуска завершён', ALREADY_PREMIUM: 'Премиум уже куплен', ALREADY_CLAIMED: 'Награда уже получена',
@@ -2444,7 +2444,7 @@ function viewClimb() {
     if (!(target >= 1.01 && target <= 1000)) { shake($('#clTarget')); return notifyErr(new Error('BAD_TARGET')); }
     let uids = [], amount = null;
     if (CL.mode === 'skins') { uids = [...CL.sel]; if (!uids.length) { shake($('#clBet')); return notify({ title: 'Выбери скины для ставки', icon: '!', color: 'rgba(255,69,58,.35)' }); } }
-    else { amount = r2(+CL.amt); if (!(amount >= .1)) return notifyErr(new Error('BAD_BET')); if (amount > S.bal) { shake($('#clGo')); return notifyErr(new Error('NO_FUNDS')); } }
+    else { amount = r2(+CL.amt); if (!(amount >= .1)) return notifyErr(new Error('BAD_BET')); if (amount > S.bal && !(await balanceCovers(amount))) { shake($('#clGo')); return noFunds(amount); } }
     CL.busy = true; $('#clGo').disabled = true;
     let r;
     try { r = await API.climb(uids, amount, target); }
@@ -2743,6 +2743,19 @@ async function applyRef(prof) {
     drop(); S.ref.by = 'x'; REF_BY = r.by; setBal(+r.balance); SFX.coin();
     notify({ title: `Приглашение от ${r.by}`, sub: 'Бонус за регистрацию по ссылке', icon: ICON.gift, amt: '+' + money(+r.bonus), color: 'rgba(48,209,88,.3)', tall: true, ms: 5000 });
   } catch (e) { if (!/fetch/i.test(e.message)) drop(); }
+}
+
+// the balance shown may be old (another tab or device): ask the server before refusing
+async function balanceCovers(amount) {
+  if (!ONLINE || !ME) return false;
+  const { data } = await sb.from('profiles').select('balance,rl_balance').eq('id', ME.id).single();
+  if (data) { setBal(+data.balance); S.rlBal = +data.rl_balance; }
+  return S.bal >= amount;
+}
+function noFunds(amount) {
+  SFX.fail();
+  const lack = r2(amount - S.bal), rl = ONLINE && S.rlBal >= lack;
+  notify({ title: 'Не хватает денег на балансе', sub: `На балансе ${money(S.bal)}, ставка ${money(amount)}.${rl ? ' Деньги из «Жизни» сначала переведи на сайт: вкладка «Жизнь» → «Задепать на сайт».' : ''}`, icon: '!', color: 'rgba(255,69,58,.35)', tall: true, ms: rl ? 6000 : 3500 });
 }
 
 const STEAM_FEE = .05;
