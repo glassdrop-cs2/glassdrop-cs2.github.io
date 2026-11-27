@@ -1575,3 +1575,5 @@ body.chat-on { padding-right: 344px; }
   .ss-cats { grid-template-columns: 1fr 1fr; }
   .trophy img { width: 60px; height: 60px; }
 }
+.perk-n { font-style: normal; font-size: 13px; padding: 1px 7px; border-radius: 8px; background: rgba(48,209,88,.18); color: #5ee07f; margin-left: 4px; }
+.perk .btn + .btn { margin-left: -4px; }

@@ -363,7 +363,7 @@ const BONUS_CD = 120e3, BONUS_AMT = 15;
 const freshStats = () => ({ opened: 0, spent: 0, sold: 0, upW: 0, upL: 0, bw: 0, bl: 0, best: null });
 const fresh = () => ({ bal: 100, inv: [], hist: [], uid: 1, lastBonus: 0, bonusN: 0, xp: 0, quests: {}, perks: [], steam: [], luckUntil: 0, bpClaimed: [], dailyLast: null, dailyStreak: 0, pumpkins: [], pumpkinDone: false, stats: freshStats() });
 const bonusAmt = n => n % 100 === 0 ? 1000 : n % 10 === 0 ? 100 : BONUS_AMT;
-let SET = { sound: true, fast: false };
+let SET = { sound: true, fast: false, feedPop: true };
 try { SET = Object.assign(SET, JSON.parse(localStorage.getItem(SKEY) || '{}')); } catch {}
 let S = fresh();
 if (!ONLINE) { try { const o = JSON.parse(localStorage.getItem(KEY) || 'null'); if (o) { S = Object.assign(fresh(), o); if (o.sound != null && !localStorage.getItem(SKEY)) { SET.sound = o.sound; SET.fast = !!o.fast; } } } catch {} }
@@ -1415,12 +1415,15 @@ function viewInventory() {
       }
       if (a === 'selMode') { I.select = !I.select; I.sel.clear(); drawInv(); }
       if (a === 'steamSel') steamSheet([...I.sel], () => { I.sel.clear(); I.select = false; if ($('#invGrid')) drawInv(); });
-      if (a === 'useLuck') {
+      if (a === 'useLuck' || a === 'useLuckAll') {
         el.disabled = true;
-        try {
-          await API.useLuck(+el.dataset.id); SFX.win('classified'); drawLuck();
-          notify({ title: 'Зелье удачи выпито!', sub: `Действует до ${new Date(S.luckUntil).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`, icon: gi('potion'), color: 'rgba(52,199,89,.4)', tall: true });
-        } catch (e) { notifyErr(e); }
+        const ids = a === 'useLuck' ? [+el.dataset.id] : S.perks.filter(p => p.kind === 'luck' && String(p.mins) === el.dataset.m).map(p => p.id);
+        let n = 0;
+        try { for (const id of ids) { await API.useLuck(id); n++; } } catch (e) { notifyErr(e); }
+        if (n) {
+          SFX.win('classified'); drawLuck();
+          notify({ title: n > 1 ? `Выпито зелий: ${n}` : 'Зелье удачи выпито!', sub: `Осталось ${Math.round((S.luckUntil - Date.now()) / 60000)} мин · до ${new Date(S.luckUntil).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`, icon: gi('potion'), color: 'rgba(52,199,89,.4)', tall: true });
+        }
         drawInv();
       }
       if (a === 'selClear') { I.select = false; I.sel.clear(); drawInv(); }
@@ -1454,8 +1457,8 @@ function drawPerks() {
   const tix = {}; S.perks.filter(p => p.kind === 'case').forEach(p => { tix[p.case_id] = (tix[p.case_id] || 0) + 1; });
   if (!lucks.length && !Object.keys(tix).length && !luckOn()) { row.innerHTML = ''; return; }
   row.innerHTML = `<div class="section-head"><h2 style="font-size:19px">Бонусы</h2><span class="sub">награды боевого пропуска</span></div><div class="perk-row">
-    ${luckOn() ? `<div class="perk glass-flat on">${gi('potion')}<div class="t"><b>Удача активна</b><span>ещё <i data-luckleft>${hms(S.luckUntil - Date.now()).slice(3)}</i> · дропы и апгрейды лучше</span></div></div>` : ''}
-    ${lucks.map(p => `<div class="perk glass-flat">${gi('potion')}<div class="t"><b>Зелье удачи · ${p.mins} мин</b><span title="40% открытий делают второй бросок и берут лучший предмет, шанс апгрейда ×1.1">дропы лучше · апгрейд ×1.1</span></div><button class="btn primary sm" data-act="useLuck" data-id="${p.id}">Использовать</button></div>`).join('')}
+    ${luckOn() ? `<div class="perk glass-flat on">${gi('potion')}<div class="t"><b>Удача активна</b><span>ещё <i data-luckleft>${luckLeft()}</i> · дропы и апгрейды лучше</span></div></div>` : ''}
+    ${Object.entries(lucks.reduce((g, p) => ((g[p.mins] = g[p.mins] || []).push(p), g), {})).map(([m, arr]) => `<div class="perk glass-flat">${gi('potion')}<div class="t"><b>Зелье удачи · ${m} мин${arr.length > 1 ? ` <em class="perk-n">×${arr.length}</em>` : ''}</b><span title="40% открытий делают второй бросок и берут лучший предмет, шанс апгрейда ×1.1">время зелий складывается · дропы лучше · апгрейд ×1.1</span></div><button class="btn primary sm" data-act="useLuck" data-id="${arr[0].id}">Выпить</button>${arr.length > 1 ? `<button class="btn sm" data-act="useLuckAll" data-m="${m}">Все ×${arr.length}</button>` : ''}</div>`).join('')}
     ${Object.entries(tix).map(([id, n]) => { const c = caseById(id); return c ? `<div class="perk glass-flat">${gi('ticket')}<div class="t"><b>${esc(c.name)} ×${n}</b><span>бесплатн${n > 1 ? 'ые открытия' : 'ое открытие'}</span></div><button class="btn green sm" data-go="#/case/${id}">Открыть</button></div>` : ''; }).join('')}
   </div>`;
 }
@@ -1883,6 +1886,8 @@ const questReady = k => QUESTS[k].cur() >= questDef(k, S.quests[k] || 0).target;
 const utcDay = off => new Date(Date.now() + off * 864e5).toISOString().slice(0, 10);
 const msToUtcMidnight = () => { const d = new Date(); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1) - d.getTime(); };
 const hms = ms => { const t = Math.max(0, Math.floor(ms / 1000)), p = n => String(n).padStart(2, '0'); return `${p(Math.floor(t / 3600))}:${p(Math.floor(t / 60) % 60)}:${p(t % 60)}`; };
+// remaining time: M:SS under an hour, H:MM:SS above (stacked potions can last hours)
+const luckLeft = () => { const t = hms(S.luckUntil - Date.now()); return t.startsWith('00:') ? t.slice(3) : t.replace(/^0/, ''); };
 const dailyAmount = st => st >= 31 ? 200 + 25 * Math.floor((st - 31) / 30) : st >= 8 ? 70 : 50;
 const dailyReady = () => S.dailyLast !== utcDay(0);
 const nextStreak = () => S.dailyLast === utcDay(-1) || S.dailyLast === utcDay(0) ? S.dailyStreak + (dailyReady() ? 1 : 0) : 1;
@@ -2049,8 +2054,8 @@ function drawLuck() {
   if (!luckEl) return;
   const on = luckOn();
   luckEl.hidden = !on;
-  if (on) luckEl.innerHTML = `${gi('potion')}<b>${hms(S.luckUntil - Date.now()).slice(3)}</b>`;
-  $$('[data-luckleft]').forEach(e => { e.textContent = hms(S.luckUntil - Date.now()).slice(3); });
+  if (on) luckEl.innerHTML = `${gi('potion')}<b>${luckLeft()}</b>`;
+  $$('[data-luckleft]').forEach(e => { e.textContent = luckLeft(); });
 }
 setInterval(drawLuck, 1000);
 function drawLevel() {
@@ -2696,6 +2701,7 @@ async function viewProfile() {
   <div class="list glass-flat settings">
     <div class="li"><div class="t"><b>Звуки</b><span>Щелчки рулетки, звук выигрыша</span></div><span class="switch ${SET.sound ? 'on' : ''}" data-act="snd"></span></div>
     <div class="li"><div class="t"><b>Быстрое открытие</b><span>Рулетка крутится ~1.5 секунды</span></div><span class="switch ${SET.fast ? 'on' : ''}" data-act="fast"></span></div>
+    ${ONLINE ? `<div class="li"><div class="t"><b>Чужие дропы</b><span>Всплывающие уведомления о дропах других игроков — только на страницах кейсов и баттлов</span></div><span class="switch ${SET.feedPop ? 'on' : ''}" data-act="feedPop"></span></div>` : ''}
     ${ONLINE ? '' : '<div class="li"><div class="t"><b>Сбросить прогресс</b><span>Баланс $100, пустой инвентарь и статистика</span></div><button class="btn danger sm" data-act="reset">Сбросить</button></div>'}
   </div>`;
   VIEW = {
@@ -2705,6 +2711,7 @@ async function viewProfile() {
       if (a === 'wearFrame') wearFrame(el.dataset.fr, el).then(() => { const c = $('#cosm'); if (c) c.innerHTML = cosmHTML(); const av = $('#myAv'); if (av) av.outerHTML = avatarHTML(ME.nick, S.frame, 'id="myAv" data-act="editProf" title="Изменить фото"', S.avatar); });
       if (a === 'snd') { SET.sound = !SET.sound; saveSet(); el.classList.toggle('on', SET.sound); drawSound(); SFX.click(); }
       if (a === 'fast') { SET.fast = !SET.fast; saveSet(); el.classList.toggle('on', SET.fast); SFX.click(); }
+      if (a === 'feedPop') { SET.feedPop = !SET.feedPop; saveSet(); el.classList.toggle('on', SET.feedPop); SFX.click(); }
       if (a === 'reset') openSheet(`<h2>Сбросить всё?</h2><div class="subtitle">Инвентарь, баланс и статистика будут удалены без возможности восстановления.</div><div class="acts"><button class="btn" data-sact="close">Отмена</button><button class="btn danger" data-sact="ok">Сбросить</button></div>`, {
         narrow: true,
         acts: { ok(b_, close) { S = fresh(); save(); renderBal(); close(); notify({ title: 'Прогресс сброшен', sub: 'Баланс: $100.00', icon: '↺', color: 'rgba(10,132,255,.35)' }); route(); } },
@@ -3532,6 +3539,17 @@ function authSheet() {
   });
 }
 
+// popups about other players: only where they belong (cases / battles), not more often than every 8 s
+const curRoute = () => location.hash.replace(/^#\/?/, '').split(/[/?]/)[0] || '';
+let feedPopAt = 0;
+function feedPopOk(kind) {
+  if (!SET.feedPop || document.hidden) return false;
+  const r = curRoute();
+  if (!(kind === 'battles' ? ['battles', 'battle'].includes(r) : ['', 'case'].includes(r))) return false;
+  if (Date.now() - feedPopAt < 8000) return false;
+  feedPopAt = Date.now(); return true;
+}
+
 async function startOnline() {
   let { data: { session } } = await sb.auth.getSession();
   let prof = null;
@@ -3585,6 +3603,7 @@ async function startOnline() {
     }
     if (h.uid === ME.id) return;
     const s = SK[h.s];
+    if (!feedPopOk(h.src === 'battle' ? 'battles' : '')) return;
     if (h.src === 'battle') notify({ title: `${h.nick} выиграл баттл`, sub: `Банк ${money(h.p)}`, icon: gi('swords'), color: 'rgba(255,214,10,.3)' });
     else if (s.star || h.p >= 25) { SFX.ping(); notify({ title: `${h.nick} выбил${h.src === 'upgrade' ? ' апгрейдом' : ''}`, sub: fullName(h), icon: thumbIco(h.s), amt: money(h.p), tall: true, ms: 4000 }); }
   };
