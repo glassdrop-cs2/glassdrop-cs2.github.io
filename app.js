@@ -3183,6 +3183,7 @@ function rlSellSheet(it, onDone) {
     <h2>Продать ${esc(c.n)}?</h2>
     <div class="subtitle">${c.cat === 'organ' ? 'Продаётся один раз и навсегда.' : c.cat === 'mine' ? 'Назад купить не получится.' : `Покупатель даёт ${Math.round(c.sell * 100)}% от цены покупки.`}</div>
     <div class="steam-calc"><span>Получишь</span><b class="g">${rlMoney(v)}</b>${it.acc >= .01 ? `<span>+ аренда</span><b class="g">${rlMoney(it.acc)}</b>` : ''}</div>
+    <div class="ev-note" style="text-align:center;margin-top:10px">Деньги придут на баланс «Реальные деньги» (вкладка «Жизнь»). На баланс сайта их переводит кнопка «Задепать на сайт».</div>
     <div class="acts"><button class="btn" data-sact="close">Отмена</button><button class="btn green" data-sact="ok">Продать · ${rlMoney(r2(v + it.acc))}</button></div>`, {
     narrow: true,
     acts: {
@@ -3192,7 +3193,7 @@ function rlSellSheet(it, onDone) {
           const r = await rpc('rl_sell', { p_ids: [it.id] });
           const st = await rpc('rl_state');
           SFX.coin(); close(); onDone(st);
-          notify({ title: 'Продано', sub: c.n, icon: ICON.home, color: 'rgba(48,209,88,.3)', amt: '+' + rlMoney(r2(+r.sum + +r.rent)), amtColor: '#5ee07f' });
+          notify({ title: 'Продано', sub: `${c.n} · на «Реальные деньги»`, icon: ICON.home, color: 'rgba(48,209,88,.3)', amt: '+' + rlMoney(r2(+r.sum + +r.rent)), amtColor: '#5ee07f' });
         } catch (e) { b.disabled = false; notifyErr(e); }
       },
     },
