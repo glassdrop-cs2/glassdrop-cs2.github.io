@@ -313,6 +313,8 @@ const ONLINE = !!(CFG.url && CFG.key && window.supabase);
 const sb = ONLINE ? window.supabase.createClient(CFG.url, CFG.key, { auth: { persistSession: true, autoRefreshToken: true } }) : null;
 const ERR = {
   BAD_FRAME: 'Такой рамки нет',
+  REF_LOCK: 'Дарить можно после 50 открытых кейсов и 30 минут на сайте — так работает бонус за приглашение', REF_EMPTY: 'Пока нечего забирать',
+  REF_ALREADY: 'Пригласивший уже указан', REF_TOO_LATE: 'Приглашение работает только для новых аккаунтов', REF_SELF: 'Нельзя пригласить самого себя',
   CHAT_RATE: 'Не так быстро — подожди секунду', BAD_MSG: 'Сообщение: от 1 до 300 символов',
   NO_RL_FUNDS: 'Не хватает реальных денег', BAD_ITEM: 'Этот предмет нельзя купить', BAD_AMOUNT: 'Неверная сумма', BAD_QUEST: 'Нет такого задания',
   NO_FUNDS: 'Недостаточно средств', NICK_TAKEN: 'Этот ник уже занят', BAD_NICK: 'Ник: 3–16 символов — буквы, цифры, пробел, _ . -',
@@ -378,6 +380,7 @@ function applyProfile(p) {
   S.lastBonus = p.last_bonus ? Date.parse(p.last_bonus) : 0;
   S.bonusN = p.bonus_n || 0;
   S.bpClaimed = p.bp_claimed || []; S.bpPremium = !!p.bp_premium; S.steamQ = p.steam_q || []; S.rlBal = +(p.rl_balance || 0); S.luckUntil = p.luck_until ? Date.parse(p.luck_until) : 0;
+  S.ref = { by: p.ref_by, done: !!p.ref_done, pending: +(p.ref_pending || 0), total: +(p.ref_total || 0) };
   S.frame = p.frame || null; S.s1lvl = p.bp_s1_lvl || 0; S.created = p.created_at ? Date.parse(p.created_at) : Date.now();
   S.xp = p.xp || 0; S.quests = p.quests || {}; S.dailyLast = p.daily_last; S.dailyStreak = p.daily_streak || 0; S.pumpkinDone = !!p.pumpkin_done;
   S.stats = { opened: p.opened, spent: +p.spent, sold: +p.sold, upW: p.up_w, upL: p.up_l, bw: p.battles_w, bl: p.battles_l, best: p.best_skin != null ? { s: p.best_skin, f: p.best_float, st: p.best_st, p: +p.best_price } : null };
@@ -2605,6 +2608,7 @@ async function viewProfile() {
     if (tk !== viewToken) return;
     hist = (data || []).map(fromFeed);
   }
+  if (ONLINE) loadRefs(tk);
   const st = S.stats, b = st.best;
   main.innerHTML = `
   ${ptabsHTML('profile')}
@@ -2627,7 +2631,9 @@ async function viewProfile() {
     <div class="stat-tile glass-flat" style="--i:7"><span>Время на сайте</span><b data-mytime>${fmtTime(myTime())}</b></div>` : ''}
   </div>
   ${ONLINE ? `<div class="section-head"><h2>Медали и рамки</h2><span class="sub">${bpEnded() ? 'рамки сезона 1 больше не выдаются' : 'рамки сезона 1 выдаются только до ' + BP_END.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}</span></div>
-  <section class="cosm glass-flat" id="cosm">${cosmHTML()}</section>` : ''}
+  <section class="cosm glass-flat" id="cosm">${cosmHTML()}</section>
+  <div class="section-head"><h2>Пригласить друга</h2><span class="sub" id="refCount"></span></div>
+  <section class="ref glass-flat" id="refBox">${refHTML()}</section>` : ''}
   <div class="section-head"><h2>Лучший дроп</h2></div>
   ${b ? `<div style="max-width:340px">${itemCard(b)}</div>` : '<div class="ev-note" style="margin-left:4px">Пока пусто</div>'}
   <div class="section-head"><h2>История</h2><span class="sub">последние ${hist.length}</span></div>
@@ -2640,6 +2646,8 @@ async function viewProfile() {
   </div>`;
   VIEW = {
     act(a, el) {
+      if (a === 'refCopy') refCopy(el);
+      if (a === 'refClaim') refClaim(el);
       if (a === 'wearFrame') wearFrame(el.dataset.fr, el).then(() => { const c = $('#cosm'); if (c) c.innerHTML = cosmHTML(); const av = $('#myAv'); if (av) av.outerHTML = avatarHTML(ME.nick, S.frame, 'id="myAv"'); });
       if (a === 'snd') { SET.sound = !SET.sound; saveSet(); el.classList.toggle('on', SET.sound); drawSound(); SFX.click(); }
       if (a === 'fast') { SET.fast = !SET.fast; saveSet(); el.classList.toggle('on', SET.fast); SFX.click(); }
@@ -2656,6 +2664,82 @@ async function viewProfile() {
     },
   };
 }
+/* ---- referrals: server pays, the client only shows ---- */
+const REF = { gift: 1000, bonus: 250, cases: 50, mins: 30, rate: .01 };
+let REFS = null, REF_BY = '';
+const refLink = () => location.origin + location.pathname + '?ref=' + encodeURIComponent(ME.nick);
+function refHTML() {
+  const r = S.ref || { pending: 0, total: 0 };
+  const friends = REFS || [];
+  const mine = r.by && !r.done ? `<div class="ref-mine">Тебя пригласил <b>${esc(REF_BY || 'друг')}</b>. Дарить предметы можно будет после ${REF.cases} открытых кейсов и ${REF.mins} минут на сайте: ${Math.min(S.stats.opened, REF.cases)}/${REF.cases} кейсов · ${Math.min(Math.floor(myTime() / 60), REF.mins)}/${REF.mins} мин.</div>` : '';
+  return `${mine}
+    <div class="ref-link"><input id="refUrl" readonly value="${esc(refLink())}" aria-label="Твоя ссылка"><button class="btn primary" data-act="refCopy">${navigator.share && matchMedia('(pointer:coarse)').matches ? 'Поделиться' : 'Скопировать'}</button></div>
+    <div class="ref-terms">
+      <div><b>${money(REF.gift)}</b><span>получает друг, когда создаёт аккаунт по твоей ссылке</span></div>
+      <div><b>${money(REF.bonus)}</b><span>получаешь ты, когда друг откроет ${REF.cases} кейсов и проведёт на сайте ${REF.mins} минут</span></div>
+      <div><b>1%</b><span>от стоимости всего, что друг выбивает из кейсов, навсегда. У друга ничего не списывается</span></div>
+    </div>
+    <div class="ref-earn">
+      <div><span>Накоплено</span><b>${money(Math.floor(r.pending * 100) / 100)}</b></div>
+      <div><span>Заработано всего</span><b>${money(Math.floor(r.total * 100) / 100)}</b></div>
+      <button class="btn green" data-act="refClaim" ${r.pending >= .01 ? '' : 'disabled'}>Забрать на баланс</button>
+    </div>
+    ${friends.length ? `<div class="list ref-list">${friends.map(f => `<div class="li" data-go="#/u/${f.id}">
+      ${avatarHTML(f.nickname, f.frame)}
+      <div class="t"><b>${esc(f.nickname)}</b><span>${f.ref_done ? 'бонус $250 получен' : `${Math.min(f.opened, REF.cases)}/${REF.cases} кейсов · ${Math.min(Math.floor(f.time_sec / 60), REF.mins)}/${REF.mins} мин`}</span></div>
+      <div class="p">+${money(Math.floor(f.ref_gave * 100) / 100)}</div></div>`).join('')}</div>`
+      : REFS ? '<div class="ev-note">Пока никого. Отправь ссылку другу.</div>' : ''}`;
+}
+async function loadRefs(tk) {
+  const [{ data }, by] = await Promise.all([
+    sb.from('profiles').select('id,nickname,frame,opened,time_sec,ref_done,ref_gave').eq('ref_by', ME.id).order('ref_gave', { ascending: false }),
+    S.ref && S.ref.by && !REF_BY ? sb.from('profiles').select('nickname').eq('id', S.ref.by).maybeSingle() : Promise.resolve(null),
+  ]);
+  if (by && by.data) REF_BY = by.data.nickname;
+  REFS = (data || []).map(f => ({ ...f, ref_gave: +f.ref_gave }));
+  if (tk !== viewToken) return;
+  const box = $('#refBox'); if (box) box.innerHTML = refHTML();
+  const c = $('#refCount'); if (c) c.textContent = REFS.length ? 'приглашено: ' + REFS.length : '';
+}
+async function refCopy(b) {
+  const url = refLink();
+  if (navigator.share && matchMedia('(pointer:coarse)').matches) { try { await navigator.share({ title: 'GlassDrop', text: `Заходи в GlassDrop — по ссылке сразу ${money(REF.gift)} на баланс`, url }); } catch {} return; }
+  try { await navigator.clipboard.writeText(url); }
+  catch { const i = $('#refUrl'); i.select(); document.execCommand('copy'); }
+  SFX.click(); b.textContent = 'Скопировано'; setTimeout(() => { b.textContent = 'Скопировать'; }, 1600);
+}
+async function refClaim(b) {
+  b.disabled = true;
+  try {
+    const r = await rpc('claim_ref');
+    S.ref.pending = Math.max(0, S.ref.pending - r.amount); setBal(+r.balance); SFX.coin();
+    notify({ title: 'Доход с друзей зачислен', icon: ICON.gift, amt: '+' + money(+r.amount), color: 'rgba(48,209,88,.3)' });
+    const box = $('#refBox'); if (box) box.innerHTML = refHTML();
+  } catch (e) { b.disabled = false; notifyErr(e); }
+}
+// ?ref=Nick is kept until the account exists, then sent once
+function grabRef() {
+  try {
+    const q = new URLSearchParams(location.search), r = q.get('ref');
+    if (!r) return;
+    localStorage.setItem('gd_ref', r.slice(0, 16));
+    q.delete('ref');
+    history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q : '') + location.hash);
+  } catch {}
+}
+const pendingRef = () => { try { return localStorage.getItem('gd_ref') || ''; } catch { return ''; } };
+async function applyRef(prof) {
+  const code = pendingRef();
+  if (!code) return;
+  const drop = () => { try { localStorage.removeItem('gd_ref'); } catch {} };
+  if (prof.ref_by || code.toLowerCase() === ME.nick.toLowerCase() || Date.now() - Date.parse(prof.created_at) > 864e5) return drop();
+  try {
+    const r = await rpc('set_referrer', { p_code: code });
+    drop(); S.ref.by = 'x'; REF_BY = r.by; setBal(+r.balance); SFX.coin();
+    notify({ title: `Приглашение от ${r.by}`, sub: 'Бонус за регистрацию по ссылке', icon: ICON.gift, amt: '+' + money(+r.bonus), color: 'rgba(48,209,88,.3)', tall: true, ms: 5000 });
+  } catch (e) { if (!/fetch/i.test(e.message)) drop(); }
+}
+
 const STEAM_FEE = .05;
 function viewSteam() {
   if (!ONLINE) { location.hash = '#/profile'; return; }
@@ -3186,7 +3270,7 @@ function storeCred(nick, pw) {
 const lastNick = () => { try { return localStorage.getItem('gd_nick') || ''; } catch { return ''; } };
 function authSheet() {
   return new Promise(resolve => {
-    let mode = lastNick() ? 'login' : 'guest';
+    let mode = lastNick() && !pendingRef() ? 'login' : 'guest';
     const body = () => mode === 'guest'
       ? `<form id="authForm" action="#" method="post"><label class="field"><span>Придумай ник</span><input id="aNick" maxlength="16" autocomplete="off" placeholder="3–16 символов"></label>
          <div class="acts"><button type="submit" class="btn primary big" data-sact="go">Играть</button></div></form>
@@ -3208,6 +3292,7 @@ function authSheet() {
       <div class="auth-logo">${logoSVG()}</div>
       <h2>GlassDrop</h2>
       <div class="subtitle">Кейсы CS2, баттлы и топ — вместе с друзьями</div>
+      ${pendingRef() ? `<div class="ref-invite">Тебя пригласил <b>${esc(pendingRef())}</b>. Новый аккаунт получит ${money(REF.gift)}.</div>` : ''}
       <div style="display:flex;justify-content:center;margin-top:20px">${seg('mode', [['guest', 'Гость'], ['login', 'Вход'], ['reg', 'Регистрация']], mode)}</div>
       <div id="authBody">${body()}</div>`, {
       narrow: true, locked: true,
@@ -3270,7 +3355,8 @@ async function startOnline() {
     ({ data: { session } } = await sb.auth.getSession());
   }
   ME = { id: session.user.id, nick: '', guest: !!session.user.is_anonymous };
-  await refreshProfile();
+  const myProf = await refreshProfile();
+  await applyRef(myProf);
   if (!ME.guest && ME.nick) try { localStorage.setItem('gd_nick', ME.nick); } catch {}
   await refreshInventory();
   // pumpkins stay hidden if the list can't be loaded: otherwise found ones would show up again
@@ -3317,6 +3403,7 @@ async function startOnline() {
 (async () => {
   if (ONLINE) {
     main.innerHTML = loadingHTML;
+    grabRef();
     try { await startOnline(); }
     catch (e) { console.error(e); main.innerHTML = `<div class="empty-state"><div class="ill">${gi('warn')}</div><h3>Не удалось подключиться к серверу</h3>${esc(errText(e))}<br><button class="btn primary" onclick="location.reload()">Обновить</button></div>`; return; }
     route(); drawLevel(); drawLuck();
