@@ -2491,16 +2491,63 @@ function viewClimb() {
 
 /* ================= TOP ================= */
 const T = { by: 'networth' };
+/* ---- season trophies (pictures: HLTV MVP medal and Grand Slam gold bar) ---- */
+const TROPHY = {
+  mvp: { img: 'trophy-mvp.webp', n: 'MVP сезона', d: 'Лучший игрок: первое место в большинстве категорий' },
+  rich: { img: 'trophy-rich.webp', n: 'Самый богатый', d: 'Больше всех заработал за сезон' },
+};
+const SCAT = { gain: 'Заработок за сезон', xp: 'Опыт', best: 'Лучший дроп', opened: 'Открыто кейсов', battles_w: 'Победы в баттлах', time_sec: 'Время на сайте' };
+const scatVal = (c, v) => c === 'gain' || c === 'best' ? money(+v) : c === 'xp' ? `${Math.round(v).toLocaleString('ru-RU')} XP` : c === 'time_sec' ? fmtTime(+v) : c === 'battles_w' ? `${v} побед` : Math.round(v).toLocaleString('ru-RU');
+const trophySub = t => t.kind === 'rich' ? `+${money(+t.info.gain)} за сезон ${t.season}` : `Сезон ${t.season} · лучший в ${t.info.n} из 6: ${(t.info.cats || []).map(c => SCAT[c].toLowerCase()).join(', ')}`;
+const trophiesHTML = list => `<div class="trophies">${list.map(t => `<div class="trophy t-${t.kind}"><img src="${TROPHY[t.kind].img}" alt=""><div><b>${TROPHY[t.kind].n}</b><span>${esc(trophySub(t))}</span></div></div>`).join('')}</div>`;
+const trophiesMini = list => (list || []).map(t => `<img class="tr-mini" src="${TROPHY[t.kind].img}" alt="" title="${TROPHY[t.kind].n} · сезон ${t.season}">`).join('');
+async function loadTrophies(uid, el) {
+  const { data } = await sb.from('trophies').select('*').eq('uid', uid).order('season', { ascending: false });
+  if (!el || !el.isConnected || !data || !data.length) return;
+  el.innerHTML = `<div class="section-head"><h2>Трофеи</h2></div>${trophiesHTML(data)}`;
+}
+// the season block on the top page: live leaders before the end, frozen results after it
+async function seasonBox(el) {
+  const { data: se } = await sb.from('seasons').select('*').order('id', { ascending: false }).limit(1).maybeSingle();
+  if (!se || !el.isConnected) return;
+  let st = se.result;
+  if (!st) { try { st = await rpc('season_standings', { p_season: se.id }); } catch { return; } }
+  if (!el.isConnected) return;
+  const done = !!se.closed_at, names = arr => arr.length ? arr.map(x => `<a href="#/u/${x.uid}">${esc(x.nick)}</a>`).join(', ') : '—';
+  el.innerHTML = `
+    <div class="ss-head"><div><b>Трофеи · ${esc(se.name)}</b><span>${done ? 'Сезон завершён, трофеи выданы' : `Итоги ${new Date(se.ends).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}. Сейчас лидируют:`}</span></div></div>
+    <div class="ss-cards">
+      <div class="ss-card t-mvp"><img src="${TROPHY.mvp.img}" alt=""><div><b>${TROPHY.mvp.n}</b><span>${names(st.mvp)}</span><em>${st.mvp.length ? `первое место в ${st.mvp[0].n} из 6 категорий` : 'пока никого'}</em></div></div>
+      <div class="ss-card t-rich"><img src="${TROPHY.rich.img}" alt=""><div><b>${TROPHY.rich.n}</b><span>${names(st.rich)}</span><em>${st.rich.length ? `+${money(+st.rich[0].gain)} за сезон` : 'пока никого'}</em></div></div>
+    </div>
+    <div class="ss-cats">${Object.keys(SCAT).map(c => { const w = (st.cats || {})[c] || []; return `<div><span>${SCAT[c]}</span><b>${names(w)}</b><em>${w.length ? scatVal(c, w[0].v) : ''}</em></div>`; }).join('')}</div>
+    <div class="ss-note">Считается только то, что сделано за сезон. Заработок — насколько выросли баланс и инвентарь с начала сезона. При ничьей трофей получают все.</div>`;
+}
+// tell the player once about a new trophy
+async function trophyNotice() {
+  const { data } = await sb.from('trophies').select('*').eq('uid', ME.id).order('id');
+  if (!data || !data.length) return;
+  let seen = 0; try { seen = +localStorage.getItem('gd_tr_seen') || 0; } catch {}
+  data.filter(t => t.id > seen).forEach((t, i) => setTimeout(() => { SFX.win('covert'); notify({ title: `Трофей: ${TROPHY[t.kind].n}`, sub: trophySub(t), icon: `<img src="${TROPHY[t.kind].img}" alt="" style="width:100%;height:100%;object-fit:contain">`, tall: true, ms: 7000, color: 'rgba(255,214,10,.3)' }); }, 2500 + i * 4000));
+  try { localStorage.setItem('gd_tr_seen', String(data[data.length - 1].id)); } catch {}
+}
+
 async function viewTop() {
   if (!ONLINE) { main.innerHTML = onlineOnly('Топ игроков'); return; }
   const tk = viewToken;
   main.innerHTML = `
   <div class="section-head" style="margin-top:22px"><h2>Топ игроков</h2><div class="grow"></div>
     ${seg('by', [['networth', 'Богачи'], ['xp', 'Уровень'], ['best_price', 'Лучший дроп'], ['opened', 'Кейсы'], ['battles_w', 'Баттлы'], ['time_sec', 'Время']], T.by, 'top-by')}</div>
+  <section class="season-box glass-flat" id="seasonBox"></section>
   <div id="topList">${loadingHTML}</div>`;
+  seasonBox($('#seasonBox'));
   const load = async () => {
-    const { data, error } = await sb.from('leaderboard').select('*').order(T.by, { ascending: false }).limit(50);
+    const [{ data, error }, { data: trs }] = await Promise.all([
+      sb.from('leaderboard').select('*').order(T.by, { ascending: false }).limit(50),
+      sb.from('trophies').select('uid,kind,season'),
+    ]);
     if (tk !== viewToken) return;
+    const trOf = {}; (trs || []).forEach(t => (trOf[t.uid] = trOf[t.uid] || []).push(t));
     if (error) { $('#topList').innerHTML = `<div class="empty-state">${esc(error.message)}</div>`; return; }
     const val = r => T.by === 'time_sec' ? fmtTime(r.id === ME.id ? Math.max(r.time_sec || 0, myTime()) : r.time_sec) : T.by === 'xp' ? `ур. ${levelOf(r.xp || 0).lvl}` : T.by === 'networth' ? money(r.networth) : T.by === 'best_price' ? money(r.best_price) : T.by === 'opened' ? r.opened : `${r.battles_w} побед`;
     const sub = r => T.by === 'time_sec' ? `ур. ${levelOf(r.xp || 0).lvl} · ${r.opened} кейсов` : T.by === 'xp' ? `${r.xp || 0} XP · стрик ${r.daily_streak || 0} дн.` : T.by === 'best_price' && r.best_skin != null ? esc(fullName({ s: r.best_skin, f: r.best_float, st: r.best_st })) : T.by === 'networth' ? `баланс ${money(r.balance)} · инвентарь ${money(r.inv_value)}` : T.by === 'battles_w' ? `${r.battles_l} поражений` : `потрачено на апгрейды: ${r.up_w + r.up_l}`;
@@ -2510,7 +2557,7 @@ async function viewTop() {
         <div class="rank r${i + 1}">${i + 1}</div>
         ${bs ? `<img src="${img(bs.img, '128fx128f')}" alt="">` : '<div style="width:64px"></div>'}
         ${avatarHTML(r.nickname, '', 'aria-hidden="true"', r.avatar)}
-        <div class="t"><b>${esc(r.nickname)}${medalsMini(pubMedal(r))}${r.id === ME.id ? ' <em class="me-tag">ты</em>' : ''}</b><span>${sub(r)}</span></div>
+        <div class="t"><b>${esc(r.nickname)}${trophiesMini(trOf[r.id])}${medalsMini(pubMedal(r))}${r.id === ME.id ? ' <em class="me-tag">ты</em>' : ''}</b><span>${sub(r)}</span></div>
         <div class="p">${val(r)}${T.by === 'networth' ? uah(r.networth) : T.by === 'best_price' ? uah(r.best_price) : ''}</div></div>`;
     }).join('')}</div>`;
   };
@@ -2575,6 +2622,7 @@ async function viewUser(id) {
     <button class="btn primary" data-act="dm">${CHAT_ICO.replace('<svg', '<svg width="16" height="16"')} Написать</button>
     <button class="btn" data-go="#/top">${ICON.trophy.replace('<svg', '<svg width="16" height="16"')} Топ</button>
   </section>
+  <div id="trWrap"></div>
   ${(m => m ? `<div class="section-head"><h2>Медали</h2></div><section class="cosm glass-flat"><div class="medals">${m}</div></section>` : '')(medalsHTML(pubMedal(p), false))}
   ${p.best_skin != null ? `<div class="section-head"><h2>Лучший дроп</h2></div><div style="max-width:340px">${itemCard({ s: p.best_skin, f: p.best_float, st: p.best_st, p: +p.best_price })}</div>` : ''}
   <div class="section-head">${seg('utab', [['inv', `${ICON.inv} Инвентарь · ${inv.length}`], ['steam', `${gi('steam')} Steam`], ['life', `${ICON.home} Жизнь`]], U2.tab, 'utabs')}
@@ -2583,6 +2631,7 @@ async function viewUser(id) {
   <div class="section-head"><h2>Последние события</h2></div>
   ${histList((hist || []).map(fromFeed))}`;
   layoutPills();
+  loadTrophies(id, $('#trWrap'));
   VIEW = {
     onSeg(n, v) { if (n === 'utab') { U2.tab = v; drawTab(); loadTab(); } },
     act(a, el) {
@@ -2612,7 +2661,7 @@ async function viewProfile() {
     if (tk !== viewToken) return;
     hist = (data || []).map(fromFeed);
   }
-  if (ONLINE) loadRefs(tk);
+  if (ONLINE) { loadRefs(tk); setTimeout(() => loadTrophies(ME.id, $('#trWrap')), 0); }
   const st = S.stats, b = st.best;
   main.innerHTML = `
   ${ptabsHTML('profile')}
@@ -2635,7 +2684,7 @@ async function viewProfile() {
     ${ONLINE ? `<div class="stat-tile glass-flat" style="--i:6"><span>Баттлы (победы / поражения)</span><b><span style="color:var(--green)">${st.bw}</span> / <span style="color:var(--red)">${st.bl}</span></b></div>
     <div class="stat-tile glass-flat" style="--i:7"><span>Время на сайте</span><b data-mytime>${fmtTime(myTime())}</b></div>` : ''}
   </div>
-  ${ONLINE ? `<div class="section-head"><h2>Медали и рамки</h2><span class="sub">${bpEnded() ? 'рамки сезона 1 больше не выдаются' : 'рамки сезона 1 выдаются только до ' + BP_END.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}</span></div>
+  ${ONLINE ? `<div id="trWrap"></div><div class="section-head"><h2>Медали и рамки</h2><span class="sub">${bpEnded() ? 'рамки сезона 1 больше не выдаются' : 'рамки сезона 1 выдаются только до ' + BP_END.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}</span></div>
   <section class="cosm glass-flat" id="cosm">${cosmHTML()}</section>
   <div class="section-head"><h2>Пригласить друга</h2><span class="sub" id="refCount"></span></div>
   <section class="ref glass-flat" id="refBox">${refHTML()}</section>` : ''}
@@ -3516,6 +3565,7 @@ async function startOnline() {
   ndPoll(); setInterval(ndPoll, 4 * 60e3); setInterval(drawVitals, 60e3);
   timePing(); setInterval(timePing, 60e3); setInterval(drawTime, 15e3);
   chatInit();
+  trophyNotice().catch(() => {});
   document.addEventListener('visibilitychange', () => { if (!document.hidden) timePing(); });
   $('#vitals').onclick = vitalsSheet;
   shownBal = S.bal; balVal.textContent = fmt(S.bal); drawBonus();
