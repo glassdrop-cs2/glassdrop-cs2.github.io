@@ -312,7 +312,8 @@ const CFG = window.GD_CONFIG || {};
 const ONLINE = !!(CFG.url && CFG.key && window.supabase);
 const sb = ONLINE ? window.supabase.createClient(CFG.url, CFG.key, { auth: { persistSession: true, autoRefreshToken: true } }) : null;
 const ERR = {
-  BAD_FRAME: 'Такой рамки нет',
+  BAD_FRAME: 'Такой рамки нет', BAD_AVATAR: 'Не удалось сохранить фото', BAD_BIO: '«О себе» — до 80 символов',
+  'Payload too large': 'Фото слишком большое', 'exceeded the maximum allowed size': 'Фото слишком большое',
   REF_LOCK: 'Дарить можно после 50 открытых кейсов и 30 минут на сайте — так работает бонус за приглашение', REF_EMPTY: 'Пока нечего забирать',
   REF_ALREADY: 'Пригласивший уже указан', REF_TOO_LATE: 'Приглашение работает только для новых аккаунтов', REF_SELF: 'Нельзя пригласить самого себя',
   CHAT_RATE: 'Не так быстро — подожди секунду', BAD_MSG: 'Сообщение: от 1 до 300 символов',
@@ -381,6 +382,7 @@ function applyProfile(p) {
   S.bonusN = p.bonus_n || 0;
   S.bpClaimed = p.bp_claimed || []; S.bpPremium = !!p.bp_premium; S.steamQ = p.steam_q || []; S.rlBal = +(p.rl_balance || 0); S.luckUntil = p.luck_until ? Date.parse(p.luck_until) : 0;
   S.ref = { by: p.ref_by, done: !!p.ref_done, pending: +(p.ref_pending || 0), total: +(p.ref_total || 0) };
+  S.avatar = p.avatar || ''; S.bio = p.bio || '';
   S.frame = p.frame || null; S.s1lvl = p.bp_s1_lvl || 0; S.created = p.created_at ? Date.parse(p.created_at) : Date.now();
   S.xp = p.xp || 0; S.quests = p.quests || {}; S.dailyLast = p.daily_last; S.dailyStreak = p.daily_streak || 0; S.pumpkinDone = !!p.pumpkin_done;
   S.stats = { opened: p.opened, spent: +p.spent, sold: +p.sold, upW: p.up_w, upL: p.up_l, bw: p.battles_w, bl: p.battles_l, best: p.best_skin != null ? { s: p.best_skin, f: p.best_float, st: p.best_st, p: +p.best_price } : null };
@@ -1896,7 +1898,8 @@ const FRM = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // season level: follows XP while the season runs, then stays as the server froze it
 const s1Lvl = () => bpEnded() ? (S.s1lvl || 0) : Math.max(S.s1lvl || 0, levelOf(S.xp || 0).lvl);
 const frameOwned = f => s1Lvl() >= f.lvl && (f.free || S.bpPremium);
-const avatarHTML = (nick, fr, attr = '') => `<div class="avatar ${FRM[fr] ? 'fr fr-' + fr : ''}" ${attr}>${esc((nick || '?').slice(0, 2))}</div>`;
+const avUrl = path => path ? CFG.url + '/storage/v1/object/public/avatars/' + path : '';
+const avatarHTML = (nick, fr, attr = '', av = '') => `<div class="avatar ${FRM[fr] ? 'fr fr-' + fr : ''} ${av ? 'pic' : ''}" ${attr}>${av ? `<img src="${esc(avUrl(av))}" alt="" loading="lazy" decoding="async">` : esc((nick || '?').slice(0, 2))}</div>`;
 async function wearFrame(id, el) {
   if (el) el.disabled = true;
   try {
@@ -1979,7 +1982,7 @@ const medalsMini = p => medalsOf(p, false).map(x => `<span class="medal-mini" ti
 const cosmHTML = () => `<div class="medals">${medalsHTML({ prem: S.bpPremium, lvl: s1Lvl(), opened: (S.stats && S.stats.opened) || 0, created: S.created || Date.now() }, true)}</div>
   <div class="fr-pick">${[{ id: '', n: 'Без рамки', lvl: 0, free: true }, ...FRAMES].map(f => {
     const own = !f.id || frameOwned(f), on = (S.frame || '') === f.id;
-    return `<button class="fr-opt ${on ? 'on' : ''} ${own ? '' : 'locked'}" ${own && !on ? `data-act="wearFrame" data-fr="${f.id}"` : 'disabled'}>${avatarHTML(ME.nick, f.id)}<b>${f.n}</b><span>${on ? 'надета' : own ? 'надеть' : `${f.lvl} ур.${f.free ? '' : ' · премиум'}`}</span></button>`;
+    return `<button class="fr-opt ${on ? 'on' : ''} ${own ? '' : 'locked'}" ${own && !on ? `data-act="wearFrame" data-fr="${f.id}"` : 'disabled'}>${avatarHTML(ME.nick, f.id, '', S.avatar)}<b>${f.n}</b><span>${on ? 'надета' : own ? 'надеть' : `${f.lvl} ур.${f.free ? '' : ' · премиум'}`}</span></button>`;
   }).join('')}</div>`;
 // a frame card sits in the pass track right after its level
 function frameCardHTML(lv) {
@@ -1987,7 +1990,7 @@ function frameCardHTML(lv) {
   const own = frameOwned(f), reached = s1Lvl() >= lv && !bpEnded(), on = S.frame === f.id;
   return `<div class="bp-card bp-fr ${own ? 'owned' : reached ? 'prem-lock' : 'locked'} ${f.free ? 'is-free' : 'is-prem'}">
     <div class="bp-lv">${lv}</div><span class="bp-tag ex">ЭКСКЛЮЗИВ</span>
-    <div class="bp-fr-art">${avatarHTML(ME.nick, f.id)}</div>
+    <div class="bp-fr-art">${avatarHTML(ME.nick, f.id, '', S.avatar)}</div>
     <div class="bp-name">Рамка «${f.n}»</div><div class="bp-sub">${f.free ? 'бесплатно' : 'премиум'} · только сезон 1</div>
     ${on ? `<span class="bp-state">${ICON.check} надета</span>` : own ? `<button class="btn sm primary" data-act="wearFrame" data-fr="${f.id}">Надеть</button>` : reached ? `<button class="btn sm prem" data-act="buyPass">Премиум</button>` : `<span class="bp-state">с ${lv} уровня</span>`}
   </div>`;
@@ -2506,6 +2509,7 @@ async function viewTop() {
       return `<div class="li top-li ${r.id === ME.id ? 'me' : ''}" style="--i:${i};--rc:${bs ? colOf(bs) : 'transparent'}" data-go="#/u/${r.id}">
         <div class="rank r${i + 1}">${i + 1}</div>
         ${bs ? `<img src="${img(bs.img, '128fx128f')}" alt="">` : '<div style="width:64px"></div>'}
+        ${avatarHTML(r.nickname, '', 'aria-hidden="true"', r.avatar)}
         <div class="t"><b>${esc(r.nickname)}${medalsMini(pubMedal(r))}${r.id === ME.id ? ' <em class="me-tag">ты</em>' : ''}</b><span>${sub(r)}</span></div>
         <div class="p">${val(r)}${T.by === 'networth' ? uah(r.networth) : T.by === 'best_price' ? uah(r.best_price) : ''}</div></div>`;
     }).join('')}</div>`;
@@ -2561,8 +2565,8 @@ async function viewUser(id) {
   };
   main.innerHTML = `
   <section class="inv-head glass edge">
-    ${avatarHTML(p.nickname, p.frame)}
-    <div class="stat"><span>Игрок</span><b>${esc(p.nickname)}</b></div>
+    ${avatarHTML(p.nickname, p.frame, '', p.avatar)}
+    <div class="stat"><span>Игрок</span><b>${esc(p.nickname)}</b>${p.bio ? `<small class="pbio">${esc(p.bio)}</small>` : ''}</div>
     <div class="stat"><span>Состояние</span><b>${money(p.networth)}</b>${uah(p.networth)}</div>
     <div class="stat"><span>Кейсов</span><b>${p.opened}</b></div>
     <div class="stat"><span>Баттлы</span><b>${p.battles_w}/${p.battles_l}</b></div>
@@ -2613,10 +2617,11 @@ async function viewProfile() {
   main.innerHTML = `
   ${ptabsHTML('profile')}
   ${ONLINE ? `<section class="inv-head glass edge">
-    ${avatarHTML(ME.nick, S.frame, 'id="myAv"')}
-    <div class="stat"><span>${ME.guest ? 'Гость' : 'Аккаунт'}</span><b>${esc(ME.nick)}</b></div>
+    ${avatarHTML(ME.nick, S.frame, 'id="myAv" data-act="editProf" title="Изменить фото"', S.avatar)}
+    <div class="stat"><span>${ME.guest ? 'Гость' : 'Аккаунт'}</span><b>${esc(ME.nick)}</b>${S.bio ? `<small class="pbio">${esc(S.bio)}</small>` : ''}</div>
     <div class="grow"></div>
-    ${ME.guest ? '<button class="btn" data-act="rename">Сменить ник</button><button class="btn primary" data-act="saveAcc">Сохранить аккаунт</button>' : ''}
+    <button class="btn" data-act="editProf">${ICON.edit || ''}Редактировать</button>
+    ${ME.guest ? '<button class="btn primary" data-act="saveAcc">Сохранить аккаунт</button>' : ''}
     <button class="btn danger" data-act="logout">Выйти</button>
   </section>
   ${ME.guest ? '<div class="hint glass-flat">Ты играешь как гость — прогресс привязан к этому браузеру. Задай пароль («Сохранить аккаунт»), чтобы заходить с других устройств и ничего не потерять.</div>' : ''}` : ''}
@@ -2648,14 +2653,14 @@ async function viewProfile() {
     act(a, el) {
       if (a === 'refCopy') refCopy(el);
       if (a === 'refClaim') refClaim(el);
-      if (a === 'wearFrame') wearFrame(el.dataset.fr, el).then(() => { const c = $('#cosm'); if (c) c.innerHTML = cosmHTML(); const av = $('#myAv'); if (av) av.outerHTML = avatarHTML(ME.nick, S.frame, 'id="myAv"'); });
+      if (a === 'wearFrame') wearFrame(el.dataset.fr, el).then(() => { const c = $('#cosm'); if (c) c.innerHTML = cosmHTML(); const av = $('#myAv'); if (av) av.outerHTML = avatarHTML(ME.nick, S.frame, 'id="myAv" data-act="editProf" title="Изменить фото"', S.avatar); });
       if (a === 'snd') { SET.sound = !SET.sound; saveSet(); el.classList.toggle('on', SET.sound); drawSound(); SFX.click(); }
       if (a === 'fast') { SET.fast = !SET.fast; saveSet(); el.classList.toggle('on', SET.fast); SFX.click(); }
       if (a === 'reset') openSheet(`<h2>Сбросить всё?</h2><div class="subtitle">Инвентарь, баланс и статистика будут удалены без возможности восстановления.</div><div class="acts"><button class="btn" data-sact="close">Отмена</button><button class="btn danger" data-sact="ok">Сбросить</button></div>`, {
         narrow: true,
         acts: { ok(b_, close) { S = fresh(); save(); renderBal(); close(); notify({ title: 'Прогресс сброшен', sub: 'Баланс: $100.00', icon: '↺', color: 'rgba(10,132,255,.35)' }); route(); } },
       });
-      if (a === 'rename') renameSheet();
+      if (a === 'rename' || a === 'editProf') profileSheet();
       if (a === 'saveAcc') saveAccountSheet();
       if (a === 'logout') openSheet(`<h2>Выйти?</h2><div class="subtitle">${ME.guest ? 'Ты гость без пароля — после выхода вернуться в этот аккаунт будет невозможно. Сначала сохрани аккаунт.' : 'Войти обратно можно по нику и паролю.'}</div><div class="acts"><button class="btn" data-sact="close">Отмена</button><button class="btn danger" data-sact="ok">Выйти</button></div>`, {
         narrow: true,
@@ -2685,14 +2690,14 @@ function refHTML() {
       <button class="btn green" data-act="refClaim" ${r.pending >= .01 ? '' : 'disabled'}>Забрать на баланс</button>
     </div>
     ${friends.length ? `<div class="list ref-list">${friends.map(f => `<div class="li" data-go="#/u/${f.id}">
-      ${avatarHTML(f.nickname, f.frame)}
+      ${avatarHTML(f.nickname, f.frame, '', f.avatar)}
       <div class="t"><b>${esc(f.nickname)}</b><span>${f.ref_done ? 'бонус $250 получен' : `${Math.min(f.opened, REF.cases)}/${REF.cases} кейсов · ${Math.min(Math.floor(f.time_sec / 60), REF.mins)}/${REF.mins} мин`}</span></div>
       <div class="p">+${money(Math.floor(f.ref_gave * 100) / 100)}</div></div>`).join('')}</div>`
       : REFS ? '<div class="ev-note">Пока никого. Отправь ссылку другу.</div>' : ''}`;
 }
 async function loadRefs(tk) {
   const [{ data }, by] = await Promise.all([
-    sb.from('profiles').select('id,nickname,frame,opened,time_sec,ref_done,ref_gave').eq('ref_by', ME.id).order('ref_gave', { ascending: false }),
+    sb.from('profiles').select('id,nickname,frame,avatar,opened,time_sec,ref_done,ref_gave').eq('ref_by', ME.id).order('ref_gave', { ascending: false }),
     S.ref && S.ref.by && !REF_BY ? sb.from('profiles').select('nickname').eq('id', S.ref.by).maybeSingle() : Promise.resolve(null),
   ]);
   if (by && by.data) REF_BY = by.data.nickname;
@@ -2866,7 +2871,7 @@ function chatBodyHTML() {
   if (CH.tab === 'dms') {
     if (!CH.dms.length) return `<div class="chat-empty">Личных сообщений пока нет.<br>Нажми на ник в общем чате или на странице игрока, чтобы написать ему.</div>`;
     return CH.dms.map(d => `<button class="dm-li ${d.sender !== ME.id && d.last_id > (CH.read[d.room] || 0) ? 'new' : ''}" data-cuser="${d.peer}" data-cnick="${esc(d.nick)}">
-      <span class="dm-av" style="--h:${nickHue(d.nick)}">${esc(d.nick.slice(0, 2))}</span>
+      <span class="dm-av" style="--h:${nickHue(d.nick)}">${d.avatar ? `<img src="${esc(avUrl(d.avatar))}" alt="" loading="lazy">` : esc(d.nick.slice(0, 2))}</span>
       <span class="dm-t"><b>${esc(d.nick)}</b><small>${d.sender === ME.id ? 'Ты: ' : ''}${esc(d.body)}</small></span>
       <time>${new Date(d.created_at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</time></button>`).join('');
   }
@@ -3225,6 +3230,139 @@ function rlDepositSheet(onDone) {
   });
 }
 
+/* ---- profile editor: picture (cropped to 256x256 in the browser), nick, about, password ---- */
+const AV_VIEW = 220, AV_OUT = 256;
+function profileSheet() {
+  let crop = null, drop = false;   // crop: { img, w, h, z, x, y } for a newly chosen picture; drop: remove the current one
+  const curPic = () => drop ? '' : S.avatar;
+  const preview = () => avatarHTML(ME.nick, S.frame, '', curPic()).replace('class="avatar ', 'class="avatar pe-av ');
+  const sh = openSheet(`
+    <h2>Профиль</h2>
+    <div class="pe-top">
+      <div id="peAv">${preview()}</div>
+      <div class="pe-btns">
+        <label class="btn primary sm pe-up">Загрузить фото<input type="file" id="peFile" accept="image/*"></label>
+        <button type="button" class="btn sm" data-sact="rmAv" id="peRm" ${S.avatar ? '' : 'hidden'}>Убрать фото</button>
+        <span class="pe-hint">JPG или PNG. Фото увидят все игроки.</span>
+      </div>
+    </div>
+    <div id="peCrop" hidden>
+      <div class="pe-crop" id="peBox"><img id="peImg" alt=""></div>
+      <input type="range" class="pe-zoom" id="peZoom" min="1" max="4" step="0.01" value="1" aria-label="Масштаб">
+      <div class="pe-hint" style="text-align:center">Перетащи фото и подбери масштаб</div>
+    </div>
+    <form id="peForm" action="#" method="post">
+      <label class="field"><span>Ник</span><input id="peNick" maxlength="16" value="${esc(ME.nick)}" autocomplete="off"></label>
+      ${ME.guest ? '' : '<div class="pe-hint">Ник — это и логин. После смены входи с новым ником и прежним паролем.</div>'}
+      <label class="field"><span>О себе <em id="peBioN">${(S.bio || '').length}/80</em></span><input id="peBio" maxlength="80" value="${esc(S.bio || '')}" placeholder="Пара слов о себе" autocomplete="off"></label>
+      <div class="acts"><button type="button" class="btn" data-sact="close">Отмена</button><button type="submit" class="btn primary" data-sact="save">Сохранить</button></div>
+    </form>
+    ${ME.guest ? '' : '<div class="pe-more"><button type="button" class="btn sm" data-sact="pw">Сменить пароль</button></div>'}`, {
+    narrow: true,
+    acts: {
+      rmAv() { drop = true; crop = null; $('#peCrop').hidden = true; $('#peAv').hidden = false; $('#peAv').innerHTML = preview(); $('#peRm').hidden = true; $('#peFile').value = ''; },
+      pw(b, close) { close(); setTimeout(passwordSheet, 350); },
+      async save(b, close) {
+        const nick = $('#peNick').value.trim(), bio = $('#peBio').value.trim();
+        b.disabled = true;
+        try {
+          if (crop) {
+            const blob = await cropBlob(crop), ext = blob.type === 'image/webp' ? 'webp' : 'jpg';
+            const path = `${ME.id}/${Date.now()}.${ext}`;
+            const { error } = await sb.storage.from('avatars').upload(path, blob, { contentType: blob.type, cacheControl: '31536000' });
+            if (error) throw error;
+            const old = S.avatar;
+            await rpc('set_avatar', { p_path: path }); S.avatar = path;
+            if (old) sb.storage.from('avatars').remove([old]).catch(() => {});
+          } else if (drop && S.avatar) {
+            const old = S.avatar;
+            await rpc('set_avatar', { p_path: null }); S.avatar = '';
+            sb.storage.from('avatars').remove([old]).catch(() => {});
+          }
+          if (bio !== (S.bio || '')) S.bio = (await rpc('set_bio', { p_bio: bio })) || '';
+          if (nick !== ME.nick) await changeNick(nick);
+          close(); SFX.coin();
+          notify({ title: 'Профиль сохранён', sub: ME.nick, icon: '✓', color: 'rgba(48,209,88,.3)' });
+          route();
+        } catch (e) { b.disabled = false; notifyErr(e); }
+      },
+    },
+  });
+  const bioIn = $('#peBio'); bioIn.oninput = () => { $('#peBioN').textContent = bioIn.value.length + '/80'; };
+  $('#peFile').onchange = async e => {
+    const f = e.target.files && e.target.files[0]; if (!f) return;
+    if (!/^image\//.test(f.type)) return notifyErr('Это не картинка');
+    try { crop = await loadCrop(f); } catch { return notifyErr('Не удалось открыть картинку'); }
+    drop = false; $('#peRm').hidden = false;
+    $('#peAv').hidden = true; $('#peCrop').hidden = false;
+    $('#peImg').src = crop.src; $('#peZoom').value = 1; placeCrop(crop);
+  };
+  $('#peZoom').oninput = e => { if (crop) { crop.z = +e.target.value; placeCrop(crop); } };
+  // drag to move the picture inside the square
+  const box = $('#peBox'); let drag = null;
+  box.onpointerdown = e => { if (!crop) return; drag = { x: e.clientX - crop.x, y: e.clientY - crop.y }; box.setPointerCapture(e.pointerId); box.classList.add('grab'); };
+  box.onpointermove = e => { if (!drag) return; crop.x = e.clientX - drag.x; crop.y = e.clientY - drag.y; placeCrop(crop); };
+  box.onpointerup = box.onpointercancel = () => { drag = null; box.classList.remove('grab'); };
+  box.onwheel = e => { if (!crop) return; e.preventDefault(); crop.z = Math.min(4, Math.max(1, crop.z * (e.deltaY < 0 ? 1.08 : 1 / 1.08))); $('#peZoom').value = crop.z; placeCrop(crop); };
+  return sh;
+}
+function loadCrop(file) {
+  return new Promise((ok, fail) => {
+    const src = URL.createObjectURL(file), im = new Image();
+    im.onload = () => ok({ img: im, src, w: im.naturalWidth, h: im.naturalHeight, z: 1, x: 0, y: 0 });
+    im.onerror = fail; im.src = src;
+  });
+}
+// keeps the square covered; returns the picture's box inside the AV_VIEW square
+function placeCrop(c) {
+  const sc = AV_VIEW / Math.min(c.w, c.h) * c.z, w = c.w * sc, h = c.h * sc;
+  const mx = (w - AV_VIEW) / 2, my = (h - AV_VIEW) / 2;
+  c.x = Math.max(-mx, Math.min(mx, c.x)); c.y = Math.max(-my, Math.min(my, c.y));
+  const r = { l: AV_VIEW / 2 - w / 2 + c.x, t: AV_VIEW / 2 - h / 2 + c.y, w, h };
+  const el = $('#peImg'); if (el) Object.assign(el.style, { left: r.l + 'px', top: r.t + 'px', width: w + 'px', height: h + 'px' });
+  return r;
+}
+async function cropBlob(c) {
+  const r = placeCrop(c), k = AV_OUT / AV_VIEW;
+  const cv = document.createElement('canvas'); cv.width = cv.height = AV_OUT;
+  const g = cv.getContext('2d'); g.imageSmoothingQuality = 'high';
+  g.fillStyle = '#16121e'; g.fillRect(0, 0, AV_OUT, AV_OUT);
+  g.drawImage(c.img, r.l * k, r.t * k, r.w * k, r.h * k);
+  const as = (type, q) => new Promise(ok => cv.toBlob(ok, type, q));
+  let b = await as('image/webp', .86);
+  if (!b || b.type !== 'image/webp') b = await as('image/jpeg', .88);   // older Safari can't write webp
+  return b;
+}
+async function changeNick(nick) {
+  if (nick.length < 3) throw new Error('BAD_NICK');
+  const same = nick.toLowerCase() === ME.nick.toLowerCase();
+  if (!same && !(await rpc('nick_free', { p_nick: nick }))) throw new Error('NICK_TAKEN');
+  applyProfile(await rpc('set_nickname', { p_nick: nick }));   // the server moves the sign-in address too
+  if (!ME.guest) try { localStorage.setItem('gd_nick', ME.nick); } catch {}
+}
+function passwordSheet() {
+  openSheet(`<h2>Сменить пароль</h2><div class="subtitle">Для входа по нику <b>${esc(ME.nick)}</b></div>
+    <form id="pwForm" action="#" method="post" autocomplete="on">
+    <input class="vh-user" name="username" autocomplete="username" value="${esc(ME.nick)}" readonly tabindex="-1" aria-hidden="true">
+    <label class="field"><span>Новый пароль (минимум 6 символов)</span><input id="npw1" name="password" type="password" autocomplete="new-password"></label>
+    <label class="field"><span>Ещё раз</span><input id="npw2" type="password" autocomplete="new-password"></label>
+    <div class="acts"><button type="button" class="btn" data-sact="close">Отмена</button><button type="submit" class="btn primary" data-sact="ok">Сменить</button></div></form>`, {
+    narrow: true,
+    acts: {
+      async ok(b, close) {
+        const p1 = $('#npw1').value, p2 = $('#npw2').value;
+        if (p1.length < 6) return notifyErr('Password should be at least');
+        if (p1 !== p2) return notifyErr('Пароли не совпадают');
+        b.disabled = true;
+        const { error } = await sb.auth.updateUser({ password: p1 });
+        if (error) { b.disabled = false; return notifyErr(error); }
+        storeCred(ME.nick, p1); close(); SFX.coin();
+        notify({ title: 'Пароль изменён', sub: 'Входи по нику и новому паролю', icon: '✓', color: 'rgba(48,209,88,.3)' });
+      },
+    },
+  });
+  setTimeout(() => $('#npw1') && $('#npw1').focus(), 350);
+}
 function renameSheet() {
   openSheet(`<h2>Новый ник</h2><label class="field"><span>Ник</span><input id="newNick" maxlength="16" value="${esc(ME.nick)}" autocomplete="off"></label><div class="acts"><button class="btn" data-sact="close">Отмена</button><button class="btn primary" data-sact="ok">Сохранить</button></div>`, {
     narrow: true,

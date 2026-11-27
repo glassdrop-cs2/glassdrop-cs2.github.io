@@ -1522,3 +1522,24 @@ body.chat-on { padding-right: 344px; }
   .ref-terms { grid-template-columns: 1fr; }
   .ref-earn .btn { margin-left: 0; width: 100%; }
 }
+
+/* ---- own avatar pictures + profile editor ---- */
+.avatar.pic { background: #16121e; padding: 0; }
+.avatar.pic > img, .list .li .avatar.pic > img, .dm-av img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; display: block; }
+.dm-av { overflow: hidden; }
+#myAv { cursor: pointer; }
+.top-li .avatar { width: 34px; height: 34px; border-radius: 11px; font-size: 12px; }
+.pbio { display: block; max-width: 340px; margin-top: 4px; font-size: 13px; color: var(--text-2); line-height: 1.35; overflow-wrap: anywhere; }
+.pe-top { display: flex; align-items: center; gap: 18px; margin-top: 16px; }
+.pe-av { width: 88px; height: 88px; border-radius: 28px; font-size: 30px; }
+.pe-av.fr::before { border-radius: 33px; }
+.pe-btns { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+.pe-up { position: relative; overflow: hidden; cursor: pointer; }
+.pe-up input { position: absolute; inset: 0; opacity: 0; cursor: pointer; font-size: 0; }
+.pe-hint { display: block; width: 100%; font-size: 12px; color: var(--text-3); margin-top: 6px; line-height: 1.4; }
+.pe-crop { position: relative; width: 220px; height: 220px; margin: 16px auto 0; border-radius: 30px; overflow: hidden; touch-action: none; cursor: grab; background: #000; box-shadow: 0 0 0 1px rgba(255,255,255,.12), 0 10px 30px rgba(0,0,0,.45); }
+.pe-crop.grab { cursor: grabbing; }
+.pe-crop img { position: absolute; max-width: none; user-select: none; -webkit-user-drag: none; pointer-events: none; }
+.pe-zoom { display: block; width: 220px; margin: 12px auto 0; accent-color: #0a84ff; }
+.field span em { font-style: normal; float: right; margin-right: 6px; color: var(--text-3); font-weight: 500; }
+.pe-more { margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.07); display: flex; justify-content: center; }
