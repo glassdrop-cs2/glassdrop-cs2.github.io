@@ -274,12 +274,27 @@ begin
   return pr;
 end $$;
 
+-- sign-in address for a nick; same as nickEmail() in app.js: 'u' + base36(utf8 bytes of the lowercased nick) + '@glassdrop-cs2.github.io'
+create or replace function nick_email(p_nick text) returns text language plpgsql immutable as $$
+declare h text := encode(convert_to(lower(btrim(p_nick)), 'UTF8'), 'hex'); n numeric := 0; out text := ''; d int;
+begin
+  for i in 1..length(h) loop n := n * 16 + position(substr(h, i, 1) in '0123456789abcdef') - 1; end loop;
+  while n > 0 loop d := mod(n, 36)::int; out := substr('0123456789abcdefghijklmnopqrstuvwxyz', d + 1, 1) || out; n := div(n, 36); end loop;
+  return 'u' || out || '@glassdrop-cs2.github.io';
+end $$;
+
+-- for saved accounts the nick is the login, so the sign-in address changes together with it (no mail confirmation: the addresses are not real)
 create or replace function set_nickname(p_nick text) returns profiles language plpgsql security definer set search_path = public as $$
-declare uid uuid := auth.uid(); pr profiles; n text := btrim(p_nick);
+declare uid uuid := auth.uid(); pr profiles; n text := btrim(p_nick); em text;
 begin
   if n !~ '^[A-Za-zА-Яа-яЁё0-9_. -]{3,16}$' then raise exception 'BAD_NICK'; end if;
   if exists (select 1 from profiles where lower(nickname) = lower(n) and id <> uid) then raise exception 'NICK_TAKEN'; end if;
   update profiles set nickname = n where id = uid returning * into pr;
+  if exists (select 1 from auth.users where id = uid and email is not null and not coalesce(is_anonymous, false)) then
+    em := nick_email(n);
+    update auth.users set email = em, email_change = '', email_change_token_new = '', email_change_token_current = '', email_change_confirm_status = 0 where id = uid;
+    update auth.identities set identity_data = identity_data || jsonb_build_object('email', em) where user_id = uid and provider = 'email';
+  end if;
   return pr;
 end $$;
 
@@ -1034,7 +1049,7 @@ end $$;
 -- ============ permissions ============
 do $$ declare f text; begin
   -- internal helpers: not callable from the API
-  foreach f in array array['roll_float(int)','roll_drop(text)','grant_item(uuid,jsonb,text)','resolve_battle(bigint)','do_open(uuid,text,text,int)','roll_code_float(int,text)','bp_reward(int)','rl_accrued(text,timestamptz)','rl_tick(uuid)','rl_home(uuid)','rl_bill_day(uuid)','rl_needs_json(uuid)','bp_track_lvl()','ref_check(uuid)'] loop
+  foreach f in array array['roll_float(int)','roll_drop(text)','nick_email(text)','grant_item(uuid,jsonb,text)','resolve_battle(bigint)','do_open(uuid,text,text,int)','roll_code_float(int,text)','bp_reward(int)','rl_accrued(text,timestamptz)','rl_tick(uuid)','rl_home(uuid)','rl_bill_day(uuid)','rl_needs_json(uuid)','bp_track_lvl()','ref_check(uuid)'] loop
     execute format('revoke all on function %s from public, anon, authenticated', f);
   end loop;
   -- player API: signed-in users only (guests are signed in anonymously)
