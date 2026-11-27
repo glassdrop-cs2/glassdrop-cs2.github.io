@@ -978,6 +978,21 @@ begin
   return rl_state();
 end $$;
 
+-- a sold organ can be bought back once it is gone: 25% above its price, paid with real money
+create or replace function rl_buyback(p_item text) returns jsonb language plpgsql security definer set search_path = public as $$
+declare uid uuid := auth.uid(); c rl_catalog; cost numeric;
+begin
+  select * into c from rl_catalog where id = p_item and cat = 'organ';
+  if not found then raise exception 'BAD_ITEM'; end if;
+  perform rl_tick(uid);
+  if exists (select 1 from rl_inv where owner = uid and item = p_item) then raise exception 'ALREADY_HAVE'; end if;
+  cost := round(c.price * 1.25, 2);
+  update profiles set rl_balance = rl_balance - cost where id = uid and rl_balance >= cost;
+  if not found then raise exception 'NO_RL_FUNDS'; end if;
+  insert into rl_inv (owner, item, paid) values (uid, c.id, c.price);
+  return rl_state();
+end $$;
+
 create or replace function rl_sell(p_ids bigint[]) returns jsonb language plpgsql security definer set search_path = public as $$
 declare uid uuid := auth.uid(); n int; v numeric; rent numeric; bal numeric;
 begin
@@ -1120,7 +1135,7 @@ do $$ declare f text; begin
                            'find_pumpkin(int)','my_pumpkins()','claim_level(int)','use_luck(bigint)','open_free(text,int)',
                            'withdraw_items(bigint[])','play_climb(bigint[],numeric,numeric)','buy_pass()','steam_deposit(bigint[])',
                            'claim_steam_quest(text)','rl_state()','rl_buy(text,int)','rl_sell(bigint[])','rl_rent(bigint,boolean)',
-                           'rl_collect()','rl_eat(bigint)','rl_deposit(numeric)','steam_sell_rl(bigint[])','rl_needs()','time_ping()','chat_send(uuid,text)','chat_dms()','set_frame(text)','set_referrer(text)','claim_ref()','set_avatar(text)','set_bio(text)'] loop
+                           'rl_collect()','rl_eat(bigint)','rl_deposit(numeric)','steam_sell_rl(bigint[])','rl_needs()','time_ping()','chat_send(uuid,text)','chat_dms()','set_frame(text)','set_referrer(text)','claim_ref()','set_avatar(text)','set_bio(text)','rl_buyback(text)'] loop
     execute format('revoke all on function %s from public, anon', f);
     execute format('grant execute on function %s to authenticated', f);
   end loop;
