@@ -48,6 +48,22 @@ alter table profiles add column if not exists ref_gave numeric(16,4) not null de
 alter table profiles add column if not exists ref_pending numeric(16,4) not null default 0;  -- inviter's income not yet moved to balance
 alter table profiles add column if not exists ref_total numeric(16,4) not null default 0;    -- inviter's income, all time
 create index if not exists profiles_ref_by on profiles (ref_by);
+-- own picture (path inside the public "avatars" bucket) and a short line about the player
+alter table profiles add column if not exists avatar text;
+alter table profiles add column if not exists bio text;
+
+-- ============ avatars: public bucket, each player writes only into the folder named by their id ============
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('avatars', 'avatars', true, 524288, array['image/webp', 'image/jpeg'])
+on conflict (id) do update set public = true, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
+drop policy if exists av_read on storage.objects;
+create policy av_read on storage.objects for select using (bucket_id = 'avatars');
+drop policy if exists av_ins on storage.objects;
+create policy av_ins on storage.objects for insert to authenticated with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+drop policy if exists av_upd on storage.objects;
+create policy av_upd on storage.objects for update to authenticated using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+drop policy if exists av_del on storage.objects;
+create policy av_del on storage.objects for delete to authenticated using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
 alter table cases add column if not exists sale numeric not null default 0;
 -- Steam inventory quests (slots come from seed.sql)
 create table if not exists steam_quests (code text primary key, min numeric not null default 0, reward numeric not null, xp int not null, slots jsonb not null);
@@ -149,6 +165,7 @@ select p.id, p.nickname, p.balance, coalesce(i.v, 0)::numeric(14,2) as inv_value
        p.best_price, p.best_skin, p.best_float, p.best_st, p.opened, p.up_w, p.up_l, p.battles_w, p.battles_l
 , p.xp, p.daily_streak, coalesce(sv.v, 0)::numeric(14,2) as steam_value, p.time_sec
 , p.frame, p.bp_premium, p.bp_s1_lvl, p.created_at
+, p.avatar, p.bio
 from profiles p left join (select owner, sum(price) v from inventory group by owner) i on i.owner = p.id
 left join (select owner, sum(price) v from steam_items group by owner) sv on sv.owner = p.id;
 
@@ -264,6 +281,23 @@ begin
   if exists (select 1 from profiles where lower(nickname) = lower(n) and id <> uid) then raise exception 'NICK_TAKEN'; end if;
   update profiles set nickname = n where id = uid returning * into pr;
   return pr;
+end $$;
+
+-- path must point into the player's own folder; null removes the picture
+create or replace function set_avatar(p_path text) returns text language plpgsql security definer set search_path = public as $$
+declare uid uuid := auth.uid();
+begin
+  if p_path is not null and p_path !~ ('^' || uid::text || '/[0-9]{10,16}\.(webp|jpg)$') then raise exception 'BAD_AVATAR'; end if;
+  update profiles set avatar = p_path where id = uid;
+  return p_path;
+end $$;
+
+create or replace function set_bio(p_bio text) returns text language plpgsql security definer set search_path = public as $$
+declare b text := nullif(btrim(regexp_replace(coalesce(p_bio, ''), '\s+', ' ', 'g')), '');
+begin
+  if length(b) > 80 then raise exception 'BAD_BIO'; end if;
+  update profiles set bio = b where id = auth.uid();
+  return b;
 end $$;
 
 create or replace function nick_free(p_nick text) returns boolean language sql stable security definer set search_path = public as $$
@@ -818,7 +852,7 @@ create or replace function chat_dms() returns jsonb language plpgsql stable secu
 declare uid uuid := auth.uid();
 begin
   return coalesce((select jsonb_agg(to_jsonb(x) order by x.last_id desc) from (
-    select distinct on (m.room) m.room, o.id as peer, o.nickname as nick, m.body, m.sender, m.id as last_id, m.created_at
+    select distinct on (m.room) m.room, o.id as peer, o.nickname as nick, o.avatar, m.body, m.sender, m.id as last_id, m.created_at
       from chat_messages m join profiles o on o.id = case when m.a = uid then m.b else m.a end
      where m.a = uid or m.b = uid order by m.room, m.id desc) x), '[]'::jsonb);
 end $$;
@@ -1010,7 +1044,7 @@ do $$ declare f text; begin
                            'find_pumpkin(int)','my_pumpkins()','claim_level(int)','use_luck(bigint)','open_free(text,int)',
                            'withdraw_items(bigint[])','play_climb(bigint[],numeric,numeric)','buy_pass()','steam_deposit(bigint[])',
                            'claim_steam_quest(text)','rl_state()','rl_buy(text,int)','rl_sell(bigint[])','rl_rent(bigint,boolean)',
-                           'rl_collect()','rl_eat(bigint)','rl_deposit(numeric)','steam_sell_rl(bigint[])','rl_needs()','time_ping()','chat_send(uuid,text)','chat_dms()','set_frame(text)','set_referrer(text)','claim_ref()'] loop
+                           'rl_collect()','rl_eat(bigint)','rl_deposit(numeric)','steam_sell_rl(bigint[])','rl_needs()','time_ping()','chat_send(uuid,text)','chat_dms()','set_frame(text)','set_referrer(text)','claim_ref()','set_avatar(text)','set_bio(text)'] loop
     execute format('revoke all on function %s from public, anon', f);
     execute format('grant execute on function %s to authenticated', f);
   end loop;
