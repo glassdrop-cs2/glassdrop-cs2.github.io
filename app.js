@@ -2532,7 +2532,7 @@ async function loadTrophies(uid, el) {
 }
 // the season block on the top page: live leaders before the end, frozen results after it
 async function seasonBox(el) {
-  const { data: se } = await sb.from('seasons').select('*').order('id', { ascending: false }).limit(1).maybeSingle();
+  const { data: se } = await sb.from('seasons').select('*').lte('starts', new Date().toISOString()).order('id', { ascending: false }).limit(1).maybeSingle();
   if (!se || !el.isConnected) return;
   let st = se.result;
   if (!st) { try { st = await rpc('season_standings', { p_season: se.id }); } catch { return; } }
