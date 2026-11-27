@@ -1495,3 +1495,6 @@ body.chat-on { padding-right: 344px; }
 .bp-medal .md { width: 38px; height: 48px; filter: drop-shadow(0 4px 6px rgba(0,0,0,.5)); }
 .bp-medal.locked .md { filter: grayscale(1); opacity: .5; }
 @media (max-width: 560px) { .fr-opt { width: calc(33.333% - 7px); } .medal { flex: 1 1 100%; } }
+
+/* ===== v24: hidden username field so password managers save nick + password together ===== */
+.vh-user { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; border: 0; padding: 0; margin: -1px; }

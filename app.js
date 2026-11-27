@@ -756,9 +756,15 @@ function openSheet(html, { narrow = false, acts = {}, onClose, locked = false } 
     const a = e.target.closest('[data-sact]');
     if (!a) return;
     if (a.dataset.sact === 'close') return close();
+    if (a.type === 'submit' && a.form) return;   // handled by the form's submit event below
     acts[a.dataset.sact] && acts[a.dataset.sact](a, close, e);
   });
-  scrim.addEventListener('keydown', e => { if (e.key === 'Enter' && acts.enter) acts.enter(close); });
+  scrim.addEventListener('keydown', e => { if (e.key === 'Enter' && acts.enter && !e.target.closest('form')) acts.enter(close); });
+  scrim.addEventListener('submit', e => {
+    e.preventDefault();
+    const b = (e.submitter && e.submitter.dataset.sact ? e.submitter : null) || e.target.querySelector('[type="submit"][data-sact]');
+    if (b && !b.disabled && acts[b.dataset.sact]) acts[b.dataset.sact](b, close, e);
+  });
   requestAnimationFrame(() => layoutPills(scrim));
   return { el: scrim, close };
 }
@@ -3149,9 +3155,11 @@ function renameSheet() {
 }
 function saveAccountSheet() {
   openSheet(`<h2>Сохранить аккаунт</h2><div class="subtitle">Входить можно будет по нику <b>${esc(ME.nick)}</b> и паролю — с любого устройства. Почта не нужна.</div>
-    <label class="field"><span>Пароль (минимум 6 символов)</span><input id="pw1" type="password" autocomplete="new-password"></label>
+    <form id="saveForm" action="#" method="post" autocomplete="on">
+    <input class="vh-user" name="username" autocomplete="username" value="${esc(ME.nick)}" readonly tabindex="-1" aria-hidden="true">
+    <label class="field"><span>Пароль (минимум 6 символов)</span><input id="pw1" name="password" type="password" autocomplete="new-password"></label>
     <label class="field"><span>Ещё раз</span><input id="pw2" type="password" autocomplete="new-password"></label>
-    <div class="acts"><button class="btn" data-sact="close">Отмена</button><button class="btn primary" data-sact="ok">Сохранить</button></div>`, {
+    <div class="acts"><button type="button" class="btn" data-sact="close">Отмена</button><button type="submit" class="btn primary" data-sact="ok">Сохранить</button></div></form>`, {
     narrow: true,
     acts: {
       async ok(b, close) {
@@ -3161,26 +3169,41 @@ function saveAccountSheet() {
         b.disabled = true;
         const { error } = await sb.auth.updateUser({ email: nickEmail(ME.nick), password: p1 });
         if (error) { b.disabled = false; return notifyErr(error); }
-        ME.guest = false; close(); SFX.coin();
+        ME.guest = false; storeCred(ME.nick, p1); close(); SFX.coin();
         notify({ title: 'Аккаунт сохранён', sub: 'Вход — по нику и паролю', icon: '✓', color: 'rgba(48,209,88,.3)' });
         route();
       },
-      enter() { const b = document.querySelector('.scrim [data-sact="ok"]'); b && b.click(); },
     },
   });
 }
 
 /* ================= AUTH (online) ================= */
+// remember the nick and hand the pair to the browser's password manager (Chrome / Edge / Android)
+function storeCred(nick, pw) {
+  try { localStorage.setItem('gd_nick', nick); } catch {}
+  try { if (window.PasswordCredential && pw) navigator.credentials.store(new PasswordCredential({ id: nick, password: pw, name: nick })).catch(() => {}); } catch {}
+}
+const lastNick = () => { try { return localStorage.getItem('gd_nick') || ''; } catch { return ''; } };
 function authSheet() {
   return new Promise(resolve => {
-    let mode = 'guest';
+    let mode = lastNick() ? 'login' : 'guest';
     const body = () => mode === 'guest'
-      ? `<label class="field"><span>Придумай ник</span><input id="aNick" maxlength="16" autocomplete="off" placeholder="3–16 символов"></label>
-         <div class="acts"><button class="btn primary big" data-sact="go">Играть</button></div>
+      ? `<form id="authForm" action="#" method="post"><label class="field"><span>Придумай ник</span><input id="aNick" maxlength="16" autocomplete="off" placeholder="3–16 символов"></label>
+         <div class="acts"><button type="submit" class="btn primary big" data-sact="go">Играть</button></div></form>
          <div class="ev-note" style="text-align:center;margin-top:12px">Без регистрации. Пароль можно задать потом в профиле.</div>`
-      : `<label class="field"><span>Ник</span><input id="aNick" maxlength="16" autocomplete="username"></label>
-         <label class="field"><span>Пароль</span><input id="aPw" type="password" autocomplete="${mode === 'login' ? 'current-password' : 'new-password'}"></label>
-         <div class="acts"><button class="btn primary big" data-sact="go">${mode === 'login' ? 'Войти' : 'Зарегистрироваться'}</button></div>`;
+      : `<form id="authForm" action="#" method="post" autocomplete="on">
+         <label class="field"><span>Ник</span><input id="aNick" name="username" maxlength="16" autocomplete="username" value="${mode === 'login' ? esc(lastNick()) : ''}"></label>
+         <label class="field"><span>Пароль</span><input id="aPw" name="password" type="password" autocomplete="${mode === 'login' ? 'current-password' : 'new-password'}"></label>
+         <div class="acts"><button type="submit" class="btn primary big" data-sact="go">${mode === 'login' ? 'Войти' : 'Зарегистрироваться'}</button></div></form>
+         ${mode === 'login' ? '<div class="ev-note" style="text-align:center;margin-top:12px">Вход работает на любом устройстве и в любом браузере</div>' : ''}`;
+    // Chrome / Edge / Android can hand over a saved nick + password directly
+    const autoCred = async () => {
+      if (mode !== 'login' || !window.PasswordCredential) return;
+      try {
+        const c = await navigator.credentials.get({ password: true, mediation: 'optional' });
+        if (c && c.password && mode === 'login' && $('#aPw')) { $('#aNick').value = c.id; $('#aPw').value = c.password; }
+      } catch {}
+    };
     const sh = openSheet(`
       <div class="auth-logo">${logoSVG()}</div>
       <h2>GlassDrop</h2>
@@ -3189,7 +3212,7 @@ function authSheet() {
       <div id="authBody">${body()}</div>`, {
       narrow: true, locked: true,
       acts: {
-        onSeg(n, v, scrim) { mode = v; $('#authBody', scrim).innerHTML = body(); setTimeout(() => $('#aNick') && $('#aNick').focus(), 50); },
+        onSeg(n, v, scrim) { mode = v; $('#authBody', scrim).innerHTML = body(); autoCred(); setTimeout(() => { const f = mode === 'login' && $('#aNick') && $('#aNick').value ? $('#aPw') : $('#aNick'); f && f.focus(); }, 50); },
         async go(b) {
           const nick = ($('#aNick').value || '').trim();
           const pw = $('#aPw') ? $('#aPw').value : '';
@@ -3204,27 +3227,40 @@ function authSheet() {
             } else if (mode === 'login') {
               const { error } = await sb.auth.signInWithPassword({ email: nickEmail(nick), password: pw });
               if (error) throw error;
+              storeCred(nick, pw);
             } else {
               if (pw.length < 6) throw new Error('Password should be at least');
               if (!(await rpc('nick_free', { p_nick: nick }))) throw new Error('NICK_TAKEN');
               const { error } = await sb.auth.signUp({ email: nickEmail(nick), password: pw });
               if (error) throw error;
               await rpc('ensure_profile', { p_nick: nick });
+              storeCred(nick, pw);
             }
             sh.close(); resolve();
           } catch (e) { b.disabled = false; notifyErr(e); }
         },
-        enter() { const b = document.querySelector('.scrim [data-sact="go"]'); b && b.click(); },
       },
     });
-    setTimeout(() => $('#aNick') && $('#aNick').focus(), 400);
+    autoCred();
+    setTimeout(() => { const f = mode === 'login' && $('#aNick') && $('#aNick').value ? $('#aPw') : $('#aNick'); f && f.focus(); }, 400);
   });
 }
 
 async function startOnline() {
   let { data: { session } } = await sb.auth.getSession();
   let prof = null;
-  if (session) { const { data } = await sb.from('profiles').select('*').eq('id', session.user.id).maybeSingle(); prof = data; }
+  let profErr = null;
+  if (session) for (let i = 0; i < 3; i++) {
+    const { data, error } = await sb.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
+    profErr = error; prof = data;
+    if (!error) break;
+    await new Promise(r => setTimeout(r, 1500));
+  }
+  if (session && profErr) {   // no connection: keep the session and try again
+    notify({ title: 'Нет связи с сервером', sub: 'Пробую ещё раз…', icon: '!', color: 'rgba(255,159,10,.35)', ms: 4000 });
+    setTimeout(() => location.reload(), 4000);
+    return;
+  }
   if (!session || !prof) {
     if (session && !prof && !session.user.is_anonymous) {
       // registered but profile missing — shouldn't happen; sign out and ask again
@@ -3235,6 +3271,7 @@ async function startOnline() {
   }
   ME = { id: session.user.id, nick: '', guest: !!session.user.is_anonymous };
   await refreshProfile();
+  if (!ME.guest && ME.nick) try { localStorage.setItem('gd_nick', ME.nick); } catch {}
   await refreshInventory();
   // pumpkins stay hidden if the list can't be loaded: otherwise found ones would show up again
   try { S.pumpkins = await rpc('my_pumpkins'); pkReady = true; schedulePk(); } catch { S.pumpkins = []; }
