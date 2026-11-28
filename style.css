@@ -898,8 +898,6 @@ svg.gi { width: 1.2em; height: 1.2em; flex: none; display: inline-block; vertica
 .ref-chip svg.gi { width: 22px; height: 22px; }
 .ref-chip b { font-size: 13px; font-weight: 800; color: #6ff08f; }
 .ref-chip span { font-size: 12px; opacity: .8; }
-@media (max-width: 1100px) { .ref-chip span { display: none; } }
-@media (max-width: 560px) { .ref-chip { padding: 0 7px; } .ref-chip b { display: none; } }
 .ref-banner { display: flex; align-items: center; gap: 16px; padding: 16px 18px; margin: 14px 0 4px; border-radius: 22px;
   background: linear-gradient(120deg, rgba(48,209,88,.16), rgba(10,132,255,.12) 60%, rgba(191,90,242,.12)); border: 1px solid rgba(48,209,88,.35); }
 .ref-banner .rb-ico { flex: none; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; background: rgba(48,209,88,.2); }
@@ -1627,3 +1625,21 @@ body.chat-on { padding-right: 344px; }
 @keyframes fireGlow { 50% { box-shadow: 0 0 calc(var(--g) * 1.35) var(--gc), inset 0 0 calc(var(--g) / 2) var(--gc); } }
 @keyframes fireSparks { from { transform: translateY(20%); opacity: 1; } to { transform: translateY(-35%); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .fire, .fire::before, .fire::after { animation: none; } }
+
+/* ---- header fit with the invite chip (checked from 360 to 1920 px with a $1,234,567 balance and a luck potion) ---- */
+.ref-chip span { display: none; }
+@media (min-width: 1600px) { .topbar { width: min(1560px, calc(100% - 28px)); } }
+@media (max-width: 1640px) { .topbar #nav button span { display: none; } }
+@media (max-width: 1280px) { .ref-chip { padding: 0; width: 34px; justify-content: center; } .ref-chip b { display: none; } }
+@media (max-width: 1100px) { .topbar #soundBtn { display: none; } }
+@media (max-width: 980px) { .logo .word { display: none; } }
+@media (max-width: 760px) { .topbar { gap: 6px; } .top-right { gap: 6px; } .topbar:has(#luckChip:not([hidden])) .site-stats { display: none; } }
+@media (max-width: 560px) { .topbar:has(#luckChip:not([hidden])) .ref-chip { display: none; } }
+@media (max-width: 440px) {
+  .ref-chip { display: none; }
+  .balance { padding-left: 10px; gap: 6px; font-size: 14px; }
+  .topbar { padding: 0 6px 0 12px; }
+  .luck-chip { padding: 0 8px; font-size: 12px; }
+  .luck-chip svg.gi { display: none; }
+}
+@media (max-width: 400px) { .topbar .logo { display: none; } }
