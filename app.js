@@ -2638,7 +2638,7 @@ async function viewTop() {
       return `<div class="li top-li ${r.id === ME.id ? 'me' : ''}" style="--i:${i};--rc:${bs ? colOf(bs) : 'transparent'}" data-go="#/u/${r.id}">
         <div class="rank r${i + 1}">${i + 1}</div>
         ${bs ? `<img src="${img(bs.img, '128fx128f')}" alt="">` : '<div style="width:64px"></div>'}
-        <span class="av-on ${isOnline(r.time_ping) || r.id === ME.id ? 'on' : ''}" title="${r.id === ME.id ? 'в сети' : seenText(r.time_ping)}">${avatarHTML(r.nickname, '', 'aria-hidden="true"', r.avatar)}<i></i></span>
+        <span class="av-on ${isOnline(r.time_ping) || r.id === ME.id ? 'on' : ''}" title="${r.id === ME.id ? 'в сети' : seenText(r.time_ping)}">${avatarHTML(r.nickname, r.frame, 'aria-hidden="true"', r.avatar)}<i></i></span>
         <div class="t"><b>${esc(r.nickname)}${trophiesMini(trOf[r.id])}${medalsMini(pubMedal(r))}${r.id === ME.id ? ' <em class="me-tag">ты</em>' : ''}</b><span>${sub(r)}</span></div>
         <div class="p">${val(r)}${T.by === 'networth' ? uah(r.networth) : T.by === 'best_price' ? uah(r.best_price) : ''}</div></div>`;
     }).join('')}</div>`;

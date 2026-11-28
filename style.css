@@ -1671,3 +1671,9 @@ body.chat-on { padding-right: 344px; }
   .luck-chip svg.gi { display: none; }
 }
 @media (max-width: 400px) { .topbar .logo { display: none; } }
+/* frames on the small avatars in the top list */
+.top-li .avatar.fr::before { inset: -4px; border-radius: 14px; padding: 2.5px; }
+.top-li .avatar.fr::after { transform: scale(.7); transform-origin: 50% 100%; }
+.top-li .fr-s1-obsidian::after { transform: rotate(45deg) scale(.7); }
+.top-li .fr-s1-crown::after { transform: scale(.65); transform-origin: 50% 100%; top: -13px; }
+.top-li .av-on { margin: 0 4px; }
