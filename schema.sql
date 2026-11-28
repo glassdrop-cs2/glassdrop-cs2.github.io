@@ -1150,7 +1150,9 @@ create or replace function site_stats() returns jsonb language sql stable securi
   select jsonb_build_object(
     'day', (select count(*) from visits where day = current_date),
     'month', (select count(distinct uid) from visits where day >= date_trunc('month', current_date)::date),
-    'players', (select count(*) from profiles)) $$;
+    'players', (select count(*) from profiles),
+    -- players whose tab pinged time_ping in the last 90 s (the page pings once a minute)
+    'online', (select count(*) from profiles where time_ping > now() - interval '90 seconds')) $$;
 create or replace function track_visit() returns jsonb language plpgsql security definer set search_path = public as $$
 begin
   if auth.uid() is not null then

@@ -684,18 +684,22 @@ drawSound();
 /* ================= online / traffic ================= */
 const statsEl = $('#siteStats');
 const STATS = { online: 0, day: 0, month: 0 };
+let PRESENCE = 0;  // tabs connected right now; the server also counts who pinged in the last 90 s
 function drawStats() {
   if (!statsEl) return;
+  STATS.online = Math.max(PRESENCE, STATS.srv || 0);
   statsEl.innerHTML = `<span class="on"><i></i><b>${STATS.online || 1}</b><em>онлайн</em></span><span><b>${STATS.day}</b><em>сегодня</em></span><span><b>${STATS.month}</b><em>за месяц</em></span>`;
   statsEl.title = `Сейчас на сайте: ${STATS.online || 1}\nУникальных игроков сегодня: ${STATS.day}\nЗа этот месяц: ${STATS.month}\nВсего игроков: ${STATS.players || '—'}`;
 }
 function startStats() {
+  const rc = $('#refChip');
+  if (rc && ONLINE) { rc.innerHTML = `${gi('gift')}<b>+${moneyR(REF.gift)}</b><span>другу</span>`; rc.hidden = false; rc.onclick = () => { SFX.click(); refSheet(); }; }
   if (!ONLINE || !statsEl) { statsEl && statsEl.remove(); return; }
   const ch = sb.channel('online', { config: { presence: { key: ME.id } } });
-  ch.on('presence', { event: 'sync' }, () => { STATS.online = Object.keys(ch.presenceState()).length; drawStats(); })
+  ch.on('presence', { event: 'sync' }, () => { PRESENCE = Object.keys(ch.presenceState()).length; drawStats(); })
     .subscribe(async st => { if (st === 'SUBSCRIBED') await ch.track({ nick: ME.nick }); });
-  const load = async track => { try { Object.assign(STATS, await rpc(track ? 'track_visit' : 'site_stats')); drawStats(); } catch (e) { console.warn(e); } };
-  load(true); setInterval(() => load(false), 60e3);
+  const load = async track => { try { const r = await rpc(track ? 'track_visit' : 'site_stats'); Object.assign(STATS, r, { srv: +r.online || 0 }); drawStats(); } catch (e) { console.warn(e); } };
+  load(true); setInterval(() => load(false), 30e3);
   drawStats();
 }
 
@@ -870,6 +874,8 @@ document.addEventListener('click', e => {
     return;
   }
   const a = e.target.closest('[data-act]');
+  if (a && a.dataset.act === 'refMore') { SFX.click(); refSheet(); return; }
+  if (a && a.dataset.act === 'refCopyHome') { refCopy(a); return; }
   if (a && VIEW.act) { VIEW.act(a.dataset.act, a, e); return; }
   const go = e.target.closest('[data-go]');
   if (go) { const h = go.dataset.go; if (location.hash === h || (h === '#/' && !location.hash)) route(); else location.hash = h; }
@@ -983,6 +989,7 @@ function viewHome() {
       <div class="hero-tag glass">Хит сезона · ${money(feat.price)}</div>
     </div>
   </section>
+  ${refBanner()}
   ${howHTML()}
   <div class="section-head" id="casesHead">
     <h2>Кейсы</h2><span class="sub" id="caseCount"></span><div class="grow"></div>
@@ -1677,6 +1684,7 @@ async function viewBattles() {
     <div class="bc-form">
       <h1>Кейс-баттл</h1>
       <p class="ev-note">Все открывают одинаковые кейсы. У кого дроп дороже — забирает всё. Нет друзей онлайн? Добавь бота.</p>
+      ${ONLINE ? `<button class="ref-strip" data-act="refMore">${gi('gift')}<span>Позови друга в баттл: он получит <b>${moneyR(REF.gift)}</b> на старте, ты — <b>${moneyR(REF.bonus)}</b> и 1% от его дропов</span><em>Пригласить</em></button>` : ''}
       <button class="case-pick" data-act="pickCase" id="bcPick"></button>
       <div class="bc-row"><span>Раунды</span>${seg('rounds', [1, 2, 3, 4, 5].map(n => [String(n), String(n)]), String(B.rounds), 'sm')}</div>
       <div class="bc-row"><span>Игроки</span>${seg('players', [['2', '1 на 1'], ['3', '3 игрока'], ['4', '4 игрока']], String(B.players), 'sm')}</div>
@@ -2746,6 +2754,7 @@ async function viewProfile() {
 }
 /* ---- referrals: server pays, the client only shows ---- */
 const REF = { gift: 1000, bonus: 250, cases: 50, mins: 30, rate: .01 };
+const moneyR = v => money(v).replace(/\.00$/, '');  // whole dollars without cents
 let REFS = null, REF_BY = '';
 const refLink = () => location.origin + location.pathname + '?ref=' + encodeURIComponent(ME.nick);
 function refHTML() {
@@ -2785,8 +2794,9 @@ async function refCopy(b) {
   const url = refLink();
   if (navigator.share && matchMedia('(pointer:coarse)').matches) { try { await navigator.share({ title: 'GlassDrop', text: `Заходи в GlassDrop — по ссылке сразу ${money(REF.gift)} на баланс`, url }); } catch {} return; }
   try { await navigator.clipboard.writeText(url); }
-  catch { const i = $('#refUrl'); i.select(); document.execCommand('copy'); }
-  SFX.click(); b.textContent = 'Скопировано'; setTimeout(() => { b.textContent = 'Скопировать'; }, 1600);
+  catch { const i = $('#refUrl2') || $('#refUrl'); if (i) { i.select(); document.execCommand('copy'); } }
+  const was = b.dataset.was || (b.dataset.was = b.textContent);
+  SFX.click(); b.textContent = 'Скопировано'; setTimeout(() => { b.textContent = was; }, 1600);
 }
 async function refClaim(b) {
   b.disabled = true;
@@ -2795,8 +2805,32 @@ async function refClaim(b) {
     S.ref.pending = Math.max(0, S.ref.pending - r.amount); setBal(+r.balance); SFX.coin();
     notify({ title: 'Доход с друзей зачислен', icon: ICON.gift, amt: '+' + money(+r.amount), color: 'rgba(48,209,88,.3)' });
     const box = $('#refBox'); if (box) box.innerHTML = refHTML();
+    const sbx = $('#refSheetBox'); if (sbx) sbx.innerHTML = refSheetBody();
   } catch (e) { b.disabled = false; notifyErr(e); }
 }
+// big invite block on the home page
+function refBanner() {
+  if (!ONLINE || !ME) return '';
+  return `<section class="ref-banner glass-flat">
+    <div class="rb-ico">${gi('gift')}</div>
+    <div class="rb-t"><b>Зови друзей и получайте деньги вместе</b>
+      <span>Друг по твоей ссылке сразу получает <em>${moneyR(REF.gift)}</em>. Ты — <em>${moneyR(REF.bonus)}</em>, когда он немного поиграет, и <em>1%</em> от всего, что он выбивает, навсегда.</span></div>
+    <div class="rb-acts"><button class="btn primary" data-act="refCopyHome">${navigator.share && matchMedia('(pointer:coarse)').matches ? 'Поделиться ссылкой' : 'Скопировать ссылку'}</button><button class="btn" data-act="refMore">Подробнее</button></div>
+  </section>`;
+}
+// the same block as in the profile, in a sheet that opens from anywhere
+const refSheetBody = () => refHTML().replace(/data-act=/g, 'data-sact=').replace('id="refUrl"', 'id="refUrl2"');
+async function refSheet() {
+  if (!ONLINE || !ME) return;
+  openSheet(`<h2>Пригласи друзей</h2>
+    <div class="subtitle">Отправь ссылку другу. Чем больше он играет, тем больше получаешь ты. У друга ничего не списывается.</div>
+    <div class="ref" id="refSheetBox">${refSheetBody()}</div>`, {
+    acts: { refCopy: b => refCopy(b), refClaim: b => refClaim(b) },
+  });
+  try { if (!REFS) await loadRefs(-1); } catch {}
+  const sbx = $('#refSheetBox'); if (sbx) sbx.innerHTML = refSheetBody();
+}
+
 // ?ref=Nick is kept until the account exists, then sent once
 function grabRef() {
   try {
