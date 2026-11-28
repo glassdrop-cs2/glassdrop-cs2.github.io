@@ -1689,6 +1689,7 @@ async function viewBattles() {
       <div class="bc-row"><span>Раунды</span>${seg('rounds', [1, 2, 3, 4, 5].map(n => [String(n), String(n)]), String(B.rounds), 'sm')}</div>
       <div class="bc-row"><span>Игроки</span>${seg('players', [['2', '1 на 1'], ['3', '3 игрока'], ['4', '4 игрока']], String(B.players), 'sm')}</div>
       <button class="btn primary big" id="bcGo" data-act="create"></button>
+      <div class="bc-wait" id="bcWait"></div>
     </div>
   </section>
   <div class="section-head"><h2>Открытые баттлы</h2><span class="sub" id="openCount"></span></div>
@@ -1700,7 +1701,15 @@ async function viewBattles() {
     $('#bcArt').innerHTML = `<div class="halo" style="background:${c.glow}"></div>${caseArt(c, '360fx360f')}`;
     $('#bcPick').innerHTML = `<span class="cp-art">${caseArt(c, '256fx192f')}</span><span class="cp-t"><b>${esc(c.name)}</b><small>${priceHTML(c)}</small></span><span class="cp-chev">▾</span>`;
     $('#bcGo').textContent = `Создать за ${money(r2(c.price * B.rounds))}`;
+    drawBcWait();
   };
+  let openN = 0;
+  const drawBcWait = () => {
+    const el = $('#bcWait'); if (!el) return;
+    el.innerHTML = `<span><i class="bw-dot"></i>онлайн <b>${STATS.online || 1}</b></span>${openN ? `<span>ждут соперника: <b>${openN}</b></span>` : ''}${WAIT ? `<span>соперник находится ${waitRange(WAIT.slot * (B.players - 1))}</span>` : ''}`;
+  };
+  battleWait().then(drawBcWait).catch(() => {});
+  const bcT = setInterval(drawBcWait, 5000);
   drawForm();
   const load = async () => {
     const { data: open } = await sb.from('battles').select('*').eq('status', 'open').order('id', { ascending: false }).limit(30);
@@ -1708,6 +1717,7 @@ async function viewBattles() {
     const by = await loadBattlePlayers([...(open || []), ...(done || [])].map(b => b.id));
     if (tk !== viewToken) return;
     $('#openCount').textContent = (open || []).length;
+    openN = (open || []).length; drawBcWait();
     $('#openList').innerHTML = (open || []).length ? `<div class="blist">${open.map(b => battleRow(b, by[b.id] || [])).join('')}</div>` : `<div class="empty-state" style="padding:30px"><h3>Пока никого</h3>Создай баттл и позови друзей — или сразись с ботом</div>`;
     $('#doneList').innerHTML = (done || []).length ? `<div class="blist">${done.map(b => battleRow(b, by[b.id] || [])).join('')}</div>` : `<div class="ev-note" style="margin-left:4px">Ещё не было ни одного баттла</div>`;
   };
@@ -1715,7 +1725,7 @@ async function viewBattles() {
   let reloadT;
   const ch = sb.channel('battles-list').on('postgres_changes', { event: '*', schema: 'public', table: 'battles' }, () => { clearTimeout(reloadT); reloadT = setTimeout(load, 300); }).subscribe();
   VIEW = {
-    destroy() { sb.removeChannel(ch); },
+    destroy() { sb.removeChannel(ch); clearInterval(bcT); },
     onSeg(n, v) { if (n === 'rounds') B.rounds = +v; if (n === 'players') B.players = +v; drawForm(); },
     onChange(t) { if (t.id === 'bcCase') { B.caseId = t.value; drawForm(); } },
     async act(a, el, e) {
@@ -1745,6 +1755,26 @@ function casePicker(cur, onPick) {
   if (q) q.addEventListener('input', () => { const v = q.value.trim().toLowerCase(); document.querySelectorAll('.scrim .cp-item').forEach(x => { x.hidden = !!v && !x.dataset.n.includes(v); }); });
   const on = document.querySelector('.scrim .cp-item.on'); if (on) on.scrollIntoView({ block: 'center' });
 }
+/* ---- expected wait for opponents: recent battles that filled up without "add bot", time per empty slot ---- */
+let WAIT = null, WAIT_AT = 0;
+async function battleWait() {
+  if (WAIT && Date.now() - WAIT_AT < 120e3) return WAIT;
+  const { data: bs } = await sb.from('battles').select('id,created_at,finished_at,max_players').eq('status', 'done').order('finished_at', { ascending: false }).limit(40);
+  const ids = (bs || []).map(x => x.id);
+  const { data: bots } = ids.length ? await sb.from('battle_players').select('battle_id').in('battle_id', ids).eq('is_bot', true) : { data: [] };
+  const withBot = new Set((bots || []).map(x => x.battle_id));
+  const per = (bs || []).filter(x => !withBot.has(x.id) && x.finished_at)
+    .map(x => (Date.parse(x.finished_at) - Date.parse(x.created_at)) / 1000 / Math.max(1, x.max_players - 1))
+    .filter(s => s > 0 && s < 900).sort((a, z) => a - z);
+  WAIT = { slot: Math.max(6, per.length >= 5 ? per[per.length >> 1] : 30), n: per.length }; WAIT_AT = Date.now();
+  return WAIT;
+}
+const waitRange = s => { const lo = s * .6, hi = s * 1.5, r5 = x => Math.max(5, Math.round(x / 5) * 5);
+  if (hi < 60) return `${r5(lo)}–${Math.max(r5(lo) + 5, r5(hi))} сек`;
+  if (lo >= 60) return `${Math.round(lo / 60)}–${Math.max(Math.round(lo / 60) + 1, Math.round(hi / 60))} мин`;
+  return `${r5(lo)} сек – ${Math.max(1, Math.round(hi / 60))} мин`; };
+const mmss = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+
 async function viewBattle(id) {
   if (!ONLINE) { main.innerHTML = onlineOnly('Кейс-баттлы'); return; }
   const tk = viewToken;
@@ -1786,6 +1816,7 @@ async function viewBattle(id) {
         <span class="bt-status ${b.status}" id="btStatus">${b.status === 'open' ? `Ждём игроков ${players.length}/${b.max_players}` : b.status === 'cancelled' ? 'Отменён' : 'Завершён'}</span>
         ${b.status === 'open' && b.creator === ME.id ? '<button class="btn danger sm" data-act="cancel">Отменить</button>' : ''}
       </div>
+      ${b.status === 'open' ? '<div class="bt-wait" id="btWait"></div>' : ''}
       <div class="bt-grid" style="--n:${b.max_players}">${Array.from({ length: b.max_players }, (_, i) => colHTML(i)).join('')}</div>
       <div class="bt-result" id="btResult"></div>
     </section>`;
@@ -1834,6 +1865,17 @@ async function viewBattle(id) {
     finishView(true);
     if (players.some(p => p.user_id === ME.id)) { await refreshProfile(); if (b.winner_slot === players.find(p => p.user_id === ME.id).slot) await refreshInventory(); }
   };
+  const drawWait = () => {
+    const el = $('#btWait');
+    if (!el || !b || b.status !== 'open' || !WAIT) return;
+    const miss = b.max_players - players.length, past = (Date.now() - Date.parse(b.created_at)) / 1000, est = WAIT.slot * miss;
+    const long = past > est * 1.6 + 20;
+    el.innerHTML = `<i class="bw-dot"></i><b>Ищем ${miss > 1 ? `соперников (${miss})` : 'соперника'}</b>
+      <span>прошло <em>${mmss(past)}</em></span><span>обычно ${waitRange(est)}</span><span>онлайн <em>${STATS.online || 1}</em></span>
+      ${long && b.creator === ME.id ? '<span class="bw-long">дольше обычного — можно добавить бота</span>' : ''}`;
+  };
+  battleWait().then(drawWait).catch(() => {});
+  const waitT = setInterval(drawWait, 1000);
   if (b.status === 'done') {
     const fresh_ = Date.now() - Date.parse(b.finished_at) < 25000;
     if (fresh_) await animate(); else { render(); showStatic(); }
@@ -1845,7 +1887,7 @@ async function viewBattle(id) {
     try {
       await fetchAll_();
       if (tk !== viewToken) return;
-      if (b.status === 'done') await animate(); else render();
+      if (b.status === 'done') await animate(); else { render(); drawWait(); }
     } finally { inflight = false; }
   };
   let t_;
@@ -1855,7 +1897,7 @@ async function viewBattle(id) {
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'battles', filter: `id=eq.${id}` }, deb)
     .subscribe();
   VIEW = {
-    destroy() { sb.removeChannel(ch); },
+    destroy() { sb.removeChannel(ch); clearInterval(waitT); },
     async act(a, el) {
       el.disabled = true;
       try {

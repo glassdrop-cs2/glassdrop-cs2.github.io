@@ -583,6 +583,18 @@ footer { text-align: center; color: var(--text-3); font-size: 12px; padding: 0 2
 .bt-act { margin-top: auto; display: flex; justify-content: center; }
 .bt-act .btn svg { width: 16px; height: 16px; }
 .bt-result:empty { display: none; }
+/* ---- waiting for opponents ---- */
+.bt-wait { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin: 0 0 14px; padding: 10px 16px; border-radius: 16px; font-size: 13.5px;
+  background: rgba(255,159,10,.08); border: 1px solid rgba(255,159,10,.22); }
+.bt-wait:empty { display: none; }
+.bt-wait b { font-weight: 800; }
+.bt-wait span { color: var(--text-2, rgba(255,255,255,.75)); }
+.bt-wait em, .bc-wait b { font-style: normal; font-weight: 800; color: #fff; font-variant-numeric: tabular-nums; }
+.bt-wait .bw-long { color: #ffc46b; }
+.bw-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 10px var(--green); animation: pulse 1.6s infinite; margin-right: 6px; vertical-align: 1px; }
+.bt-wait .bw-dot { background: #ff9f0a; box-shadow: 0 0 10px #ff9f0a; margin-right: 0; }
+.bc-wait { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; margin-top: 10px; font-size: 12.5px; color: var(--text-3); font-weight: 600; }
+.bc-wait:empty { display: none; }
 .bt-result { margin-top: 22px; text-align: center; animation: winIn .8s var(--spring) both; }
 .bt-win { font-size: 26px; font-weight: 800; letter-spacing: -.03em; }
 .bt-win span { display: block; font-size: 15px; font-weight: 600; color: var(--text-2); margin-top: 4px; letter-spacing: 0; }
