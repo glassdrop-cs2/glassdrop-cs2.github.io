@@ -819,7 +819,7 @@ function itemCard(it, o = {}) {
   const s = SK[it.s], w = wearOf(it.f);
   return `<div class="item ${o.sel ? 'sel' : ''}" style="--rc:${colOf(s)};--i:${o.i || 0}" ${o.attr || ''}>
     ${it.st ? '<span class="st">ST™</span>' : ''}
-    ${o.check ? `<span class="check">${ICON.check}</span>` : ''}
+    ${o.check ? `<span class="check" ${o.checkU != null ? `data-act="pick" data-u="${o.checkU}" title="Выбрать"` : ''}>${ICON.check}</span>` : ''}
     ${o.chance ? `<span class="chance">${o.chance}</span>` : ''}
     <div class="img"><img loading="lazy" src="${img(s.img)}" alt=""></div>
     <div class="wpn">${esc(wpnLabel(s))}</div>
@@ -1408,7 +1408,7 @@ function viewInventory() {
     </div>
   </div>
   <div id="invGrid"></div>
-  <div class="actionbar glass edge" id="abar"><span class="n" id="abarT"></span><button class="btn sm" data-act="selClear">Отмена</button>${ONLINE ? `<button class="btn steam sm" data-act="steamSel">${gi('steam')} В Steam</button>` : ''}<button class="btn green sm" data-act="sellSel">Продать</button></div>`;
+  <div class="actionbar glass edge" id="abar"><span class="n" id="abarT"></span><button class="btn sm" data-act="selAll" title="Выбрать все предметы под текущим фильтром">Все</button><button class="btn sm" data-act="selClear">Отмена</button><button class="btn sm" data-act="upSel">${gi('upgrade')} Апгрейд</button>${ONLINE ? `<button class="btn steam sm" data-act="steamSel">${gi('steam')} В Steam</button>` : ''}<button class="btn green sm" data-act="sellSel">Продать</button></div>`;
   drawInv();
   VIEW = {
     onSeg(n, v) { if (n === 'f') { I.f = v; I.limit = 120; drawInv(); } },
@@ -1416,9 +1416,15 @@ function viewInventory() {
     onChange(t) { if (t.id === 'isort') { I.sort = t.value; drawInv(); } },
     refresh: drawInv,
     async act(a, el) {
+      if (a === 'pick') { const u = +el.dataset.u; I.sel.has(u) ? I.sel.delete(u) : I.sel.add(u); const c = el.closest('.item'); c && c.classList.toggle('sel', I.sel.has(u)); drawBar(); SFX.click(); return; }
+      if (a === 'selAll') { invList().forEach(it => I.sel.add(it.u)); I.select = true; drawInv(); SFX.click(); return; }
+      if (a === 'upSel') {
+        if (I.sel.size > 6) return notify({ title: 'Для апгрейда — до 6 предметов', sub: `Выбрано ${I.sel.size}`, icon: gi('upgrade'), color: 'rgba(255,159,10,.3)' });
+        U.sel = new Set(I.sel); I.sel.clear(); I.select = false; location.hash = '#/upgrade'; return;
+      }
       if (a === 'item') {
         const u = +el.dataset.u;
-        if (I.select) { I.sel.has(u) ? I.sel.delete(u) : I.sel.add(u); el.classList.toggle('sel'); drawBar(); SFX.click(); }
+        if (I.select || I.sel.size) { I.sel.has(u) ? I.sel.delete(u) : I.sel.add(u); el.classList.toggle('sel'); drawBar(); SFX.click(); }
         else { const it = S.inv.find(x => x.u === u); if (it) showItem(it, { onChange: () => $('#invGrid') && drawInv() }); }
       }
       if (a === 'selMode') { I.select = !I.select; I.sel.clear(); drawInv(); }
@@ -1457,7 +1463,9 @@ function drawBar() {
   const bar = $('#abar'); if (!bar) return;
   const sum = r2(S.inv.filter(i => I.sel.has(i.u)).reduce((a, i) => a + i.p, 0));
   $('#abarT').textContent = `Выбрано ${I.sel.size} · ${money(sum)}`;
-  bar.classList.toggle('show', I.select && I.sel.size > 0);
+  bar.classList.toggle('show', I.sel.size > 0);
+  const g = $('#invGrid .inv-pick'); if (g) g.classList.toggle('picking', I.select || I.sel.size > 0);
+  const up = $('#abar [data-act="upSel"]'); if (up) up.hidden = I.sel.size > 6;
 }
 function drawPerks() {
   const row = $('#perkRow'); if (!row) return;
@@ -1479,7 +1487,7 @@ function drawInv() {
   const l = invList(), g = $('#invGrid');
   if (!S.inv.length) g.innerHTML = `<div class="empty-state"><div class="ill">${gi('bag')}</div><h3>Инвентарь пуст</h3>Откройте пару кейсов — дропы появятся здесь.<br><button class="btn primary" data-go="#/">К кейсам</button></div>`;
   else if (!l.length) g.innerHTML = `<div class="empty-state"><div class="ill">${gi('search')}</div><h3>Нет предметов</h3>Под фильтр ничего не подходит</div>`;
-  else g.innerHTML = `<div class="grid-items stagger">${l.slice(0, I.limit).map((it, i) => itemCard(it, { i: Math.min(i, 30), check: I.select, sel: I.sel.has(it.u), attr: `data-act="item" data-u="${it.u}"` })).join('')}</div>${l.length > I.limit ? `<div style="text-align:center;margin-top:20px"><button class="btn" data-act="more">Показать ещё (${l.length - I.limit})</button></div>` : ''}`;
+  else g.innerHTML = `<div class="grid-items stagger inv-pick ${I.select || I.sel.size ? 'picking' : ''}">${l.slice(0, I.limit).map((it, i) => itemCard(it, { i: Math.min(i, 30), check: true, checkU: it.u, sel: I.sel.has(it.u), attr: `data-act="item" data-u="${it.u}"` })).join('')}</div>${l.length > I.limit ? `<div style="text-align:center;margin-top:20px"><button class="btn" data-act="more">Показать ещё (${l.length - I.limit})</button></div>` : ''}`;
   drawBar();
 }
 
@@ -2630,7 +2638,7 @@ async function viewTop() {
       return `<div class="li top-li ${r.id === ME.id ? 'me' : ''}" style="--i:${i};--rc:${bs ? colOf(bs) : 'transparent'}" data-go="#/u/${r.id}">
         <div class="rank r${i + 1}">${i + 1}</div>
         ${bs ? `<img src="${img(bs.img, '128fx128f')}" alt="">` : '<div style="width:64px"></div>'}
-        ${avatarHTML(r.nickname, '', 'aria-hidden="true"', r.avatar)}
+        <span class="av-on ${isOnline(r.time_ping) || r.id === ME.id ? 'on' : ''}" title="${r.id === ME.id ? 'в сети' : seenText(r.time_ping)}">${avatarHTML(r.nickname, '', 'aria-hidden="true"', r.avatar)}<i></i></span>
         <div class="t"><b>${esc(r.nickname)}${trophiesMini(trOf[r.id])}${medalsMini(pubMedal(r))}${r.id === ME.id ? ' <em class="me-tag">ты</em>' : ''}</b><span>${sub(r)}</span></div>
         <div class="p">${val(r)}${T.by === 'networth' ? uah(r.networth) : T.by === 'best_price' ? uah(r.best_price) : ''}</div></div>`;
     }).join('')}</div>`;
@@ -2640,6 +2648,20 @@ async function viewTop() {
 }
 
 /* ================= OTHER PLAYER ================= */
+/* ---- online status: the page pings time_ping once a minute while the tab is open ---- */
+const isOnline = t => !!t && Date.now() - Date.parse(t) < 150e3;
+function seenText(t) {
+  if (!t) return 'давно не заходил(а)';
+  const s = (Date.now() - Date.parse(t)) / 1000;
+  if (s < 150) return 'в сети';
+  const m = Math.floor(s / 60), h = Math.floor(m / 60), d = Math.floor(h / 24);
+  if (m < 60) return `был(а) в сети ${m} мин назад`;
+  if (h < 24) return `был(а) в сети ${h} ч назад`;
+  if (d === 1) return 'был(а) в сети вчера';
+  return `был(а) в сети ${d} дн. назад`;
+}
+const seenHTML = t => `<small class="seen ${isOnline(t) ? 'on' : ''}"><i></i>${seenText(t)}</small>`;
+
 async function viewUser(id) {
   if (!ONLINE) { location.hash = '#/profile'; return; }
   if (id === ME.id) { location.hash = '#/profile'; return; }
@@ -2687,7 +2709,7 @@ async function viewUser(id) {
   main.innerHTML = `
   <section class="inv-head glass edge">
     ${avatarHTML(p.nickname, p.frame, '', p.avatar)}
-    <div class="stat"><span>Игрок</span><b>${esc(p.nickname)}</b>${p.bio ? `<small class="pbio">${esc(p.bio)}</small>` : ''}</div>
+    <div class="stat"><span>Игрок</span><b>${esc(p.nickname)}</b>${seenHTML(p.time_ping)}${p.bio ? `<small class="pbio">${esc(p.bio)}</small>` : ''}</div>
     <div class="stat"><span>Состояние</span><b>${money(p.networth)}</b>${uah(p.networth)}</div>
     <div class="stat"><span>Кейсов</span><b>${p.opened}</b></div>
     <div class="stat"><span>Баттлы</span><b>${p.battles_w}/${p.battles_l}</b></div>

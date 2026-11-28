@@ -188,6 +188,7 @@ select p.id, p.nickname, p.balance, coalesce(i.v, 0)::numeric(14,2) as inv_value
 , p.frame, p.bp_premium, p.bp_s1_lvl, p.created_at
 , p.avatar, p.bio
 , p.bp_s1_prem
+, p.time_ping
 from profiles p left join (select owner, sum(price) v from inventory group by owner) i on i.owner = p.id
 left join (select owner, sum(price) v from steam_items group by owner) sv on sv.owner = p.id;
 

@@ -197,7 +197,7 @@ img { display: block; user-select: none; -webkit-user-drag: none; }
 
 /* ============ Layout ============ */
 main { width: min(1280px, calc(100% - 28px)); margin: 0 auto; padding: 26px 0 120px; }
-.view-enter { animation: viewIn .7s var(--smooth) both; }
+.view-enter { animation: viewIn .7s var(--smooth) backwards; }  /* not "both": a kept transform would trap position:fixed children (the action bar) inside the page */
 @keyframes viewIn { from { opacity: 0; transform: translateY(16px) scale(.99); filter: blur(10px); } to { opacity: 1; transform: none; filter: none; } }
 ::view-transition-old(root) { animation: vtOut .28s var(--smooth) both; }
 ::view-transition-new(root) { animation: vtIn .55s var(--smooth) both; }
@@ -314,6 +314,22 @@ main { width: min(1280px, calc(100% - 28px)); margin: 0 auto; padding: 26px 0 12
 .item.sel .check { background: var(--blue); border-color: var(--blue); transform: scale(1.1); }
 .item .check svg { width: 13px; height: 13px; opacity: 0; transition: opacity .2s; }
 .item.sel .check svg { opacity: 1; }
+/* inventory: a tick box on every card; faint until hovered or while picking */
+.inv-pick .item .check { opacity: .45; cursor: pointer; width: 26px; height: 26px; }
+.inv-pick .item .check::before { content: ""; position: absolute; inset: -8px; }
+.inv-pick .item:hover .check, .inv-pick.picking .item .check, .inv-pick .item.sel .check { opacity: 1; }
+.inv-pick .item .check:hover { border-color: var(--blue); }
+@media (hover: none) { .inv-pick .item .check { opacity: .8; } }
+#abar .btn svg.gi { width: 18px; height: 18px; }
+@media (max-width: 560px) { #abar { gap: 6px; padding-left: 14px; } #abar .n { font-size: 12px; } }
+/* online status */
+.seen { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--text-3); margin-top: 2px; }
+.seen i { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,.25); }
+.seen.on { color: #5ee07f; }
+.seen.on i { background: var(--green); box-shadow: 0 0 8px var(--green); }
+.av-on { position: relative; display: inline-flex; flex: none; }
+.av-on > i { display: none; position: absolute; right: -2px; bottom: -2px; width: 14px; height: 14px; border-radius: 50%; background: var(--green); border: 3px solid #17131f; box-shadow: 0 0 8px rgba(48,209,88,.6); }
+.av-on.on > i { display: block; }
 .item.gold-card { --rc: var(--c-rare); background: linear-gradient(160deg, rgba(228,174,57,.25), rgba(228,174,57,.05)); }
 .item.gold-card .img { font-size: 64px; color: var(--gold); text-shadow: 0 0 30px rgba(228,174,57,.7); font-weight: 900; }
 .item.dim { opacity: .35; pointer-events: none; }
